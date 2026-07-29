@@ -5,13 +5,15 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  static const String fontFamily = 'Inter';
+  static const String bodyFontFamily = 'Nunito';
+  static const String headingFontFamily = 'Poppins';
 
   static ThemeData light() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.teal,
+      seedColor: AppColors.gold,
       brightness: Brightness.light,
-      primary: AppColors.teal,
+      primary: AppColors.gold,
+      onPrimary: Colors.white,
       secondary: AppColors.gold,
       surface: AppColors.lightSurface,
       onSurface: AppColors.lightText,
@@ -21,6 +23,7 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackground: AppColors.lightBackground,
       cardColor: AppColors.lightSurface,
+      surfaceAltColor: AppColors.lightSurfaceAlt,
       textColor: AppColors.lightText,
       mutedColor: AppColors.lightTextMuted,
       borderColor: AppColors.lightBorder,
@@ -29,9 +32,10 @@ class AppTheme {
 
   static ThemeData dark() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.teal,
+      seedColor: AppColors.gold,
       brightness: Brightness.dark,
-      primary: AppColors.tealBright,
+      primary: AppColors.gold,
+      onPrimary: Colors.white,
       secondary: AppColors.gold,
       surface: AppColors.darkSurface,
       onSurface: AppColors.darkText,
@@ -41,6 +45,7 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackground: AppColors.darkBackground,
       cardColor: AppColors.darkSurface,
+      surfaceAltColor: AppColors.darkSurfaceAlt,
       textColor: AppColors.darkText,
       mutedColor: AppColors.darkTextMuted,
       borderColor: AppColors.darkBorder,
@@ -51,21 +56,24 @@ class AppTheme {
     required ColorScheme colorScheme,
     required Color scaffoldBackground,
     required Color cardColor,
+    required Color surfaceAltColor,
     required Color textColor,
     required Color mutedColor,
     required Color borderColor,
   }) {
+    const heading = TextStyle(fontFamily: headingFontFamily);
+
     final textTheme = TextTheme(
-      displaySmall: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-      headlineMedium: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-      headlineSmall: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-      titleLarge: TextStyle(fontWeight: FontWeight.w600, color: textColor),
-      titleMedium: TextStyle(fontWeight: FontWeight.w600, color: textColor),
-      titleSmall: TextStyle(fontWeight: FontWeight.w600, color: textColor),
+      displaySmall: heading.copyWith(fontWeight: FontWeight.w700, color: textColor),
+      headlineMedium: heading.copyWith(fontWeight: FontWeight.w700, color: textColor),
+      headlineSmall: heading.copyWith(fontWeight: FontWeight.w700, color: textColor),
+      titleLarge: heading.copyWith(fontWeight: FontWeight.w600, color: textColor),
+      titleMedium: heading.copyWith(fontWeight: FontWeight.w600, color: textColor),
+      titleSmall: heading.copyWith(fontWeight: FontWeight.w600, color: textColor),
       bodyLarge: TextStyle(fontWeight: FontWeight.w400, color: textColor),
       bodyMedium: TextStyle(fontWeight: FontWeight.w400, color: textColor),
       bodySmall: TextStyle(fontWeight: FontWeight.w400, color: mutedColor),
-      labelLarge: TextStyle(fontWeight: FontWeight.w600, color: textColor),
+      labelLarge: heading.copyWith(fontWeight: FontWeight.w600, color: textColor),
       labelMedium: TextStyle(fontWeight: FontWeight.w500, color: mutedColor),
       labelSmall: TextStyle(fontWeight: FontWeight.w500, color: mutedColor),
     );
@@ -75,7 +83,7 @@ class AppTheme {
       brightness: colorScheme.brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBackground,
-      fontFamily: fontFamily,
+      fontFamily: bodyFontFamily,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: scaffoldBackground,
@@ -84,18 +92,21 @@ class AppTheme {
         centerTitle: false,
         titleTextStyle: textTheme.titleLarge,
       ),
+      // Kartu "soft": tanpa border, cuma shadow tipis — meniru cardStyle
+      // default prototipe (bukan gaya "flat" berbingkai).
       cardTheme: CardThemeData(
         color: cardColor,
-        elevation: 0,
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.08),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: borderColor),
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: cardColor,
-        side: BorderSide(color: borderColor),
+        backgroundColor: surfaceAltColor,
+        side: BorderSide.none,
         labelStyle: textTheme.labelMedium,
         shape: const StadiumBorder(),
       ),

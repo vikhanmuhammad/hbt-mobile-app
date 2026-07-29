@@ -115,7 +115,7 @@ class _DayDetail extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: HabitCard(
                   item: item,
-                  accentColor: colorByCategory[item.habit.categoryId] ?? AppColors.teal,
+                  accentColor: colorByCategory[item.habit.categoryId] ?? AppColors.gold,
                   onIncrement: () => _increment(ref, item, date),
                   onDecrement: item.progressValue > 0
                       ? () => _decrement(ref, item, date)

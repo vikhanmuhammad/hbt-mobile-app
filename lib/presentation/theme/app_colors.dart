@@ -1,34 +1,41 @@
 import 'package:flutter/material.dart';
 
-/// Warna inti aplikasi, diambil dari DESIGN.md §2 (palet netral-hangat,
-/// teal/sage sebagai warna utama, kuning lembut untuk aksen streak).
+/// Warna inti aplikasi, diselaraskan dengan render logic asli prototipe
+/// (`docs/Habit Tracker.html`) — bukan cuma deskripsi tekstual di DESIGN.md.
+///
+/// Catatan penting: di prototipe, variabel warna "teal"/"mustard" untuk semua
+/// elemen interaktif (tombol, FAB, checkbox terisi, toggle aktif) sama-sama
+/// di-set ke `palette[2]` yaitu emas/gold (#E8C468) — bukan hijau sage
+/// (#3E7C6A) seperti prosa di DESIGN.md §2. Warna hijau sage nyaris tidak
+/// dipakai di preset default, jadi emas dipakai di sini sebagai warna
+/// interaktif utama supaya sesuai tampilan prototipe yang sebenarnya.
 class AppColors {
   AppColors._();
 
-  // Warna dasar (dipakai di light & dark, dengan penyesuaian opacity/shade).
-  static const Color teal = Color(0xFF3E7C6A);
-  static const Color tealBright = Color(0xFF4FBF9F);
-  static const Color gold = Color(0xFFE8C468);
+  // Warna dasar preset default prototipe: [bg, teal(unused), gold/primary].
+  static const Color teal = Color(0xFF3E7C6A); // tersedia, jarang dipakai
+  static const Color gold = Color(0xFFE8C468); // warna interaktif utama
 
-  // Light theme.
+  // Light theme — persis nilai `colors` di prototipe saat isDark=false.
   static const Color lightBackground = Color(0xFFF7F5EE);
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSurfaceAlt = Color(0xFFF3F1EA);
-  static const Color lightBorder = Color(0xFFD9CDBF);
-  static const Color lightText = Color(0xFF2A332E);
-  static const Color lightTextMuted = Color(0xFF6B8F71);
-  static const Color lightNotDone = Color(0xFFD9CDBF);
+  static const Color lightSurface = Color(0xFFFFFFFF); // colors.card
+  static const Color lightSurfaceAlt = Color(0xFFEDEAE2); // colors.grayLight
+  static const Color lightText = Color(0xFF2B2A26);
+  static final Color lightTextMuted =
+      const Color(0xFF2B2A26).withValues(alpha: 0.6); // colors.textSoft
+  static final Color lightBorder =
+      const Color(0xFF2B2A26).withValues(alpha: 0.08); // colors.border
 
-  // Dark theme.
-  static const Color darkBackground = Color(0xFF0F1512);
-  static const Color darkSurface = Color(0xFF181712);
-  static const Color darkSurfaceAlt = Color(0xFF2A332E);
-  static const Color darkBorder = Color(0xFF3A423C);
+  // Dark theme — persis nilai `colors` di prototipe saat isDark=true.
+  static const Color darkBackground = Color(0xFF181712);
+  static const Color darkSurface = Color(0xFF2A2A25); // mix(bg, white, 8%)
+  static const Color darkSurfaceAlt = Color(0xFF383733); // mix(bg, white, 14%)
   static const Color darkText = Color(0xFFF3F1EA);
-  static const Color darkTextMuted = Color(0xFFA9B8AC);
-  static const Color darkNotDone = Color(0xFF3A423C);
+  static final Color darkTextMuted =
+      const Color(0xFFF3F1EA).withValues(alpha: 0.6);
+  static final Color darkBorder = Colors.white.withValues(alpha: 0.08);
 
-  /// Palet aksen per kategori bawaan, urut sesuai `habit_templates.json`.
+  /// Palet aksen per kategori bawaan, persis `DEFAULT_CATEGORIES` di prototipe.
   /// Dipakai juga sebagai fallback siklus warna untuk kategori custom.
   static const List<Color> categoryPalette = [
     Color(0xFF6B9B5E), // hijau — Kesehatan

@@ -90,7 +90,7 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       body: Center(
-        child: Icon(Icons.spa_rounded, size: 56, color: AppColors.teal),
+        child: Icon(Icons.spa_rounded, size: 56, color: AppColors.gold),
       ),
     );
   }

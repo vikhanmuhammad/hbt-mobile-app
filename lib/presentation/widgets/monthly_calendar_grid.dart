@@ -121,7 +121,7 @@ class _DayCell extends StatelessWidget {
     final hasData = summary?.hasData ?? false;
     final ratio = summary?.ratio ?? 0;
     final bg = hasData
-        ? AppColors.teal.withValues(alpha: 0.15 + 0.65 * ratio)
+        ? AppColors.gold.withValues(alpha: 0.15 + 0.65 * ratio)
         : Colors.transparent;
     final fg = hasData && ratio > 0.55 ? Colors.white : theme.textTheme.bodyMedium?.color;
 

@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
-
 /// Ring progress dipakai di 3 level: Beranda (semua kategori), Category
 /// Detail (1 kategori), dan Dashboard (keseluruhan). Lihat DESIGN.md §5.
 class DailyProgressRing extends StatelessWidget {
@@ -30,9 +28,7 @@ class DailyProgressRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final ringColor = color ?? theme.colorScheme.primary;
-    final trackColor = theme.brightness == Brightness.light
-        ? AppColors.lightNotDone
-        : AppColors.darkNotDone;
+    final trackColor = theme.colorScheme.onSurface.withValues(alpha: 0.12);
 
     return SizedBox(
       width: size,

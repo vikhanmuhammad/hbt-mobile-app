@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/habit_with_progress.dart';
-import '../theme/app_colors.dart';
 import 'daily_progress_ring.dart';
 
 /// Checklist habit harian: checkbox besar, info goal, badge time range,
@@ -109,6 +108,7 @@ class _CheckControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMultiStep = goalValue > 1;
+    final notDoneColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.35);
 
     if (!isMultiStep) {
       return GestureDetector(
@@ -120,7 +120,7 @@ class _CheckControl extends StatelessWidget {
             shape: BoxShape.circle,
             color: isDone ? accentColor : Colors.transparent,
             border: Border.all(
-              color: isDone ? accentColor : AppColors.lightBorder,
+              color: isDone ? accentColor : notDoneColor,
               width: 2,
             ),
           ),

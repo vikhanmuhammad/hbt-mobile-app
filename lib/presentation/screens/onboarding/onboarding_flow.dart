@@ -131,10 +131,10 @@ class _WelcomeStep extends StatelessWidget {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: AppColors.teal.withValues(alpha: 0.12),
+                  color: AppColors.gold.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.spa_rounded, size: 48, color: AppColors.teal),
+                child: const Icon(Icons.spa_rounded, size: 48, color: AppColors.gold),
               ),
               const SizedBox(height: 28),
               Text('Selamat datang', style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
@@ -426,7 +426,7 @@ class _SummaryStep extends ConsumerWidget {
             Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                leading: const Icon(Icons.check_circle_rounded, color: AppColors.teal),
+                leading: const Icon(Icons.check_circle_rounded, color: AppColors.gold),
                 title: Text(name),
               ),
             ),

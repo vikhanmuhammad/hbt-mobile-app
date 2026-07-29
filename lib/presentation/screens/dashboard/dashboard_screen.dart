@@ -212,7 +212,7 @@ class _HabitBreakdown extends StatelessWidget {
                 child: _ProgressRow(
                   label: stat.habit.name,
                   ratio: stat.successRate,
-                  color: AppColors.teal,
+                  color: AppColors.gold,
                   trailing: '${stat.doneLogs}/${stat.totalLogs}',
                 ),
               ),
@@ -267,7 +267,7 @@ class _MonthlyTrend extends StatelessWidget {
                               heightFactor: point.successRate.clamp(0.03, 1),
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: AppColors.teal,
+                                  color: AppColors.gold,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                               ),
