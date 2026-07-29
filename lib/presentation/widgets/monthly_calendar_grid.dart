@@ -1,0 +1,149 @@
+import 'package:flutter/material.dart';
+
+import '../../domain/date_utils.dart';
+import '../../domain/models/day_summary.dart';
+import '../theme/app_colors.dart';
+
+const _monthNames = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+];
+
+const _weekdayHeaders = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
+
+/// Kalender bulanan dengan gradasi warna teal berdasar persentase selesai
+/// semua habit hari itu. Lihat DESIGN.md §4.3.
+class MonthlyCalendarGrid extends StatelessWidget {
+  const MonthlyCalendarGrid({
+    super.key,
+    required this.month,
+    required this.summaries,
+    required this.selectedDate,
+    required this.onSelectDate,
+    required this.onChangeMonth,
+  });
+
+  final DateTime month;
+  final List<DaySummary> summaries;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onSelectDate;
+  final ValueChanged<DateTime> onChangeMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final firstDay = DateTime(month.year, month.month, 1);
+    final leadingBlanks = (firstDay.weekday - 1) % 7;
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    final summaryByDay = {for (final s in summaries) s.date.day: s};
+    final now = today();
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.chevron_left_rounded),
+              onPressed: () => onChangeMonth(DateTime(month.year, month.month - 1)),
+            ),
+            Text(
+              '${_monthNames[month.month - 1]} ${month.year}',
+              style: theme.textTheme.titleMedium,
+            ),
+            IconButton(
+              icon: const Icon(Icons.chevron_right_rounded),
+              onPressed: () => onChangeMonth(DateTime(month.year, month.month + 1)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (final h in _weekdayHeaders)
+              Expanded(
+                child: Center(
+                  child: Text(h, style: theme.textTheme.labelSmall),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+          ),
+          itemCount: leadingBlanks + daysInMonth,
+          itemBuilder: (context, index) {
+            if (index < leadingBlanks) return const SizedBox.shrink();
+            final day = index - leadingBlanks + 1;
+            final date = DateTime(month.year, month.month, day);
+            final summary = summaryByDay[day];
+            final isToday = isSameDay(date, now);
+            final isSelected = isSameDay(date, selectedDate);
+
+            return _DayCell(
+              day: day,
+              summary: summary,
+              isToday: isToday,
+              isSelected: isSelected,
+              onTap: () => onSelectDate(date),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _DayCell extends StatelessWidget {
+  const _DayCell({
+    required this.day,
+    required this.summary,
+    required this.isToday,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final int day;
+  final DaySummary? summary;
+  final bool isToday;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final hasData = summary?.hasData ?? false;
+    final ratio = summary?.ratio ?? 0;
+    final bg = hasData
+        ? AppColors.teal.withValues(alpha: 0.15 + 0.65 * ratio)
+        : Colors.transparent;
+    final fg = hasData && ratio > 0.55 ? Colors.white : theme.textTheme.bodyMedium?.color;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected
+                ? theme.colorScheme.primary
+                : isToday
+                    ? AppColors.gold
+                    : Colors.transparent,
+            width: isSelected || isToday ? 1.5 : 0,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text('$day', style: theme.textTheme.bodySmall?.copyWith(color: fg)),
+      ),
+    );
+  }
+}

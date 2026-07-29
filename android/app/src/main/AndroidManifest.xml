@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dipakai supaya reminder habit (notifikasi lokal biasa, bukan exact
+         alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="habbit_tracker_app"
         android:name="${applicationName}"
@@ -30,6 +33,19 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Diperlukan flutter_local_notifications untuk menjalankan reminder
+             habit terjadwal (notifikasi lokal biasa via inexact alarm). -->
+        <receiver android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

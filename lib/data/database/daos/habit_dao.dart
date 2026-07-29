@@ -1,0 +1,57 @@
+import 'package:drift/drift.dart';
+
+import '../app_database.dart';
+import '../tables.dart';
+
+part 'habit_dao.g.dart';
+
+@DriftAccessor(tables: [Habits])
+class HabitDao extends DatabaseAccessor<AppDatabase> with _$HabitDaoMixin {
+  HabitDao(super.db);
+
+  Stream<List<Habit>> watchAllActive() {
+    return (select(habits)..where((h) => h.isActive.equals(true))).watch();
+  }
+
+  Stream<List<Habit>> watchByCategory(int categoryId) {
+    return (select(habits)
+          ..where((h) =>
+              h.categoryId.equals(categoryId) & h.isActive.equals(true)))
+        .watch();
+  }
+
+  Future<List<Habit>> getAllActive() {
+    return (select(habits)..where((h) => h.isActive.equals(true))).get();
+  }
+
+  Future<List<Habit>> getAll() => select(habits).get();
+
+  Future<Habit?> getById(int id) {
+    return (select(habits)..where((h) => h.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<int> insertHabit(HabitsCompanion entry) {
+    return into(habits).insert(entry);
+  }
+
+  Future<bool> updateHabit(HabitsCompanion entry) {
+    return update(habits).replace(entry);
+  }
+
+  Future<void> setActive(int id, bool isActive) async {
+    await (update(habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(isActive: Value(isActive)),
+    );
+  }
+
+  Future<void> deleteHabit(int id) async {
+    await (delete(habits)..where((h) => h.id.equals(id))).go();
+  }
+
+  Future<bool> hasHabitsInCategory(int categoryId) async {
+    final result = await (select(habits)
+          ..where((h) => h.categoryId.equals(categoryId)))
+        .get();
+    return result.isNotEmpty;
+  }
+}

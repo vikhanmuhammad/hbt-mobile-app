@@ -1,0 +1,39 @@
+import 'dart:convert';
+
+import 'enums.dart';
+
+/// Encode/decode kolom `taskDays` (JSON array text di Drift) menjadi
+/// `List<String>` berisi kunci hari (`mon`..`sun`) atau `["all"]`.
+class TaskDays {
+  TaskDays._();
+
+  static List<String> decode(String raw) {
+    if (raw.isEmpty) return [allDaysKey];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded.map((e) => e.toString()).toList();
+      }
+    } catch (_) {
+      // fall through to default
+    }
+    return [allDaysKey];
+  }
+
+  static String encode(List<String> days) => jsonEncode(days);
+
+  static bool isEveryDay(List<String> days) =>
+      days.isEmpty || days.contains(allDaysKey);
+
+  static bool includesWeekday(List<String> days, int dateTimeWeekday) {
+    if (isEveryDay(days)) return true;
+    final key = weekdayKeys[dateTimeWeekday - 1];
+    return days.contains(key);
+  }
+
+  static String summaryLabel(List<String> days) {
+    if (isEveryDay(days)) return 'Setiap hari';
+    final ordered = weekdayKeys.where(days.contains).toList();
+    return ordered.map((d) => weekdayLabels[d]).join(', ');
+  }
+}
