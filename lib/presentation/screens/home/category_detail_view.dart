@@ -159,7 +159,7 @@ class _HabitRow extends ConsumerWidget {
             children: [
               _HabitCheckbox(
                 checked: checked,
-                onTap: () => _toggle(ref),
+                onTap: () => _toggle(context, ref),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -216,7 +216,7 @@ class _HabitRow extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => _toggle(ref),
+              onPressed: () => _toggle(context, ref),
               style: OutlinedButton.styleFrom(
                 backgroundColor: checked ? theme.colorScheme.primary : Colors.transparent,
                 foregroundColor: checked ? Colors.white : theme.textTheme.bodyMedium?.color,
@@ -240,12 +240,19 @@ class _HabitRow extends ConsumerWidget {
   // Checkbox & tombol "Tandai Selesai" adalah toggle penuh (selesai <-> belum),
   // bukan increment — berlaku sama untuk goal 1x maupun goal bertahap (mis. 8
   // gelas). Tap lagi setelah selesai akan membatalkannya kembali ke semula.
-  Future<void> _toggle(WidgetRef ref) async {
-    final repo = ref.read(habitLogRepositoryProvider);
-    await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
-    ref.invalidate(dashboardSummaryProvider);
-    ref.invalidate(monthSummariesProvider);
-    ref.invalidate(daySummaryProvider);
+  Future<void> _toggle(BuildContext context, WidgetRef ref) async {
+    try {
+      final repo = ref.read(habitLogRepositoryProvider);
+      await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal memperbarui progress: $e')));
+      }
+    }
   }
 }
 

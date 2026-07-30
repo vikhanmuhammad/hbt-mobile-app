@@ -118,7 +118,7 @@ class _DayDetail extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: InkWell(
-                onTap: () => _toggle(ref, item),
+                onTap: () => _toggle(context, ref, item),
                 child: Row(
                   children: [
                     _MiniCheckbox(checked: item.isDone),
@@ -143,12 +143,19 @@ class _DayDetail extends ConsumerWidget {
 
   // Toggle penuh (selesai <-> semula), sama seperti Category Detail — tap
   // lagi setelah selesai membatalkannya kembali.
-  Future<void> _toggle(WidgetRef ref, HabitWithProgress item) async {
-    final repo = ref.read(habitLogRepositoryProvider);
-    await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
-    ref.invalidate(dashboardSummaryProvider);
-    ref.invalidate(monthSummariesProvider);
-    ref.invalidate(daySummaryProvider);
+  Future<void> _toggle(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    try {
+      final repo = ref.read(habitLogRepositoryProvider);
+      await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal memperbarui progress: $e')));
+      }
+    }
   }
 
   String _formatDate(DateTime date) {

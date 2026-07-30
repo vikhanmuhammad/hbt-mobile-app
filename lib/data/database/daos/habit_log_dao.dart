@@ -45,6 +45,14 @@ class HabitLogDao extends DatabaseAccessor<AppDatabase>
 
   /// Set nilai progress untuk habit pada tanggal tertentu. `isDone` dihitung
   /// otomatis oleh caller (progressValue >= goalValue) sebelum dipanggil.
+  ///
+  /// Pakai `onConflict` eksplisit yang menarget unique key (habitId, date) —
+  /// bukan `insertOnConflictUpdate()` biasa, yang defaultnya menarget primary
+  /// key `id`. Karena `id` auto-increment dan tidak pernah kita isi manual,
+  /// insert kedua untuk habit+tanggal yang sama tidak pernah "konflik" di
+  /// `id` (selalu dapat id baru), jadi malah gagal kena UNIQUE constraint di
+  /// (habitId, date) alih-alih ter-update — efeknya toggle kedua (undo) diam
+  /// gagal tanpa error yang terlihat.
   Future<void> upsertProgress({
     required int habitId,
     required DateTime date,
@@ -52,12 +60,17 @@ class HabitLogDao extends DatabaseAccessor<AppDatabase>
     required bool isDone,
   }) async {
     final day = DateTime(date.year, date.month, date.day);
-    await into(habitLogs).insertOnConflictUpdate(
-      HabitLogsCompanion.insert(
-        habitId: habitId,
-        date: day,
-        progressValue: Value(progressValue),
-        isDone: Value(isDone),
+    final companion = HabitLogsCompanion.insert(
+      habitId: habitId,
+      date: day,
+      progressValue: Value(progressValue),
+      isDone: Value(isDone),
+    );
+    await into(habitLogs).insert(
+      companion,
+      onConflict: DoUpdate(
+        (_) => companion,
+        target: [habitLogs.habitId, habitLogs.date],
       ),
     );
   }
