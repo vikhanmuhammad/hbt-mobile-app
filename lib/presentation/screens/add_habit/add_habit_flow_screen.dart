@@ -428,23 +428,41 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   Future<void> _quickAddTemplate(HabitTemplate template) async {
     if (_categoryId == null) return;
     setState(() => _saving = true);
-    final repo = ref.read(habitRepositoryProvider);
-    final id = await repo.createHabit(
-      categoryId: _categoryId!,
-      name: template.name,
-      goalPeriod: template.goalPeriod,
-      goalValue: template.goalValue,
-      goalUnit: template.goalUnit,
-      taskDays: const [allDaysKey],
-      timeRange: template.timeRange,
-      reminderEnabled: false,
-      startDate: today(),
-    );
-    final created = await repo.getById(id);
-    if (created != null) {
-      await ref.read(notificationServiceProvider).rescheduleForHabit(created);
+    try {
+      final repo = ref.read(habitRepositoryProvider);
+      final id = await repo.createHabit(
+        categoryId: _categoryId!,
+        name: template.name,
+        goalPeriod: template.goalPeriod,
+        goalValue: template.goalValue,
+        goalUnit: template.goalUnit,
+        taskDays: const [allDaysKey],
+        timeRange: template.timeRange,
+        reminderEnabled: false,
+        startDate: today(),
+      );
+      final created = await repo.getById(id);
+      if (created != null) {
+        await _tryScheduleNotification(created);
+      }
+      await _finishAndGoToCategory(_categoryId!, toastMessage: 'Habit ditambahkan');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal menambah habit: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    await _finishAndGoToCategory(_categoryId!, toastMessage: 'Habit ditambahkan');
+  }
+
+  Future<void> _tryScheduleNotification(Habit habit) async {
+    try {
+      await ref.read(notificationServiceProvider).rescheduleForHabit(habit);
+    } catch (_) {
+      // Notifikasi gagal dijadwalkan (mis. platform tidak mendukung) —
+      // jangan gagalkan penyimpanan habit karena ini.
+    }
   }
 
   // ---------------- Step 3: form habit ----------------
@@ -710,55 +728,64 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     }
 
     setState(() => _saving = true);
-    final repo = ref.read(habitRepositoryProvider);
-    final goalUnit = _goalUnitController.text.trim().isEmpty ? 'x' : _goalUnitController.text.trim();
-    final reminderTimeStr = _reminderEnabled ? _formatTime(_reminderTime) : null;
-    final taskDaysList = _taskDays.contains(allDaysKey) ? [allDaysKey] : _taskDays.toList();
+    try {
+      final repo = ref.read(habitRepositoryProvider);
+      final goalUnit = _goalUnitController.text.trim().isEmpty ? 'x' : _goalUnitController.text.trim();
+      final reminderTimeStr = _reminderEnabled ? _formatTime(_reminderTime) : null;
+      final taskDaysList = _taskDays.contains(allDaysKey) ? [allDaysKey] : _taskDays.toList();
 
-    if (_isEditing) {
-      final updated = Habit(
-        id: widget.editingHabit!.id,
-        categoryId: _categoryId!,
-        name: name,
-        description: widget.editingHabit!.description,
-        goalPeriod: _goalPeriod,
-        goalValue: _goalValue,
-        goalUnit: goalUnit,
-        taskDays: taskDaysList,
-        timeRange: _timeRange,
-        reminderEnabled: _reminderEnabled,
-        reminderTime: reminderTimeStr,
-        startDate: _startDate,
-        endDate: _endDate,
-        isActive: widget.editingHabit!.isActive,
-        createdAt: widget.editingHabit!.createdAt,
-      );
-      await repo.updateHabit(updated);
-      await ref.read(notificationServiceProvider).rescheduleForHabit(updated);
-    } else {
-      final id = await repo.createHabit(
-        categoryId: _categoryId!,
-        name: name,
-        goalPeriod: _goalPeriod,
-        goalValue: _goalValue,
-        goalUnit: goalUnit,
-        taskDays: taskDaysList,
-        timeRange: _timeRange,
-        reminderEnabled: _reminderEnabled,
-        reminderTime: reminderTimeStr,
-        startDate: _startDate,
-        endDate: _endDate,
-      );
-      final created = await repo.getById(id);
-      if (created != null) {
-        await ref.read(notificationServiceProvider).rescheduleForHabit(created);
+      if (_isEditing) {
+        final updated = Habit(
+          id: widget.editingHabit!.id,
+          categoryId: _categoryId!,
+          name: name,
+          description: widget.editingHabit!.description,
+          goalPeriod: _goalPeriod,
+          goalValue: _goalValue,
+          goalUnit: goalUnit,
+          taskDays: taskDaysList,
+          timeRange: _timeRange,
+          reminderEnabled: _reminderEnabled,
+          reminderTime: reminderTimeStr,
+          startDate: _startDate,
+          endDate: _endDate,
+          isActive: widget.editingHabit!.isActive,
+          createdAt: widget.editingHabit!.createdAt,
+        );
+        await repo.updateHabit(updated);
+        await _tryScheduleNotification(updated);
+      } else {
+        final id = await repo.createHabit(
+          categoryId: _categoryId!,
+          name: name,
+          goalPeriod: _goalPeriod,
+          goalValue: _goalValue,
+          goalUnit: goalUnit,
+          taskDays: taskDaysList,
+          timeRange: _timeRange,
+          reminderEnabled: _reminderEnabled,
+          reminderTime: reminderTimeStr,
+          startDate: _startDate,
+          endDate: _endDate,
+        );
+        final created = await repo.getById(id);
+        if (created != null) {
+          await _tryScheduleNotification(created);
+        }
       }
-    }
 
-    await _finishAndGoToCategory(
-      _categoryId!,
-      toastMessage: _isEditing ? 'Habit diperbarui' : 'Habit ditambahkan',
-    );
+      await _finishAndGoToCategory(
+        _categoryId!,
+        toastMessage: _isEditing ? 'Habit diperbarui' : 'Habit ditambahkan',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal menyimpan habit: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   // ---------------- Step 4: kategori baru ----------------
@@ -820,23 +847,31 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       return;
     }
     setState(() => _saving = true);
-    final colorHex =
-        '#${AppColors.customCategoryColorPalette[_newCatColorIndex].toARGB32().toRadixString(16).substring(2).toUpperCase()}';
-    final id = await ref.read(categoryRepositoryProvider).createCustomCategory(
-          name: name,
-          icon: _newCatIcon,
-          colorHex: colorHex,
-        );
+    try {
+      final colorHex =
+          '#${AppColors.customCategoryColorPalette[_newCatColorIndex].toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+      final id = await ref.read(categoryRepositoryProvider).createCustomCategory(
+            name: name,
+            icon: _newCatIcon,
+            colorHex: colorHex,
+          );
 
-    if (widget.startAtNewCategory) {
-      if (mounted) Navigator.of(context).pop();
-      return;
+      if (widget.startAtNewCategory) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+      setState(() {
+        _categoryId = id;
+        _stepStack = [1, 2];
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal membuat kategori: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-    setState(() {
-      _saving = false;
-      _categoryId = id;
-      _stepStack = [1, 2];
-    });
   }
 
   Future<void> _finishAndGoToCategory(int categoryId, {required String toastMessage}) async {

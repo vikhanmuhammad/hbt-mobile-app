@@ -3,7 +3,7 @@
          alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
-        android:label="habbit_tracker_app"
+        android:label="Habit Tracker"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

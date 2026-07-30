@@ -451,30 +451,46 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
 
   Future<void> _saveSelections() async {
     setState(() => _saving = true);
-    final repo = ref.read(habitRepositoryProvider);
-    final notif = ref.read(notificationServiceProvider);
-    final addedNames = <String>[];
+    try {
+      final repo = ref.read(habitRepositoryProvider);
+      final notif = ref.read(notificationServiceProvider);
+      final addedNames = <String>[];
 
-    for (final entry in widget.selectedTemplates.entries) {
-      for (final template in entry.value) {
-        final id = await repo.createHabit(
-          categoryId: entry.key,
-          name: template.name,
-          goalPeriod: template.goalPeriod,
-          goalValue: template.goalValue,
-          goalUnit: template.goalUnit,
-          taskDays: const ['all'],
-          timeRange: template.timeRange,
-          reminderEnabled: false,
-          startDate: today(),
-        );
-        final created = await repo.getById(id);
-        if (created != null) await notif.rescheduleForHabit(created);
-        addedNames.add(template.name);
+      for (final entry in widget.selectedTemplates.entries) {
+        for (final template in entry.value) {
+          final id = await repo.createHabit(
+            categoryId: entry.key,
+            name: template.name,
+            goalPeriod: template.goalPeriod,
+            goalValue: template.goalValue,
+            goalUnit: template.goalUnit,
+            taskDays: const ['all'],
+            timeRange: template.timeRange,
+            reminderEnabled: false,
+            startDate: today(),
+          );
+          final created = await repo.getById(id);
+          if (created != null) {
+            try {
+              await notif.rescheduleForHabit(created);
+            } catch (_) {
+              // Notifikasi gagal dijadwalkan (mis. platform tidak
+              // mendukung) — jangan gagalkan penyimpanan habit karena ini.
+            }
+          }
+          addedNames.add(template.name);
+        }
       }
-    }
 
-    if (mounted) widget.onFinish(addedNames);
+      if (mounted) widget.onFinish(addedNames);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal menyimpan habit: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 }
 
