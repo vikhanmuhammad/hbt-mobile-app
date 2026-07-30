@@ -99,4 +99,9 @@ class HabitRepository {
     await _db.habitLogDao.deleteLogsForHabit(habitId);
     await _db.habitDao.deleteHabit(habitId);
   }
+
+  /// Hapus semua kategori, habit, dan riwayat progress. Dipakai untuk reset
+  /// demo onboarding di Settings — pastikan notifikasi terjadwal sudah
+  /// dibatalkan dulu di sisi caller sebelum memanggil ini.
+  Future<void> deleteAllData() => _db.clearAllData();
 }

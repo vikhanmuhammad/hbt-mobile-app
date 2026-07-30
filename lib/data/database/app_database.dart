@@ -35,6 +35,17 @@ class AppDatabase extends _$AppDatabase {
           }
         },
       );
+
+  /// Hapus semua kategori, habit, dan riwayat progress — dipakai untuk
+  /// "Lihat ulang alur onboarding (demo)" di Settings supaya app benar-benar
+  /// mulai dari kosong, bukan cuma reset status onboarding.
+  Future<void> clearAllData() {
+    return transaction(() async {
+      await delete(habitLogs).go();
+      await delete(habits).go();
+      await delete(categories).go();
+    });
+  }
 }
 
 LazyDatabase _openConnection() {

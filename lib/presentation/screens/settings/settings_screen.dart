@@ -203,15 +203,7 @@ class SettingsScreen extends ConsumerWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: () async {
-                    await ref.read(onboardingStatusProvider.notifier).reset();
-                    if (context.mounted) {
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const OnboardingFlow()),
-                        (route) => false,
-                      );
-                    }
-                  },
+                  onPressed: () => _confirmResetDemo(context, ref),
                   child: const Text(
                     'Lihat ulang alur onboarding (demo)',
                     style: TextStyle(decoration: TextDecoration.underline, fontSize: 13),
@@ -229,6 +221,55 @@ class SettingsScreen extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature belum tersedia di versi ini')),
     );
+  }
+
+  Future<void> _confirmResetDemo(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus semua data?'),
+        content: const Text(
+          'Semua kategori, habit, dan riwayat progress akan dihapus permanen, lalu '
+          'app kembali ke alur onboarding dari awal. Tindakan ini tidak bisa dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Hapus Semua'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final habitRepo = ref.read(habitRepositoryProvider);
+    final notif = ref.read(notificationServiceProvider);
+
+    final habits = await habitRepo.getAll();
+    for (final h in habits) {
+      try {
+        await notif.cancelForHabit(h.id);
+      } catch (_) {
+        // Platform notifikasi tidak tersedia — lanjutkan penghapusan data.
+      }
+    }
+
+    await habitRepo.deleteAllData();
+
+    final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
+    await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
+    await ref.read(onboardingStatusProvider.notifier).reset();
+
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const OnboardingFlow()),
+        (route) => false,
+      );
+    }
   }
 }
 
