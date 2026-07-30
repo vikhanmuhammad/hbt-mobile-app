@@ -46,6 +46,19 @@ class AppColors {
     Color(0xFFC97B7B), // dusty rose — Sosial & Relasi
   ];
 
+  /// Pilihan warna untuk form "Buat Kategori Baru", persis `COLOR_PALETTE`
+  /// di prototipe (6 warna kategori bawaan + 2 warna ekstra).
+  static const List<Color> customCategoryColorPalette = [
+    Color(0xFF6B9B5E),
+    Color(0xFFE08A3C),
+    Color(0xFF8B6FB3),
+    Color(0xFF4A82B0),
+    Color(0xFF4A8C82),
+    Color(0xFFC97B7B),
+    Color(0xFFD9A441),
+    Color(0xFF5E7CE0),
+  ];
+
   static Color categoryColorFromHex(String? hex, int fallbackIndex) {
     if (hex != null && hex.isNotEmpty) {
       final parsed = _tryParseHex(hex);

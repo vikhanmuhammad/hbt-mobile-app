@@ -22,6 +22,7 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       description: row.description,
       goalPeriod: GoalPeriod.fromValue(row.goalPeriod),
       goalValue: row.goalValue,
+      goalUnit: row.goalUnit,
       taskDays: TaskDays.decode(row.taskDays),
       timeRange: TimeRange.fromValue(row.timeRange),
       reminderEnabled: row.reminderEnabled,

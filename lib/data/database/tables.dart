@@ -23,6 +23,7 @@ class Habits extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get goalPeriod => text()();
   IntColumn get goalValue => integer().withDefault(const Constant(1))();
+  TextColumn get goalUnit => text().withDefault(const Constant('x'))();
   TextColumn get taskDays => text()();
   TextColumn get timeRange =>
       text().withDefault(const Constant('anytime'))();

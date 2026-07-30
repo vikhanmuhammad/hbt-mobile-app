@@ -3,63 +3,63 @@
     {
       "key": "kesehatan",
       "name": "Kesehatan",
-      "icon": "health",
+      "icon": "leaf",
       "color": "#6B9B5E",
       "habits": [
-        { "name": "Minum air putih", "goalPeriod": "daily", "goalValue": 8, "timeRange": "anytime" },
-        { "name": "Jalan kaki", "goalPeriod": "daily", "goalValue": 1, "timeRange": "morning" },
-        { "name": "Makan sayur & buah", "goalPeriod": "daily", "goalValue": 1, "timeRange": "anytime" },
-        { "name": "Tidur cukup (7-8 jam)", "goalPeriod": "daily", "goalValue": 1, "timeRange": "night" }
+        { "name": "Minum air putih", "goalPeriod": "daily", "goalValue": 8, "goalUnit": "gelas", "timeRange": "anytime" },
+        { "name": "Jalan kaki", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Makan sayur & buah", "goalPeriod": "daily", "goalValue": 3, "goalUnit": "porsi", "timeRange": "anytime" },
+        { "name": "Tidur cukup (7-8 jam)", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
       ]
     },
     {
       "key": "olahraga",
       "name": "Olahraga",
-      "icon": "sports",
+      "icon": "bolt",
       "color": "#E08A3C",
       "habits": [
-        { "name": "Lari", "goalPeriod": "weekly", "goalValue": 3, "timeRange": "morning" },
-        { "name": "Olahraga ringan (exercise)", "goalPeriod": "weekly", "goalValue": 5, "timeRange": "anytime" },
-        { "name": "Yoga/Stretching", "goalPeriod": "weekly", "goalValue": 3, "timeRange": "anytime" }
+        { "name": "Lari", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Olahraga ringan (exercise)", "goalPeriod": "weekly", "goalValue": 5, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Yoga/Stretching", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
       "key": "produktivitas",
       "name": "Produktivitas",
-      "icon": "productivity",
+      "icon": "square",
       "color": "#4A8C82",
       "habits": [
-        { "name": "Baca buku", "goalPeriod": "daily", "goalValue": 1, "timeRange": "anytime" },
-        { "name": "Belajar skill baru", "goalPeriod": "weekly", "goalValue": 3, "timeRange": "anytime" }
+        { "name": "Baca buku", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "menit", "timeRange": "anytime" },
+        { "name": "Belajar skill baru", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
       "key": "mindfulness",
       "name": "Mental & Mindfulness",
-      "icon": "mindfulness",
+      "icon": "circle",
       "color": "#8B6FB3",
       "habits": [
-        { "name": "Meditasi", "goalPeriod": "daily", "goalValue": 1, "timeRange": "morning" },
-        { "name": "Journaling/Gratitude", "goalPeriod": "daily", "goalValue": 1, "timeRange": "night" }
+        { "name": "Meditasi", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "menit", "timeRange": "morning" },
+        { "name": "Journaling/Gratitude", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
       ]
     },
     {
       "key": "keuangan",
       "name": "Keuangan",
-      "icon": "finance",
+      "icon": "diamond",
       "color": "#4A82B0",
       "habits": [
-        { "name": "Catat pengeluaran harian", "goalPeriod": "daily", "goalValue": 1, "timeRange": "night" },
-        { "name": "Nabung", "goalPeriod": "weekly", "goalValue": 1, "timeRange": "anytime" }
+        { "name": "Catat pengeluaran harian", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Nabung", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
       "key": "sosial",
       "name": "Sosial & Relasi",
-      "icon": "social",
+      "icon": "circle",
       "color": "#C97B7B",
       "habits": [
-        { "name": "Hubungi keluarga/teman", "goalPeriod": "weekly", "goalValue": 1, "timeRange": "anytime" }
+        { "name": "Hubungi keluarga/teman", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     }
   ]

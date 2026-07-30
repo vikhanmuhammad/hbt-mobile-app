@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/category_progress.dart';
-import '../theme/app_colors.dart';
-import 'category_icon.dart';
+import 'category_shape_icon.dart';
 import 'daily_progress_ring.dart';
 
+/// Kartu kategori grid Beranda level 1. Ikon = bulatan solid warna kategori
+/// + glyph putih, ring progress kecil di kanan. Lihat prototipe baris ~424.
 class CategoryCard extends StatelessWidget {
   const CategoryCard({
     super.key,
@@ -27,16 +28,15 @@ class CategoryCard extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: selected ? accentColor : theme.dividerColor,
-          width: selected ? 1.5 : 1,
-        ),
+        side: selected
+            ? BorderSide(color: accentColor, width: 2)
+            : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -44,41 +44,38 @@ class CategoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: accentColor.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      categoryIconData(category.icon),
-                      color: accentColor,
-                      size: 22,
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
+                    child: Center(
+                      child: CategoryShapeIcon(token: category.icon, size: 15),
                     ),
                   ),
                   DailyProgressRing(
                     done: progress.doneCount,
                     total: progress.totalCount,
-                    size: 40,
+                    size: 34,
                     strokeWidth: 4,
                     color: accentColor,
                     centerLabel: '',
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Text(
                 category.name,
                 style: theme.textTheme.titleSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 progress.totalCount == 0
-                    ? 'Belum ada habit hari ini'
-                    : '${progress.doneCount}/${progress.totalCount} selesai',
+                    ? 'Tidak ada jadwal'
+                    : '${progress.doneCount}/${progress.totalCount} hari ini',
                 style: theme.textTheme.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -87,6 +84,3 @@ class CategoryCard extends StatelessWidget {
     );
   }
 }
-
-Color categoryAccentColor(String? colorHex, int fallbackIndex) =>
-    AppColors.categoryColorFromHex(colorHex, fallbackIndex);

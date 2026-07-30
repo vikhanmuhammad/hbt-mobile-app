@@ -5,9 +5,11 @@ import '../../../domain/models/dashboard_summary.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/daily_progress_ring.dart';
 
-/// Dashboard/Ringkasan: total hari tercatat, persentase keberhasilan,
-/// breakdown per kategori, per habit, dan tren bulanan. Lihat DESIGN.md §4.4.
+/// Dashboard/Ringkasan: ring keberhasilan keseluruhan, breakdown per
+/// kategori, per habit, dan tren bulanan. Tanpa AppBar/judul halaman,
+/// persis prototipe. Lihat DESIGN.md §4.4.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -15,9 +17,9 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
       body: summaryAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Gagal memuat dashboard: $e')),
@@ -33,39 +35,39 @@ class DashboardScreen extends ConsumerWidget {
 
           if (isWide) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
+              padding: const EdgeInsets.all(32),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  header,
-                  const SizedBox(height: 20),
-                  IntrinsicHeight(
-                    child: Row(
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: categorySection),
-                        const SizedBox(width: 20),
-                        Expanded(child: trendSection),
+                        header,
+                        const SizedBox(height: 20),
+                        categorySection,
+                        const SizedBox(height: 20),
+                        habitSection,
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  habitSection,
+                  const SizedBox(width: 24),
+                  Expanded(child: trendSection),
                 ],
               ),
             );
           }
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
             children: [
               header,
               const SizedBox(height: 20),
               categorySection,
               const SizedBox(height: 20),
-              trendSection,
-              const SizedBox(height: 20),
               habitSection,
+              const SizedBox(height: 20),
+              trendSection,
             ],
           );
         },
@@ -107,44 +109,30 @@ class _SummaryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _StatCard(
-            label: 'Hari Tercatat',
-            value: '${summary.totalDaysTracked}',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            label: 'Keberhasilan',
-            value: '${(summary.overallSuccessRate * 100).round()}%',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(22),
+        child: Row(
           children: [
-            Text(value, style: theme.textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Text(label, style: theme.textTheme.bodySmall),
+            DailyProgressRing(
+              done: (summary.overallSuccessRate * 100).round(),
+              total: 100,
+              size: 84,
+              strokeWidth: 9,
+              centerLabel: '${(summary.overallSuccessRate * 100).round()}%',
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${summary.totalDaysTracked} hari tercatat', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 4),
+                  Text('Rata-rata keberhasilan keseluruhan', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -165,12 +153,12 @@ class _CategoryBreakdown extends ConsumerWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Per Kategori', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             for (final stat in summary.categoryStats)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
@@ -181,6 +169,7 @@ class _CategoryBreakdown extends ConsumerWidget {
                     stat.category.colorHex,
                     indexById[stat.category.id] ?? 0,
                   ),
+                  showDot: true,
                 ),
               ),
           ],
@@ -200,20 +189,19 @@ class _HabitBreakdown extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Per Habit', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             for (final stat in summary.habitStats)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _ProgressRow(
                   label: stat.habit.name,
                   ratio: stat.successRate,
-                  color: AppColors.gold,
-                  trailing: '${stat.doneLogs}/${stat.totalLogs}',
+                  color: theme.colorScheme.primary,
                 ),
               ),
           ],
@@ -242,39 +230,44 @@ class _MonthlyTrend extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Tren Bulanan', style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
-              height: 120,
+              height: 160,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   for (final point in points)
                     Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text('${(point.successRate * 100).round()}%',
-                                style: theme.textTheme.labelSmall),
-                            const SizedBox(height: 4),
-                            FractionallySizedBox(
-                              heightFactor: point.successRate.clamp(0.03, 1),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.gold,
-                                  borderRadius: BorderRadius.circular(6),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 44),
+                              child: FractionallySizedBox(
+                                heightFactor: point.successRate.clamp(0.03, 1),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    borderRadius: const BorderRadius.only(
+                                      topLeft: Radius.circular(10),
+                                      topRight: Radius.circular(10),
+                                      bottomLeft: Radius.circular(4),
+                                      bottomRight: Radius.circular(4),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 8),
                             Text(_months[point.month.month - 1],
-                                style: theme.textTheme.labelSmall),
+                                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -294,13 +287,13 @@ class _ProgressRow extends StatelessWidget {
     required this.label,
     required this.ratio,
     required this.color,
-    this.trailing,
+    this.showDot = false,
   });
 
   final String label;
   final double ratio;
   final Color color;
-  final String? trailing;
+  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
@@ -312,21 +305,39 @@ class _ProgressRow extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Row(
+                children: [
+                  if (showDot) ...[
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              trailing ?? '${(ratio * 100).round()}%',
-              style: theme.textTheme.labelMedium,
-            ),
+            Text('${(ratio * 100).round()}%', style: theme.textTheme.bodySmall),
           ],
         ),
         const SizedBox(height: 6),
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(999),
           child: LinearProgressIndicator(
             value: ratio.clamp(0, 1),
-            minHeight: 8,
-            backgroundColor: color.withValues(alpha: 0.15),
+            minHeight: 10,
+            backgroundColor: theme.brightness == Brightness.light
+                ? AppColors.lightSurfaceAlt
+                : AppColors.darkSurfaceAlt,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),

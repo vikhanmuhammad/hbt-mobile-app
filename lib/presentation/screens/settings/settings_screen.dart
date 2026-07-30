@@ -5,153 +5,311 @@ import '../../../domain/models/habit.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
-import '../../widgets/category_icon.dart';
-import '../../widgets/habit_form_sheet.dart';
+import '../../theme/app_colors.dart';
+import '../../widgets/dashed_border.dart';
+import '../../widgets/toggle_switch.dart';
+import '../add_habit/add_habit_flow_screen.dart';
 import '../home/category_settings_sheet.dart';
+import '../onboarding/onboarding_flow.dart';
 
 /// Kelola kategori custom, edit/nonaktifkan habit, reminder default, dan
-/// tentang filosofi tracker. Lihat DESIGN.md §4.6.
+/// tentang filosofi tracker. Kolom sempit terpusat, persis prototipe baris
+/// ~590-650. Lihat DESIGN.md §4.6.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final categoriesAsync = ref.watch(categoriesProvider);
     final habitsAsync = ref.watch(allActiveHabitsProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
+    final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _SectionTitle('Kategori'),
-          categoriesAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) => Text('$e'),
-            data: (categories) => Card(
-              child: Column(
-                children: [
-                  for (final c in categories)
-                    ListTile(
-                      leading: Icon(categoryIconData(c.icon)),
-                      title: Text(c.name),
-                      subtitle: Text(c.isDefault ? 'Kategori bawaan' : 'Kategori custom'),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.more_vert_rounded),
-                        onPressed: () => showCategorySettingsSheet(context, c),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 40),
+            children: [
+              Text('Pengaturan', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 24),
+              _SectionLabel('Tampilan'),
+              const SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Mode gelap', style: theme.textTheme.bodyMedium),
+                      ToggleSwitch(
+                        value: themeMode == ThemeMode.dark,
+                        onChanged: (v) => ref.read(appThemeModeProvider.notifier).toggleDark(v),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _SectionTitle('Semua Habit'),
-          habitsAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) => Text('$e'),
-            data: (habits) {
-              if (habits.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Belum ada habit.'),
-                );
-              }
-              return Card(
-                child: Column(
-                  children: [
-                    for (final h in habits) _HabitTile(habit: h),
-                  ],
+                    ],
+                  ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          _SectionTitle('Reminder Default'),
-          const _DefaultReminderTile(),
-          const SizedBox(height: 24),
-          _SectionTitle('Tentang'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel('Kelola Kategori'),
+              const SizedBox(height: 10),
+              categoriesAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) => Text('$e'),
+                data: (categories) {
+                  final habitCountAsync = habitsAsync.value ?? const <Habit>[];
+                  final countByCategory = <int, int>{};
+                  for (final h in habitCountAsync) {
+                    countByCategory[h.categoryId] = (countByCategory[h.categoryId] ?? 0) + 1;
+                  }
+                  return Column(
+                    children: [
+                      for (var i = 0; i < categories.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Card(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => showCategorySettingsSheet(context, categories[i]),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                          color: AppColors.categoryColorFromHex(categories[i].colorHex, i),
+                                          shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(categories[i].name,
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(fontWeight: FontWeight.w600)),
+                                    ),
+                                    Text('${countByCategory[categories[i].id] ?? 0} habit',
+                                        style: theme.textTheme.bodySmall),
+                                    if (!categories[i].isDefault) ...[
+                                      const SizedBox(width: 8),
+                                      Icon(Icons.close_rounded,
+                                          size: 16, color: theme.textTheme.bodySmall?.color),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      DashedBorder(
+                        borderRadius: 14,
+                        onTap: () => openCreateCategoryFlow(context),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          child: Center(
+                            child: Text('+ Tambah Kategori',
+                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel('Kelola Habit'),
+              const SizedBox(height: 10),
+              habitsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, st) => Text('$e'),
+                data: (habits) {
+                  if (habits.isEmpty) {
+                    return Text('Belum ada habit.', style: theme.textTheme.bodySmall);
+                  }
+                  return categoriesAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, st) => Text('$e'),
+                    data: (categories) {
+                      final catById = {for (final c in categories) c.id: c};
+                      final catIndexById = {
+                        for (var i = 0; i < categories.length; i++) categories[i].id: i,
+                      };
+                      return Column(
+                        children: [
+                          for (final h in habits)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _HabitTile(
+                                habit: h,
+                                categoryName: catById[h.categoryId]?.name ?? '',
+                                categoryColor: AppColors.categoryColorFromHex(
+                                  catById[h.categoryId]?.colorHex,
+                                  catIndexById[h.categoryId] ?? 0,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel('Reminder Default'),
+              const SizedBox(height: 10),
+              const _DefaultReminderTile(),
+              const SizedBox(height: 24),
+              _SectionLabel('Data'),
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  Text(
-                    'Habit Tracker dibangun dari sistem Excel "Daily Habit Tracker", '
-                    'sepenuhnya offline tanpa akun atau sinkronisasi cloud.',
-                    style: Theme.of(context).textTheme.bodyMedium,
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _showComingSoon(context, 'Export data'),
+                      child: const Text('Export Data'),
+                    ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Filosofi 66 hari: penelitian Phillippa Lally (University College London) '
-                    'menunjukkan rata-rata dibutuhkan ~66 hari pemantauan konsisten untuk '
-                    'membentuk kebiasaan baru. Angka ini konteks edukatif, bukan target keras.',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _showComingSoon(context, 'Import data'),
+                      child: const Text('Import Data'),
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 24),
+              _SectionLabel('Tentang'),
+              const SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Text(
+                    'Dibangun berdasar riset Phillippa Lally dkk. (UCL): kebiasaan baru '
+                    'rata-rata butuh 66 hari pengulangan agar terasa otomatis. Fokus pada '
+                    'konsistensi, bukan kesempurnaan.\n\n'
+                    'Sepenuhnya offline. Semua rekomendasi berasal dari data statis di app, '
+                    'tidak ada akun atau sinkronisasi cloud.',
+                    style: theme.textTheme.bodySmall?.copyWith(height: 1.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () async {
+                    await ref.read(onboardingStatusProvider.notifier).reset();
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const OnboardingFlow()),
+                        (route) => false,
+                      );
+                    }
+                  },
+                  child: const Text(
+                    'Lihat ulang alur onboarding (demo)',
+                    style: TextStyle(decoration: TextDecoration.underline, fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$feature belum tersedia di versi ini')),
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
 
   final String text;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    return Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
     );
   }
 }
 
 class _HabitTile extends ConsumerWidget {
-  const _HabitTile({required this.habit});
+  const _HabitTile({
+    required this.habit,
+    required this.categoryName,
+    required this.categoryColor,
+  });
 
   final Habit habit;
+  final String categoryName;
+  final Color categoryColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListTile(
-      title: Text(habit.name),
-      subtitle: Text('${habit.goalPeriod.label} • ${habit.goalValue}x'),
-      onTap: () => showHabitFormSheet(
-        context,
-        initialCategoryId: habit.categoryId,
-        editingHabit: habit,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Switch(
-            value: habit.isActive,
-            onChanged: (v) async {
-              await ref.read(habitRepositoryProvider).setActive(habit.id, v);
-              ref.invalidate(dashboardSummaryProvider);
-              ref.invalidate(monthSummariesProvider);
-              ref.invalidate(daySummaryProvider);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded),
-            onPressed: () => _confirmDelete(context, ref),
-          ),
-        ],
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: () => openEditHabitFlow(context, habit),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(habit.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text('$categoryName · ${habit.goalLabel}', style: theme.textTheme.labelSmall),
+                  ],
+                ),
+              ),
+            ),
+            ToggleSwitch(
+              width: 40,
+              height: 24,
+              value: habit.isActive,
+              onChanged: (v) async {
+                await ref.read(habitRepositoryProvider).setActive(habit.id, v);
+                ref.invalidate(dashboardSummaryProvider);
+                ref.invalidate(monthSummariesProvider);
+                ref.invalidate(daySummaryProvider);
+              },
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _confirmDelete(context, ref),
+              child: SizedBox(
+                width: 26,
+                height: 26,
+                child: Icon(Icons.close_rounded, size: 15, color: theme.textTheme.bodySmall?.color),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -170,7 +328,7 @@ class _HabitTile extends ConsumerWidget {
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Batal'),
           ),
-          FilledButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Hapus'),
           ),
@@ -192,15 +350,13 @@ class _DefaultReminderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final repo = ref.watch(settingsRepositoryProvider);
     final current = repo.defaultReminderTime ?? '08:00';
 
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.schedule_rounded),
-        title: const Text('Jam pengingat default'),
-        subtitle: Text('Disarankan saat membuat reminder habit baru: $current'),
-        trailing: const Icon(Icons.chevron_right_rounded),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: () async {
           final parts = current.split(':');
           final picked = await showTimePicker(
@@ -217,6 +373,19 @@ class _DefaultReminderTile extends ConsumerWidget {
             ref.invalidate(settingsRepositoryProvider);
           }
         },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodySmall?.color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Jam pengingat default: $current', style: theme.textTheme.bodyMedium),
+              ),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+            ],
+          ),
+        ),
       ),
     );
   }

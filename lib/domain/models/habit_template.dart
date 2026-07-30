@@ -5,12 +5,14 @@ class HabitTemplate {
     required this.name,
     required this.goalPeriod,
     required this.goalValue,
+    this.goalUnit = 'x',
     required this.timeRange,
   });
 
   final String name;
   final GoalPeriod goalPeriod;
   final int goalValue;
+  final String goalUnit;
   final TimeRange timeRange;
 
   factory HabitTemplate.fromJson(Map<String, dynamic> json) {
@@ -18,11 +20,16 @@ class HabitTemplate {
       name: json['name'] as String,
       goalPeriod: GoalPeriod.fromValue(json['goalPeriod'] as String),
       goalValue: json['goalValue'] as int,
+      goalUnit: json['goalUnit'] as String? ?? 'x',
       timeRange: TimeRange.fromValue(json['timeRange'] as String),
     );
   }
 
-  String get goalSummary => '$goalValue x / ${goalPeriod.unitLabel}';
+  /// Mis. "8 gelas" atau "1x", persis format `unitLabel` di prototipe.
+  String get goalValueLabel =>
+      goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+
+  String get goalLabel => '$goalValueLabel • ${goalPeriod.label}';
 }
 
 class CategoryTemplate {

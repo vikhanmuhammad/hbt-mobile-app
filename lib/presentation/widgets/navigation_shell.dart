@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../screens/add_habit/add_habit_flow.dart';
+import '../screens/add_habit/add_habit_flow_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/history/history_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -86,10 +86,14 @@ class _AddHabitFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () => openAddHabitFlow(context),
-      icon: const Icon(Icons.add_rounded),
-      label: const Text('Tambah Habit'),
+    return SizedBox(
+      width: 58,
+      height: 58,
+      child: FloatingActionButton(
+        onPressed: () => openAddHabitFlow(context),
+        shape: const CircleBorder(),
+        child: const Icon(Icons.add_rounded, size: 28),
+      ),
     );
   }
 }

@@ -41,7 +41,7 @@ final class OnboardingStatusProvider
   }
 }
 
-String _$onboardingStatusHash() => r'a1f7e9a2de1c1be3fe2ebdb0af884c5ac4837813';
+String _$onboardingStatusHash() => r'e68547e967f4a3f660674d79534245f5f313dd5f';
 
 abstract class _$OnboardingStatus extends $Notifier<bool> {
   bool build();
@@ -54,6 +54,58 @@ abstract class _$OnboardingStatus extends $Notifier<bool> {
             as $ClassProviderElement<
               AnyNotifier<bool, bool>,
               bool,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(AppThemeMode)
+final appThemeModeProvider = AppThemeModeProvider._();
+
+final class AppThemeModeProvider
+    extends $NotifierProvider<AppThemeMode, ThemeMode> {
+  AppThemeModeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appThemeModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appThemeModeHash();
+
+  @$internal
+  @override
+  AppThemeMode create() => AppThemeMode();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ThemeMode value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ThemeMode>(value),
+    );
+  }
+}
+
+String _$appThemeModeHash() => r'33d1357904163a37948282c339104b8e929410eb';
+
+abstract class _$AppThemeMode extends $Notifier<ThemeMode> {
+  ThemeMode build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<ThemeMode, ThemeMode>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ThemeMode, ThemeMode>,
+              ThemeMode,
               Object?,
               Object?
             >;

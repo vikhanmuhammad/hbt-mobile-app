@@ -21,16 +21,18 @@ Future<void> main() async {
   );
 }
 
-class HabitTrackerApp extends StatelessWidget {
+class HabitTrackerApp extends ConsumerWidget {
   const HabitTrackerApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(appThemeModeProvider);
     return MaterialApp(
       title: 'Habit Tracker',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
+      themeMode: themeMode,
       home: const AppBootstrap(),
     );
   }

@@ -43,21 +43,21 @@ class MonthlyCalendarGrid extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            IconButton(
-              icon: const Icon(Icons.chevron_left_rounded),
-              onPressed: () => onChangeMonth(DateTime(month.year, month.month - 1)),
+            _NavCircleButton(
+              icon: Icons.chevron_left_rounded,
+              onTap: () => onChangeMonth(DateTime(month.year, month.month - 1)),
             ),
             Text(
               '${_monthNames[month.month - 1]} ${month.year}',
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleLarge,
             ),
-            IconButton(
-              icon: const Icon(Icons.chevron_right_rounded),
-              onPressed: () => onChangeMonth(DateTime(month.year, month.month + 1)),
+            _NavCircleButton(
+              icon: Icons.chevron_right_rounded,
+              onTap: () => onChangeMonth(DateTime(month.year, month.month + 1)),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
         Row(
           children: [
             for (final h in _weekdayHeaders)
@@ -96,6 +96,26 @@ class MonthlyCalendarGrid extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _NavCircleButton extends StatelessWidget {
+  const _NavCircleButton({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).cardColor,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(width: 36, height: 36, child: Icon(icon, size: 20)),
+      ),
     );
   }
 }

@@ -523,6 +523,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _goalUnitMeta = const VerificationMeta(
+    'goalUnit',
+  );
+  @override
+  late final GeneratedColumn<String> goalUnit = GeneratedColumn<String>(
+    'goal_unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('x'),
+  );
   static const VerificationMeta _taskDaysMeta = const VerificationMeta(
     'taskDays',
   );
@@ -629,6 +641,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     description,
     goalPeriod,
     goalValue,
+    goalUnit,
     taskDays,
     timeRange,
     reminderEnabled,
@@ -690,6 +703,12 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
       context.handle(
         _goalValueMeta,
         goalValue.isAcceptableOrUnknown(data['goal_value']!, _goalValueMeta),
+      );
+    }
+    if (data.containsKey('goal_unit')) {
+      context.handle(
+        _goalUnitMeta,
+        goalUnit.isAcceptableOrUnknown(data['goal_unit']!, _goalUnitMeta),
       );
     }
     if (data.containsKey('task_days')) {
@@ -783,6 +802,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.int,
         data['${effectivePrefix}goal_value'],
       )!,
+      goalUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}goal_unit'],
+      )!,
       taskDays: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}task_days'],
@@ -831,6 +854,7 @@ class Habit extends DataClass implements Insertable<Habit> {
   final String? description;
   final String goalPeriod;
   final int goalValue;
+  final String goalUnit;
   final String taskDays;
   final String timeRange;
   final bool reminderEnabled;
@@ -846,6 +870,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     this.description,
     required this.goalPeriod,
     required this.goalValue,
+    required this.goalUnit,
     required this.taskDays,
     required this.timeRange,
     required this.reminderEnabled,
@@ -866,6 +891,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     }
     map['goal_period'] = Variable<String>(goalPeriod);
     map['goal_value'] = Variable<int>(goalValue);
+    map['goal_unit'] = Variable<String>(goalUnit);
     map['task_days'] = Variable<String>(taskDays);
     map['time_range'] = Variable<String>(timeRange);
     map['reminder_enabled'] = Variable<bool>(reminderEnabled);
@@ -891,6 +917,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           : Value(description),
       goalPeriod: Value(goalPeriod),
       goalValue: Value(goalValue),
+      goalUnit: Value(goalUnit),
       taskDays: Value(taskDays),
       timeRange: Value(timeRange),
       reminderEnabled: Value(reminderEnabled),
@@ -918,6 +945,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       description: serializer.fromJson<String?>(json['description']),
       goalPeriod: serializer.fromJson<String>(json['goalPeriod']),
       goalValue: serializer.fromJson<int>(json['goalValue']),
+      goalUnit: serializer.fromJson<String>(json['goalUnit']),
       taskDays: serializer.fromJson<String>(json['taskDays']),
       timeRange: serializer.fromJson<String>(json['timeRange']),
       reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
@@ -938,6 +966,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       'description': serializer.toJson<String?>(description),
       'goalPeriod': serializer.toJson<String>(goalPeriod),
       'goalValue': serializer.toJson<int>(goalValue),
+      'goalUnit': serializer.toJson<String>(goalUnit),
       'taskDays': serializer.toJson<String>(taskDays),
       'timeRange': serializer.toJson<String>(timeRange),
       'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
@@ -956,6 +985,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     Value<String?> description = const Value.absent(),
     String? goalPeriod,
     int? goalValue,
+    String? goalUnit,
     String? taskDays,
     String? timeRange,
     bool? reminderEnabled,
@@ -971,6 +1001,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     description: description.present ? description.value : this.description,
     goalPeriod: goalPeriod ?? this.goalPeriod,
     goalValue: goalValue ?? this.goalValue,
+    goalUnit: goalUnit ?? this.goalUnit,
     taskDays: taskDays ?? this.taskDays,
     timeRange: timeRange ?? this.timeRange,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -994,6 +1025,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           ? data.goalPeriod.value
           : this.goalPeriod,
       goalValue: data.goalValue.present ? data.goalValue.value : this.goalValue,
+      goalUnit: data.goalUnit.present ? data.goalUnit.value : this.goalUnit,
       taskDays: data.taskDays.present ? data.taskDays.value : this.taskDays,
       timeRange: data.timeRange.present ? data.timeRange.value : this.timeRange,
       reminderEnabled: data.reminderEnabled.present
@@ -1018,6 +1050,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('description: $description, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalUnit: $goalUnit, ')
           ..write('taskDays: $taskDays, ')
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
@@ -1038,6 +1071,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     description,
     goalPeriod,
     goalValue,
+    goalUnit,
     taskDays,
     timeRange,
     reminderEnabled,
@@ -1057,6 +1091,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.description == this.description &&
           other.goalPeriod == this.goalPeriod &&
           other.goalValue == this.goalValue &&
+          other.goalUnit == this.goalUnit &&
           other.taskDays == this.taskDays &&
           other.timeRange == this.timeRange &&
           other.reminderEnabled == this.reminderEnabled &&
@@ -1074,6 +1109,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String?> description;
   final Value<String> goalPeriod;
   final Value<int> goalValue;
+  final Value<String> goalUnit;
   final Value<String> taskDays;
   final Value<String> timeRange;
   final Value<bool> reminderEnabled;
@@ -1089,6 +1125,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.description = const Value.absent(),
     this.goalPeriod = const Value.absent(),
     this.goalValue = const Value.absent(),
+    this.goalUnit = const Value.absent(),
     this.taskDays = const Value.absent(),
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
@@ -1105,6 +1142,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.description = const Value.absent(),
     required String goalPeriod,
     this.goalValue = const Value.absent(),
+    this.goalUnit = const Value.absent(),
     required String taskDays,
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
@@ -1125,6 +1163,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? description,
     Expression<String>? goalPeriod,
     Expression<int>? goalValue,
+    Expression<String>? goalUnit,
     Expression<String>? taskDays,
     Expression<String>? timeRange,
     Expression<bool>? reminderEnabled,
@@ -1141,6 +1180,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (description != null) 'description': description,
       if (goalPeriod != null) 'goal_period': goalPeriod,
       if (goalValue != null) 'goal_value': goalValue,
+      if (goalUnit != null) 'goal_unit': goalUnit,
       if (taskDays != null) 'task_days': taskDays,
       if (timeRange != null) 'time_range': timeRange,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
@@ -1159,6 +1199,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String?>? description,
     Value<String>? goalPeriod,
     Value<int>? goalValue,
+    Value<String>? goalUnit,
     Value<String>? taskDays,
     Value<String>? timeRange,
     Value<bool>? reminderEnabled,
@@ -1175,6 +1216,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       description: description ?? this.description,
       goalPeriod: goalPeriod ?? this.goalPeriod,
       goalValue: goalValue ?? this.goalValue,
+      goalUnit: goalUnit ?? this.goalUnit,
       taskDays: taskDays ?? this.taskDays,
       timeRange: timeRange ?? this.timeRange,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
@@ -1206,6 +1248,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     }
     if (goalValue.present) {
       map['goal_value'] = Variable<int>(goalValue.value);
+    }
+    if (goalUnit.present) {
+      map['goal_unit'] = Variable<String>(goalUnit.value);
     }
     if (taskDays.present) {
       map['task_days'] = Variable<String>(taskDays.value);
@@ -1243,6 +1288,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('description: $description, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalUnit: $goalUnit, ')
           ..write('taskDays: $taskDays, ')
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
@@ -1995,6 +2041,7 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String?> description,
       required String goalPeriod,
       Value<int> goalValue,
+      Value<String> goalUnit,
       required String taskDays,
       Value<String> timeRange,
       Value<bool> reminderEnabled,
@@ -2012,6 +2059,7 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<String> goalPeriod,
       Value<int> goalValue,
+      Value<String> goalUnit,
       Value<String> taskDays,
       Value<String> timeRange,
       Value<bool> reminderEnabled,
@@ -2095,6 +2143,11 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<int> get goalValue => $composableBuilder(
     column: $table.goalValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goalUnit => $composableBuilder(
+    column: $table.goalUnit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2221,6 +2274,11 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get goalUnit => $composableBuilder(
+    column: $table.goalUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get taskDays => $composableBuilder(
     column: $table.taskDays,
     builder: (column) => ColumnOrderings(column),
@@ -2312,6 +2370,9 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<int> get goalValue =>
       $composableBuilder(column: $table.goalValue, builder: (column) => column);
+
+  GeneratedColumn<String> get goalUnit =>
+      $composableBuilder(column: $table.goalUnit, builder: (column) => column);
 
   GeneratedColumn<String> get taskDays =>
       $composableBuilder(column: $table.taskDays, builder: (column) => column);
@@ -2424,6 +2485,7 @@ class $$HabitsTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> goalPeriod = const Value.absent(),
                 Value<int> goalValue = const Value.absent(),
+                Value<String> goalUnit = const Value.absent(),
                 Value<String> taskDays = const Value.absent(),
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
@@ -2439,6 +2501,7 @@ class $$HabitsTableTableManager
                 description: description,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalUnit: goalUnit,
                 taskDays: taskDays,
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
@@ -2456,6 +2519,7 @@ class $$HabitsTableTableManager
                 Value<String?> description = const Value.absent(),
                 required String goalPeriod,
                 Value<int> goalValue = const Value.absent(),
+                Value<String> goalUnit = const Value.absent(),
                 required String taskDays,
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
@@ -2471,6 +2535,7 @@ class $$HabitsTableTableManager
                 description: description,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalUnit: goalUnit,
                 taskDays: taskDays,
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
