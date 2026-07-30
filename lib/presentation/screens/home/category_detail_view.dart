@@ -237,14 +237,12 @@ class _HabitRow extends ConsumerWidget {
     );
   }
 
+  // Checkbox & tombol "Tandai Selesai" adalah toggle penuh (selesai <-> belum),
+  // bukan increment — berlaku sama untuk goal 1x maupun goal bertahap (mis. 8
+  // gelas). Tap lagi setelah selesai akan membatalkannya kembali ke semula.
   Future<void> _toggle(WidgetRef ref) async {
     final repo = ref.read(habitLogRepositoryProvider);
-    final habit = item.habit;
-    if (habit.goalValue == 1) {
-      await repo.toggleDone(habit: habit, date: date, currentlyDone: item.isDone);
-    } else {
-      await repo.incrementProgress(habit: habit, date: date, currentValue: item.progressValue);
-    }
+    await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);

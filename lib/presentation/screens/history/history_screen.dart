@@ -141,14 +141,11 @@ class _DayDetail extends ConsumerWidget {
     );
   }
 
+  // Toggle penuh (selesai <-> semula), sama seperti Category Detail — tap
+  // lagi setelah selesai membatalkannya kembali.
   Future<void> _toggle(WidgetRef ref, HabitWithProgress item) async {
     final repo = ref.read(habitLogRepositoryProvider);
-    final habit = item.habit;
-    if (habit.goalValue == 1) {
-      await repo.toggleDone(habit: habit, date: date, currentlyDone: item.isDone);
-    } else {
-      await repo.incrementProgress(habit: habit, date: date, currentValue: item.progressValue);
-    }
+    await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
