@@ -7,10 +7,18 @@ class CategoryProgress {
   const CategoryProgress({
     required this.category,
     required this.habitsToday,
+    required this.totalHabitsInCategory,
   });
 
   final Category category;
   final List<HabitWithProgress> habitsToday;
+
+  /// Total habit di kategori ini (tidak dibatasi jadwal hari ini) — dipakai
+  /// untuk menyembunyikan kategori yang belum punya habit sama sekali dari
+  /// grid Beranda.
+  final int totalHabitsInCategory;
+
+  bool get hasAnyHabit => totalHabitsInCategory > 0;
 
   int get totalCount => habitsToday.length;
 

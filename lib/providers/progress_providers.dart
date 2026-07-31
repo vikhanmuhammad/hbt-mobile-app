@@ -72,6 +72,7 @@ List<CategoryProgress> categoryProgressList(Ref ref, DateTime date) {
     return CategoryProgress(
       category: c,
       habitsToday: _mergeHabitsWithLogs(catHabits, logs, date),
+      totalHabitsInCategory: catHabits.length,
     );
   }).toList();
 }

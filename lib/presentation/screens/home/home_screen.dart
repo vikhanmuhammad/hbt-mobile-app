@@ -23,7 +23,10 @@ class HomeScreen extends ConsumerWidget {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final date = today();
-    final categoryProgress = ref.watch(categoryProgressListProvider(date));
+    // Kategori tanpa habit sama sekali disembunyikan dari grid Beranda —
+    // cukup tampil di step "Pilih Kategori" saat Tambah Habit.
+    final categoryProgress =
+        ref.watch(categoryProgressListProvider(date)).where((c) => c.hasAnyHabit).toList();
     final home = ref.watch(homeProgressProvider(date));
 
     final level1 = ListView(
@@ -138,10 +141,11 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(Icons.category_rounded, size: 48, color: Theme.of(context).disabledColor),
           const SizedBox(height: 16),
-          Text('Belum ada kategori', style: Theme.of(context).textTheme.titleMedium),
+          Text('Belum ada habit', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           const Text(
-            'Tap tombol Tambah Habit di kiri bawah untuk membuat kategori & habit pertamamu.',
+            'Tap tombol Tambah Habit di kiri bawah untuk menambah habit pertamamu. '
+            'Kategori akan muncul di sini setelah ada habit di dalamnya.',
             textAlign: TextAlign.center,
           ),
         ],

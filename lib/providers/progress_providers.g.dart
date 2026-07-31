@@ -358,7 +358,7 @@ final class CategoryProgressListProvider
 }
 
 String _$categoryProgressListHash() =>
-    r'45b8a1a25b0c8b44c27a057c5577f70b55c81553';
+    r'9c012a3f82188214c107483761ecc85f0789f6c9';
 
 /// Progress semua kategori pada [date]: dasar untuk grid kategori Beranda
 /// (level 1) dan ring progress utama.
