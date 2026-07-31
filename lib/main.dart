@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'presentation/screens/onboarding/onboarding_flow.dart';
-import 'presentation/theme/app_colors.dart';
 import 'presentation/theme/app_theme.dart';
+import 'presentation/widgets/app_logo.dart';
 import 'presentation/widgets/navigation_shell.dart';
 import 'providers/core_providers.dart';
 import 'providers/settings_providers.dart';
@@ -91,9 +91,7 @@ class _SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      body: Center(
-        child: Icon(Icons.spa_rounded, size: 56, color: AppColors.gold),
-      ),
+      body: Center(child: AppLogo(size: 72)),
     );
   }
 }

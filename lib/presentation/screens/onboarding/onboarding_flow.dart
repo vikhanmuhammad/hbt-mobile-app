@@ -9,6 +9,7 @@ import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/app_logo.dart';
 import '../../widgets/category_shape_icon.dart';
 import '../../widgets/navigation_shell.dart';
 import '../../widgets/responsive_grid.dart';
@@ -120,25 +121,6 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-class _AppLogo extends StatelessWidget {
-  const _AppLogo({this.size = 56});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        borderRadius: BorderRadius.circular(size * 0.28),
-      ),
-      child: Icon(Icons.check_rounded, color: Colors.white, size: size * 0.5),
-    );
-  }
-}
-
 class _WelcomeStep extends StatelessWidget {
   const _WelcomeStep({required this.onNext});
 
@@ -153,7 +135,7 @@ class _WelcomeStep extends StatelessWidget {
         children: [
           Column(
             children: [
-              const _AppLogo(),
+              const AppLogo(),
               const SizedBox(height: 14),
               Text('Habit Tracker', style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
               const SizedBox(height: 8),

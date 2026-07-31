@@ -246,20 +246,28 @@ class _MonthlyTrend extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 44),
-                              child: FractionallySizedBox(
-                                heightFactor: point.successRate.clamp(0.03, 1),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary,
-                                    borderRadius: const BorderRadius.only(
-                                      topLeft: Radius.circular(10),
-                                      topRight: Radius.circular(10),
-                                      bottomLeft: Radius.circular(4),
-                                      bottomRight: Radius.circular(4),
+                            // Expanded gives this slot a bounded/tight height
+                            // so FractionallySizedBox has something to size
+                            // its heightFactor against — a bare Column doesn't
+                            // bound non-flex children, which crashes it.
+                            Expanded(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: point.successRate.clamp(0.03, 1),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 44),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary,
+                                        borderRadius: const BorderRadius.only(
+                                          topLeft: Radius.circular(10),
+                                          topRight: Radius.circular(10),
+                                          bottomLeft: Radius.circular(4),
+                                          bottomRight: Radius.circular(4),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
