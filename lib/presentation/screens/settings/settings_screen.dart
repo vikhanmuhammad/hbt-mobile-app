@@ -26,6 +26,12 @@ class SettingsScreen extends ConsumerWidget {
     final categoriesAsync = ref.watch(categoriesProvider);
     final habitsAsync = ref.watch(allActiveHabitsProvider);
     final themeMode = ref.watch(appThemeModeProvider);
+    // Saat belum pernah diset manual, themeMode == ThemeMode.system — app
+    // sudah render gelap kalau perangkat gelap, tapi switch harus tetap
+    // menampilkan status efektif itu, bukan cuma cek == ThemeMode.dark.
+    final isDarkEffective = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
 
     return Scaffold(
@@ -47,7 +53,7 @@ class SettingsScreen extends ConsumerWidget {
                     children: [
                       Text('Mode gelap', style: theme.textTheme.bodyMedium),
                       ToggleSwitch(
-                        value: themeMode == ThemeMode.dark,
+                        value: isDarkEffective,
                         onChanged: (v) => ref.read(appThemeModeProvider.notifier).toggleDark(v),
                       ),
                     ],

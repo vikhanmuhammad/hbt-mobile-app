@@ -259,8 +259,11 @@ class _CategoryPickTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
-      color: selected ? Color.lerp(Colors.white, color, 0.14) : null,
+      // Base blend dari cardColor tema (bukan Colors.white hardcoded) supaya
+      // di dark mode tile terpilih tidak jadi terang dan menelan teks gelap.
+      color: selected ? Color.lerp(theme.cardColor, color, 0.14) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: selected ? BorderSide(color: color, width: 2) : BorderSide.none,

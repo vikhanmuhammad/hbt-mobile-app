@@ -41,24 +41,27 @@ class _NavigationShellState extends State<NavigationShell> {
 
     if (isWide) {
       return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: _index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              labelType: NavigationRailLabelType.all,
-              leading: const SizedBox(height: 12),
-              destinations: [
-                for (final d in _destinations)
-                  NavigationRailDestination(
-                    icon: Icon(d.icon),
-                    label: Text(d.label),
-                  ),
-              ],
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(child: body),
-          ],
+        body: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: _index,
+                onDestinationSelected: (i) => setState(() => _index = i),
+                labelType: NavigationRailLabelType.all,
+                leading: const SizedBox(height: 12),
+                destinations: [
+                  for (final d in _destinations)
+                    NavigationRailDestination(
+                      icon: Icon(d.icon),
+                      label: Text(d.label),
+                    ),
+                ],
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: body),
+            ],
+          ),
         ),
         floatingActionButton: _index == 0 ? const _AddHabitFab() : null,
         floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
@@ -66,7 +69,10 @@ class _NavigationShellState extends State<NavigationShell> {
     }
 
     return Scaffold(
-      body: body,
+      // Status bar/notch bawaan perangkat: body Scaffold render edge-to-edge
+      // secara default, tanpa ini konten atas (mis. header "Hari ini")
+      // tertutup status bar.
+      body: SafeArea(bottom: false, child: body),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
