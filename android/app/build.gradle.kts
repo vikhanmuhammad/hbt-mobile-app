@@ -35,6 +35,31 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    applicationVariants.all {
+        val variant = this
+        variant.outputs
+            .map { it as com.android.build.gradle.internal.api.BaseVariantOutputImpl }
+            .forEach { output -> output.outputFileName = "habit_tracker.apk" }
+
+        // `flutter build apk` always re-copies the Gradle output into
+        // build/app/outputs/flutter-apk/ under its own app-<buildmode>.apk name
+        // (hardcoded in the Flutter Gradle plugin, not overridable from here),
+        // so mirror our renamed APK there too under the name we actually want.
+        variant.assembleProvider.configure {
+            doLast {
+                val src = File(
+                    project.layout.buildDirectory.dir("outputs/apk/${variant.name}").get().asFile,
+                    "habit_tracker.apk",
+                )
+                if (src.exists()) {
+                    val destDir = project.layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
+                    destDir.mkdirs()
+                    src.copyTo(File(destDir, "habit_tracker.apk"), overwrite = true)
+                }
+            }
+        }
+    }
 }
 
 kotlin {
