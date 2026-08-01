@@ -6,7 +6,6 @@ import '../../../providers/category_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/settings_providers.dart';
-import '../../../providers/stats_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/toggle_switch.dart';
@@ -118,44 +117,6 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              _SectionLabel('Kelola Habit'),
-              const SizedBox(height: 10),
-              habitsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Text('$e'),
-                data: (habits) {
-                  if (habits.isEmpty) {
-                    return Text('Belum ada habit.', style: theme.textTheme.bodySmall);
-                  }
-                  return categoriesAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, st) => Text('$e'),
-                    data: (categories) {
-                      final catById = {for (final c in categories) c.id: c};
-                      final catIndexById = {
-                        for (var i = 0; i < categories.length; i++) categories[i].id: i,
-                      };
-                      return Column(
-                        children: [
-                          for (final h in habits)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _HabitTile(
-                                habit: h,
-                                categoryName: catById[h.categoryId]?.name ?? '',
-                                categoryColor: AppColors.categoryColorFromHex(
-                                  catById[h.categoryId]?.colorHex,
-                                  catIndexById[h.categoryId] ?? 0,
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    },
                   );
                 },
               ),
@@ -287,102 +248,6 @@ class _SectionLabel extends StatelessWidget {
             letterSpacing: 0.5,
           ),
     );
-  }
-}
-
-class _HabitTile extends ConsumerWidget {
-  const _HabitTile({
-    required this.habit,
-    required this.categoryName,
-    required this.categoryColor,
-  });
-
-  final Habit habit;
-  final String categoryName;
-  final Color categoryColor;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: categoryColor, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: InkWell(
-                onTap: () => openEditHabitFlow(context, habit),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(habit.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('$categoryName · ${habit.goalLabel}', style: theme.textTheme.labelSmall),
-                  ],
-                ),
-              ),
-            ),
-            ToggleSwitch(
-              width: 40,
-              height: 24,
-              value: habit.isActive,
-              onChanged: (v) async {
-                await ref.read(habitRepositoryProvider).setActive(habit.id, v);
-                ref.invalidate(dashboardSummaryProvider);
-                ref.invalidate(monthSummariesProvider);
-                ref.invalidate(daySummaryProvider);
-              },
-            ),
-            const SizedBox(width: 8),
-            InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => _confirmDelete(context, ref),
-              child: SizedBox(
-                width: 26,
-                height: 26,
-                child: Icon(Icons.close_rounded, size: 15, color: theme.textTheme.bodySmall?.color),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus habit?'),
-        content: Text(
-          'Menghapus "${habit.name}" juga akan menghapus semua riwayat progress-nya. '
-          'Tindakan ini tidak bisa dibatalkan.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref.read(habitRepositoryProvider).deleteHabit(habit.id);
-      await ref.read(notificationServiceProvider).cancelForHabit(habit.id);
-      ref.invalidate(dashboardSummaryProvider);
-      ref.invalidate(monthSummariesProvider);
-      ref.invalidate(daySummaryProvider);
-    }
   }
 }
 

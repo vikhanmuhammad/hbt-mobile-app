@@ -10,14 +10,15 @@ import '../../../providers/core_providers.dart';
 import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/pill_button.dart';
+import '../../widgets/dashed_border.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
 /// Level 2 Beranda: daftar habit dalam 1 kategori. Baris flat (bukan kartu
-/// terpisah) dengan checkbox + tombol toggle di bawahnya, persis prototipe
-/// baris ~444-472. Dipakai sebagai push route (mobile) & panel kanan
-/// master-detail (tablet).
-class CategoryDetailView extends ConsumerWidget {
+/// terpisah) dengan checkbox + tombol toggle di bawahnya. Tombol "Kelola
+/// Habit" membuka mode kelola (edit/hapus per habit + tambah baru) — di
+/// luar mode itu, tampilan cuma checklist polos tanpa afordansi manajemen.
+/// Dipakai sebagai push route (mobile) & panel kanan master-detail (tablet).
+class CategoryDetailView extends ConsumerStatefulWidget {
   const CategoryDetailView({
     super.key,
     required this.categoryId,
@@ -30,10 +31,25 @@ class CategoryDetailView extends ConsumerWidget {
   final VoidCallback? onBack;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CategoryDetailView> createState() => _CategoryDetailViewState();
+}
+
+class _CategoryDetailViewState extends ConsumerState<CategoryDetailView> {
+  bool _isManaging = false;
+
+  @override
+  void didUpdateWidget(covariant CategoryDetailView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.categoryId != widget.categoryId) {
+      _isManaging = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final date = today();
-    final items = ref.watch(habitsWithProgressForCategoryProvider(categoryId, date));
+    final items = ref.watch(habitsWithProgressForCategoryProvider(widget.categoryId, date));
 
     return categoriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -41,7 +57,7 @@ class CategoryDetailView extends ConsumerWidget {
       data: (categories) {
         Category? category;
         for (final c in categories) {
-          if (c.id == categoryId) category = c;
+          if (c.id == widget.categoryId) category = c;
         }
         if (category == null) {
           return const Center(child: Text('Kategori tidak ditemukan'));
@@ -60,7 +76,7 @@ class CategoryDetailView extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    if (showBackButton) ...[
+                    if (widget.showBackButton) ...[
                       Material(
                         color: theme.brightness == Brightness.light
                             ? AppColors.lightSurfaceAlt
@@ -68,7 +84,7 @@ class CategoryDetailView extends ConsumerWidget {
                         shape: const CircleBorder(),
                         child: InkWell(
                           customBorder: const CircleBorder(),
-                          onTap: onBack,
+                          onTap: widget.onBack,
                           child: const SizedBox(
                             width: 32,
                             height: 32,
@@ -87,7 +103,7 @@ class CategoryDetailView extends ConsumerWidget {
                     Expanded(
                       child: Text(category.name, style: theme.textTheme.titleLarge),
                     ),
-                    if (items.isNotEmpty) ...[
+                    if (items.isNotEmpty && !_isManaging) ...[
                       Text(
                         '$done/${items.length}',
                         style: theme.textTheme.labelMedium?.copyWith(
@@ -97,18 +113,18 @@ class CategoryDetailView extends ConsumerWidget {
                       ),
                       const SizedBox(width: 10),
                     ],
-                    PrimaryPillButton(
-                      label: '+ Habit',
-                      onPressed: () => openAddHabitFlowInCategory(context, categoryId),
+                    _ManageToggleButton(
+                      isManaging: _isManaging,
+                      onPressed: () => setState(() => _isManaging = !_isManaging),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                if (items.isEmpty)
+                if (items.isEmpty && !_isManaging)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Belum ada habit di kategori ini. Tekan "+ Habit" untuk menambahkan.',
+                      'Belum ada habit di kategori ini. Tekan "Kelola Habit" untuk menambahkan.',
                       style: theme.textTheme.bodySmall,
                     ),
                   )
@@ -120,8 +136,23 @@ class CategoryDetailView extends ConsumerWidget {
                         item: item,
                         accentColor: accentColor,
                         date: date,
+                        isManaging: _isManaging,
                       ),
                     ),
+                if (_isManaging)
+                  DashedBorder(
+                    borderRadius: 16,
+                    onTap: () => openAddHabitFlowInCategory(context, widget.categoryId),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: Center(
+                        child: Text(
+                          '+ Tambah Habit',
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -132,11 +163,17 @@ class CategoryDetailView extends ConsumerWidget {
 }
 
 class _HabitRow extends ConsumerWidget {
-  const _HabitRow({required this.item, required this.accentColor, required this.date});
+  const _HabitRow({
+    required this.item,
+    required this.accentColor,
+    required this.date,
+    required this.isManaging,
+  });
 
   final HabitWithProgress item;
   final Color accentColor;
   final DateTime date;
+  final bool isManaging;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -181,7 +218,7 @@ class _HabitRow extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (habit.reminderEnabled) ...[
+              if (!isManaging && habit.reminderEnabled) ...[
                 Container(
                   width: 8,
                   height: 8,
@@ -189,7 +226,7 @@ class _HabitRow extends ConsumerWidget {
                   decoration: BoxDecoration(color: AppColors.gold, shape: BoxShape.circle),
                 ),
               ],
-              if (notDueToday)
+              if (!isManaging && notDueToday)
                 Padding(
                   padding: const EdgeInsets.only(top: 2, right: 8),
                   child: Text(
@@ -197,19 +234,35 @@ class _HabitRow extends ConsumerWidget {
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
-              Material(
-                color: theme.cardColor,
-                shape: const CircleBorder(),
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => openEditHabitFlow(context, habit),
-                  child: const SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: Icon(Icons.edit_outlined, size: 13),
+              if (isManaging) ...[
+                Material(
+                  color: theme.cardColor,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => openEditHabitFlow(context, habit),
+                    child: const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Icon(Icons.edit_outlined, size: 13),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 6),
+                Material(
+                  color: theme.cardColor,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => _confirmDelete(context, ref),
+                    child: const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Icon(Icons.delete_outline_rounded, size: 15),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -253,6 +306,84 @@ class _HabitRow extends ConsumerWidget {
             .showSnackBar(SnackBar(content: Text('Gagal memperbarui progress: $e')));
       }
     }
+  }
+
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final habit = item.habit;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus habit?'),
+        content: Text(
+          'Menghapus "${habit.name}" juga akan menghapus semua riwayat progress-nya. '
+          'Tindakan ini tidak bisa dibatalkan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await ref.read(habitRepositoryProvider).deleteHabit(habit.id);
+      await ref.read(notificationServiceProvider).cancelForHabit(habit.id);
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal menghapus habit: $e')));
+      }
+    }
+  }
+}
+
+/// Toggle 2 state: "Kelola Habit" (netral) <-> "Selesai" (primer, saat
+/// mode kelola aktif). Beda dari [PrimaryPillButton] karena butuh warna
+/// teks yang kontras terhadap keduanya, bukan selalu putih.
+class _ManageToggleButton extends StatelessWidget {
+  const _ManageToggleButton({required this.isManaging, required this.onPressed});
+
+  final bool isManaging;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Netral: pakai grayLight yang sama dengan bg lingkaran tombol back di
+    // sebelahnya (bukan theme.dividerColor — itu tone M3 auto-generate dari
+    // seed emas yang jadi coklat pudar, tidak match palet app).
+    final bg = isManaging
+        ? theme.colorScheme.primary
+        : (theme.brightness == Brightness.light
+            ? AppColors.lightSurfaceAlt
+            : AppColors.darkSurfaceAlt);
+    final fg = isManaging ? Colors.white : theme.textTheme.bodyMedium?.color;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Text(
+            isManaging ? 'Selesai' : 'Kelola Habit',
+            style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+        ),
+      ),
+    );
   }
 }
 

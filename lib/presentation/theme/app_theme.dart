@@ -85,6 +85,11 @@ class AppTheme {
       scaffoldBackgroundColor: scaffoldBackground,
       fontFamily: bodyFontFamily,
       textTheme: textTheme,
+      // Wajib di-set eksplisit — kalau tidak, Theme.of(context).dividerColor
+      // (dipakai luas sebagai warna border netral di seluruh app) fallback ke
+      // tone M3 auto-generate dari seed emas yang jadi coklat pudar, bukan
+      // borderColor asli yang kita pakai di tempat lain.
+      dividerColor: borderColor,
       appBarTheme: AppBarTheme(
         backgroundColor: scaffoldBackground,
         foregroundColor: textColor,
