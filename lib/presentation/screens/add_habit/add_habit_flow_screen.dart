@@ -19,7 +19,9 @@ import '../../widgets/toggle_switch.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../home/category_detail_screen.dart';
 
-/// Buka alur Tambah Habit dari FAB (Beranda level 1). CLAUDE.md §3.3.
+/// Buka alur Tambah Habit dari FAB (Beranda level 1). Tidak ada Category
+/// Detail yang sudah terbuka di stack, jadi setelah selesai kita push satu
+/// supaya user mendarat di kategori yang baru diisi. CLAUDE.md §3.3.
 Future<void> openAddHabitFlow(BuildContext context) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const AddHabitFlowScreen()),
@@ -27,19 +29,30 @@ Future<void> openAddHabitFlow(BuildContext context) {
 }
 
 /// Buka alur langsung di step rekomendasi untuk 1 kategori (dari tombol
-/// "+ Habit" di Category Detail).
+/// "+ Habit" di Category Detail yang sudah terbuka) — setelah selesai cukup
+/// pop kembali ke situ, jangan push Category Detail baru (akan dobel).
 Future<void> openAddHabitFlowInCategory(BuildContext context, int categoryId) {
   return Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => AddHabitFlowScreen(initialCategoryId: categoryId),
+      builder: (_) => AddHabitFlowScreen(
+        initialCategoryId: categoryId,
+        navigateToCategoryOnFinish: false,
+      ),
     ),
   );
 }
 
-/// Buka alur langsung di form edit untuk habit yang sudah ada.
+/// Buka alur langsung di form edit untuk habit yang sudah ada (dari Category
+/// Detail atau Settings, keduanya sudah terbuka) — setelah selesai cukup pop
+/// kembali ke layar pemanggil.
 Future<void> openEditHabitFlow(BuildContext context, Habit habit) {
   return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => AddHabitFlowScreen(editingHabit: habit)),
+    MaterialPageRoute(
+      builder: (_) => AddHabitFlowScreen(
+        editingHabit: habit,
+        navigateToCategoryOnFinish: false,
+      ),
+    ),
   );
 }
 
@@ -60,11 +73,18 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
     this.initialCategoryId,
     this.editingHabit,
     this.startAtNewCategory = false,
+    this.navigateToCategoryOnFinish = true,
   });
 
   final int? initialCategoryId;
   final Habit? editingHabit;
   final bool startAtNewCategory;
+
+  /// true kalau belum ada Category Detail di stack (mis. dari FAB Beranda)
+  /// sehingga setelah selesai perlu push satu baru. false kalau Category
+  /// Detail (atau Settings) pemanggil sudah terbuka — cukup pop kembali,
+  /// supaya tidak dobel/tertumpuk.
+  final bool navigateToCategoryOnFinish;
 
   @override
   ConsumerState<AddHabitFlowScreen> createState() => _AddHabitFlowScreenState();
@@ -881,20 +901,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.read(selectedCategoryIdProvider.notifier).state = categoryId;
 
     if (!mounted) return;
-    final categories = ref.read(categoriesProvider).value ?? [];
-    Category? category;
-    for (final c in categories) {
-      if (c.id == categoryId) category = c;
-    }
     final navigator = Navigator.of(context);
-    navigator.pop();
-    if (category != null && MediaQuery.sizeOf(context).width < 900) {
-      navigator.push(
-        MaterialPageRoute(
-          builder: (_) => CategoryDetailScreen(categoryId: category!.id, categoryName: category.name),
-        ),
-      );
+    final isMobile = MediaQuery.sizeOf(context).width < 900;
+
+    // Kalau Category Detail (atau Settings) pemanggil sudah ada di stack,
+    // cukup pop kembali ke situ. Cuma push Category Detail baru kalau flow
+    // ini dibuka dari FAB Beranda level 1 (belum ada Category Detail terbuka)
+    // — kalau tidak, akan ada 2 Category Detail bertumpuk untuk kategori yang
+    // sama.
+    if (widget.navigateToCategoryOnFinish && isMobile) {
+      final categories = ref.read(categoriesProvider).value ?? [];
+      Category? category;
+      for (final c in categories) {
+        if (c.id == categoryId) category = c;
+      }
+      navigator.pop();
+      if (category != null) {
+        navigator.push(
+          MaterialPageRoute(
+            builder: (_) => CategoryDetailScreen(categoryId: category!.id, categoryName: category.name),
+          ),
+        );
+      }
+    } else {
+      navigator.pop();
     }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(toastMessage)));
     }
