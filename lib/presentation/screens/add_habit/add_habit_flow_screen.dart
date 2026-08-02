@@ -293,7 +293,12 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                              // Bukan surfaceContainerHighest — itu tone M3
+                              // auto-generate dari seed emas yang meleset dari
+                              // palet netral app (sama seperti kasus dividerColor).
+                              color: theme.brightness == Brightness.light
+                                  ? AppColors.lightSurfaceAlt
+                                  : AppColors.darkSurfaceAlt,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(Icons.add_rounded, color: theme.textTheme.bodySmall?.color),
@@ -1047,7 +1052,14 @@ class _SelectablePill extends StatelessWidget {
             : const EdgeInsets.symmetric(vertical: 10),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? theme.colorScheme.primary : theme.dividerColor.withValues(alpha: 0.5),
+          // Fill netral sama seperti pill/switch lain di app (bukan
+          // dividerColor — itu warna border tipis, terlalu gelap/pekat kalau
+          // dipakai sebagai fill solid via withValues(alpha:...)).
+          color: selected
+              ? theme.colorScheme.primary
+              : (theme.brightness == Brightness.light
+                  ? AppColors.lightSurfaceAlt
+                  : AppColors.darkSurfaceAlt),
           borderRadius: BorderRadius.circular(pill ? 999 : 10),
         ),
         child: Text(
@@ -1153,7 +1165,11 @@ class _TaskDaysGrid extends StatelessWidget {
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: isSelected ? theme.colorScheme.primary : theme.dividerColor.withValues(alpha: 0.5),
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : (theme.brightness == Brightness.light
+                          ? AppColors.lightSurfaceAlt
+                          : AppColors.darkSurfaceAlt),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
