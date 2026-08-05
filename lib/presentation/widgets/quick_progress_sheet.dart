@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../domain/models/habit_with_progress.dart';
 
 /// Bottom sheet input progress cepat untuk habit dengan goalValue > 1 atau
-/// bersatuan — stepper +/- plus input angka langsung. CLAUDE.md v3 §6.2.
+/// bersatuan — stepper +/- plus input angka langsung. Untuk habit bersatuan
+/// waktu (menit/jam) ditambah timer supaya bisa dijalankan langsung dari app
+/// — tapi input manual tetap tersedia untuk aktivitas yang dilakukan di luar
+/// app. CLAUDE.md v3 §6.2.
 Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item) {
   return showModalBottomSheet<int>(
     context: context,
@@ -15,18 +20,13 @@ Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item
   );
 }
 
-class _QuickProgressSheet extends StatefulWidget {
-  const _QuickProgressSheet({required this.item});
-
-  final HabitWithProgress item;
-
-  @override
-  State<_QuickProgressSheet> createState() => _QuickProgressSheetState();
-}
-
 class _QuickProgressSheetState extends State<_QuickProgressSheet> {
   late int _value = widget.item.progressValue;
   late final _controller = TextEditingController(text: '$_value');
+
+  final _stopwatch = Stopwatch();
+  Timer? _tickTimer;
+  Duration _elapsed = Duration.zero;
 
   int get _step {
     final goal = widget.item.habit.goalValue;
@@ -35,8 +35,13 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
     return 1;
   }
 
+  bool get _isTimeUnit => const {'menit', 'jam'}.contains(widget.item.habit.goalUnit);
+
+  int get _secondsPerUnit => widget.item.habit.goalUnit == 'jam' ? 3600 : 60;
+
   @override
   void dispose() {
+    _tickTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -49,6 +54,44 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
     setState(() => _value = clamped);
     _controller.text = '$clamped';
     _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+  }
+
+  void _toggleTimer() {
+    if (_stopwatch.isRunning) {
+      _stopwatch.stop();
+      _tickTimer?.cancel();
+      setState(() {});
+    } else {
+      _stopwatch.start();
+      _tickTimer = Timer.periodic(
+        const Duration(seconds: 1),
+        (_) => setState(() => _elapsed = _stopwatch.elapsed),
+      );
+      setState(() {});
+    }
+  }
+
+  /// Tambahkan durasi yang sudah berjalan ke progress (dibulatkan ke satuan
+  /// terdekat, minimal 1 kalau ada waktu yang berjalan) lalu reset timer.
+  void _commitTimer() {
+    final elapsedSeconds = _stopwatch.elapsed.inSeconds;
+    if (elapsedSeconds > 0) {
+      final addedUnits = (elapsedSeconds / _secondsPerUnit).round().clamp(1, 1 << 30);
+      _setValue(_value + addedUnits);
+    }
+    _stopwatch
+      ..stop()
+      ..reset();
+    _tickTimer?.cancel();
+    _tickTimer = null;
+    setState(() => _elapsed = Duration.zero);
+  }
+
+  String get _elapsedLabel {
+    final minutes = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final hours = _elapsed.inHours;
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
   @override
@@ -66,7 +109,31 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
           Text(habit.name, style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
           Text('Target: ${habit.goalValueLabel}', style: theme.textTheme.bodySmall),
-          const SizedBox(height: 24),
+          if (_isTimeUnit) ...[
+            const SizedBox(height: 20),
+            _TimerCard(
+              elapsedLabel: _elapsedLabel,
+              running: _stopwatch.isRunning,
+              hasElapsed: _elapsed > Duration.zero,
+              onToggle: _toggleTimer,
+              onCommit: _commitTimer,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: Divider(color: theme.dividerColor)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    'atau input manual',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ),
+                Expanded(child: Divider(color: theme.dividerColor)),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -122,6 +189,72 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
                   child: const Text('Simpan'),
                 ),
               ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickProgressSheet extends StatefulWidget {
+  const _QuickProgressSheet({required this.item});
+
+  final HabitWithProgress item;
+
+  @override
+  State<_QuickProgressSheet> createState() => _QuickProgressSheetState();
+}
+
+class _TimerCard extends StatelessWidget {
+  const _TimerCard({
+    required this.elapsedLabel,
+    required this.running,
+    required this.hasElapsed,
+    required this.onToggle,
+    required this.onCommit,
+  });
+
+  final String elapsedLabel;
+  final bool running;
+  final bool hasElapsed;
+  final VoidCallback onToggle;
+  final VoidCallback onCommit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'TIMER',
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 6),
+          Text(elapsedLabel, style: theme.textTheme.headlineMedium),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onToggle,
+                icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 18),
+                label: Text(running ? 'Jeda' : (hasElapsed ? 'Lanjut' : 'Mulai')),
+              ),
+              if (hasElapsed) ...[
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: onCommit,
+                  child: const Text('Tambahkan'),
+                ),
+              ],
             ],
           ),
         ],
