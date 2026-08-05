@@ -5,17 +5,8 @@ class SettingsRepository {
 
   final SharedPreferences _prefs;
 
-  static const _onboardingDoneKey = 'onboarding_done';
   static const _defaultReminderTimeKey = 'default_reminder_time';
   static const _darkModeKey = 'dark_mode_enabled';
-
-  bool get hasCompletedOnboarding =>
-      _prefs.getBool(_onboardingDoneKey) ?? false;
-
-  Future<void> setOnboardingComplete() =>
-      _prefs.setBool(_onboardingDoneKey, true);
-
-  Future<void> resetOnboarding() => _prefs.remove(_onboardingDoneKey);
 
   String? get defaultReminderTime => _prefs.getString(_defaultReminderTimeKey);
 

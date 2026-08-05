@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'presentation/screens/onboarding/onboarding_flow.dart';
+import 'presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/widgets/app_logo.dart';
-import 'presentation/widgets/navigation_shell.dart';
 import 'providers/core_providers.dart';
 import 'providers/settings_providers.dart';
 
@@ -79,8 +79,16 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
         if (snapshot.connectionState != ConnectionState.done) {
           return const _SplashScreen();
         }
-        final hasOnboarded = ref.watch(onboardingStatusProvider);
-        return hasOnboarded ? const NavigationShell() : const OnboardingFlow();
+        // Deteksi user baru vs lama: keberadaan row UserProfile (CLAUDE.md v3
+        // §4.2) — bukan flag SharedPreferences terpisah lagi.
+        final profileAsync = ref.watch(userProfileStreamProvider);
+        return profileAsync.when(
+          loading: () => const _SplashScreen(),
+          error: (e, st) => const OnboardingFlow(),
+          data: (profile) => profile == null
+              ? const OnboardingFlow()
+              : ReturningWelcomeScreen(name: profile.name),
+        );
       },
     );
   }
@@ -91,8 +99,22 @@ class _SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: AppLogo(size: 72)),
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AppLogo(size: 72),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 120,
+              child: LinearProgressIndicator(
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

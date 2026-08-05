@@ -229,7 +229,6 @@ class SettingsScreen extends ConsumerWidget {
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
-    await ref.read(onboardingStatusProvider.notifier).reset();
 
     if (context.mounted) {
       Navigator.of(context).pushAndRemoveUntil(
