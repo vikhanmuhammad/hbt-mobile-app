@@ -691,7 +691,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       ? null
                       : () => Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => const AddHabitFlowScreen(navigateToCategoryOnFinish: false),
+                              builder: (_) => const AddHabitFlowScreen(),
                             ),
                           ),
                   child: Padding(

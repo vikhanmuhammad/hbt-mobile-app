@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../domain/models/habit.dart';
-import '../../../providers/category_providers.dart';
 import '../../../providers/core_providers.dart';
-import '../../../providers/habit_providers.dart';
 import '../../../providers/settings_providers.dart';
-import '../../theme/app_colors.dart';
-import '../../widgets/dashed_border.dart';
 import '../../widgets/toggle_switch.dart';
-import '../add_habit/add_habit_flow_screen.dart';
-import '../home/category_settings_sheet.dart';
 import '../onboarding/onboarding_flow.dart';
+import 'faq_screen.dart';
+import 'personalize_screen.dart';
+import 'profile_screen.dart';
+import 'usage_tips_screen.dart';
 
-/// Kelola kategori custom, edit/nonaktifkan habit, reminder default, dan
-/// tentang filosofi tracker. Kolom sempit terpusat, persis prototipe baris
-/// ~590-650. Lihat DESIGN.md §4.6.
+/// Tampilan, profil, personalize, reminder default, data, usage tips, FAQ,
+/// dan tentang filosofi tracker. CLAUDE.md v3 §8 — tidak ada lagi menu
+/// "Kelola Kategori" terpisah; goal phrase dikelola implisit lewat alur
+/// Tambah/Edit Habit.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -23,8 +21,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
-    final categoriesAsync = ref.watch(categoriesProvider);
-    final habitsAsync = ref.watch(allActiveHabitsProvider);
     final themeMode = ref.watch(appThemeModeProvider);
     // Saat belum pernah diset manual, themeMode == ThemeMode.system — app
     // sudah render gelap kalau perangkat gelap, tapi switch harus tetap
@@ -61,70 +57,22 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Kelola Kategori'),
+              _SectionLabel('Akun'),
               const SizedBox(height: 10),
-              categoriesAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Text('$e'),
-                data: (categories) {
-                  final habitCountAsync = habitsAsync.value ?? const <Habit>[];
-                  final countByCategory = <int, int>{};
-                  for (final h in habitCountAsync) {
-                    countByCategory[h.categoryId] = (countByCategory[h.categoryId] ?? 0) + 1;
-                  }
-                  return Column(
-                    children: [
-                      for (var i = 0; i < categories.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Card(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () => showCategorySettingsSheet(context, categories[i]),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 10,
-                                      height: 10,
-                                      decoration: BoxDecoration(
-                                          color: AppColors.categoryColorFromHex(categories[i].colorHex, i),
-                                          shape: BoxShape.circle),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(categories[i].name,
-                                          style: theme.textTheme.bodyMedium
-                                              ?.copyWith(fontWeight: FontWeight.w600)),
-                                    ),
-                                    Text('${countByCategory[categories[i].id] ?? 0} habit',
-                                        style: theme.textTheme.bodySmall),
-                                    if (!categories[i].isDefault) ...[
-                                      const SizedBox(width: 8),
-                                      Icon(Icons.close_rounded,
-                                          size: 16, color: theme.textTheme.bodySmall?.color),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      DashedBorder(
-                        borderRadius: 14,
-                        onTap: () => openCreateCategoryFlow(context),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          child: Center(
-                            child: Text('+ Tambah Kategori',
-                                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
+              _NavTile(
+                icon: Icons.person_outline_rounded,
+                label: 'Profil',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.palette_outlined,
+                label: 'Personalize',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PersonalizeScreen()),
+                ),
               ),
               const SizedBox(height: 24),
               _SectionLabel('Reminder Default'),
@@ -149,6 +97,24 @@ class SettingsScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              _SectionLabel('Bantuan'),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.lightbulb_outline_rounded,
+                label: 'Usage Tips',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const UsageTipsScreen()),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.help_outline_rounded,
+                label: 'FAQ',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FaqScreen()),
+                ),
               ),
               const SizedBox(height: 24),
               _SectionLabel('Tentang'),
@@ -252,6 +218,36 @@ class _SectionLabel extends StatelessWidget {
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
           ),
+    );
+  }
+}
+
+class _NavTile extends StatelessWidget {
+  const _NavTile({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
+              const SizedBox(width: 12),
+              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

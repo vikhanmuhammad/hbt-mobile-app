@@ -10,7 +10,12 @@ final selectedHistoryDateProvider =
 final selectedHistoryMonthProvider =
     StateProvider<DateTime>((ref) => DateTime(today().year, today().month));
 
-/// Kategori yang sedang dipilih di layar Category Detail (Beranda level 2),
-/// null berarti masih di level grid kategori (dipakai untuk layout tablet
-/// master-detail, lihat DESIGN.md §4.2).
-final selectedCategoryIdProvider = StateProvider<int?>((ref) => null);
+/// Tanggal yang sedang ditampilkan di Beranda (flat list + date strip).
+/// Bulan date strip mengikuti `DateTime(date.year, date.month)`. CLAUDE.md
+/// v3 §6.1.
+final selectedHomeDateProvider = StateProvider<DateTime>((ref) => today());
+
+/// Edit Mode Beranda (CLAUDE.md v3 §6.3), diaktifkan lewat FAB kanan bawah —
+/// state global (bukan lokal HomeScreen) supaya NavigationShell juga bisa
+/// merender FAB yang sesuai.
+final homeEditModeProvider = StateProvider<bool>((ref) => false);

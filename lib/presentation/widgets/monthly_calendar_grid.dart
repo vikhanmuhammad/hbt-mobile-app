@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/date_utils.dart';
 import '../../domain/models/day_summary.dart';
 import '../theme/app_colors.dart';
+import 'daily_progress_ring.dart';
 
 const _monthNames = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -11,8 +12,8 @@ const _monthNames = [
 
 const _weekdayHeaders = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
 
-/// Kalender bulanan dengan gradasi warna teal berdasar persentase selesai
-/// semua habit hari itu. Lihat DESIGN.md §4.3.
+/// Kalender bulanan — tiap sel tanggal menampilkan ring progress kecil
+/// (mini donut chart) mewakili persentase capaian hari itu. CLAUDE.md v3 §7.
 class MonthlyCalendarGrid extends StatelessWidget {
   const MonthlyCalendarGrid({
     super.key,
@@ -140,17 +141,12 @@ class _DayCell extends StatelessWidget {
     final theme = Theme.of(context);
     final hasData = summary?.hasData ?? false;
     final ratio = summary?.ratio ?? 0;
-    final bg = hasData
-        ? AppColors.gold.withValues(alpha: 0.15 + 0.65 * ratio)
-        : Colors.transparent;
-    final fg = hasData && ratio > 0.55 ? Colors.white : theme.textTheme.bodyMedium?.color;
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: bg,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: isSelected
@@ -162,7 +158,15 @@ class _DayCell extends StatelessWidget {
           ),
         ),
         alignment: Alignment.center,
-        child: Text('$day', style: theme.textTheme.bodySmall?.copyWith(color: fg)),
+        child: hasData
+            ? DailyProgressRing(
+                done: (ratio * 100).round(),
+                total: 100,
+                size: 34,
+                strokeWidth: 3,
+                centerLabel: '$day',
+              )
+            : Text('$day', style: theme.textTheme.bodySmall),
       ),
     );
   }

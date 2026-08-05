@@ -2,130 +2,264 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/models/category.dart';
+import '../../../domain/models/habit_with_progress.dart';
+import '../../../providers/category_providers.dart';
+import '../../../providers/core_providers.dart';
 import '../../../providers/progress_providers.dart';
+import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/category_card.dart';
-import '../../widgets/daily_progress_ring.dart';
-import '../../widgets/responsive_grid.dart';
-import 'category_detail_screen.dart';
-import 'category_detail_view.dart';
+import '../../widgets/habit_progress_card.dart';
+import '../../widgets/date_strip.dart';
+import '../../widgets/quick_progress_sheet.dart';
+import '../add_habit/add_habit_flow_screen.dart';
 
-/// Beranda level 1: header "Hari ini" + ring keseluruhan, grid kategori.
-/// Tablet >=900dp: master-detail (grid kiri, detail kanan). Lihat
-/// DESIGN.md §4.2 & prototipe baris ~406-441 (tanpa AppBar/judul halaman).
+/// Beranda: flat list semua habit aktif hari itu (tanpa grouping goal
+/// phrase), date strip + month selector di atas. CLAUDE.md v3 §6.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isWide = MediaQuery.sizeOf(context).width >= 900;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
-    final date = today();
-    // Kategori tanpa habit sama sekali disembunyikan dari grid Beranda —
-    // cukup tampil di step "Pilih Kategori" saat Tambah Habit.
-    final categoryProgress =
-        ref.watch(categoryProgressListProvider(date)).where((c) => c.hasAnyHabit).toList();
-    final home = ref.watch(homeProgressProvider(date));
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final selectedDate = ref.watch(selectedHomeDateProvider);
+    final month = DateTime(selectedDate.year, selectedDate.month);
+    final isEditMode = ref.watch(homeEditModeProvider);
 
-    final level1 = ListView(
-      padding: EdgeInsets.fromLTRB(
-        isTablet ? 32 : 16,
-        isTablet ? 32 : 20,
-        isTablet ? 32 : 16,
-        110,
-      ),
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hari ini',
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+    final items = [...ref.watch(habitsWithProgressForDateProvider(selectedDate))]
+      ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final categories = categoriesAsync.value ?? [];
+    final categoryById = {for (final c in categories) c.id: c};
+
+    final monthSummariesAsync = ref.watch(monthSummariesProvider(month));
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 24 : 16, isTablet ? 32 : 16, 0),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => _shiftMonth(ref, month, -1),
+                  icon: const Icon(Icons.chevron_left_rounded),
+                ),
+                Expanded(
+                  child: Text(
+                    '${monthFullNames[month.month - 1]} ${month.year}',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 2),
-                  Text(formatFullDate(date), style: theme.textTheme.headlineSmall),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            DailyProgressRing(
-              done: home.done,
-              total: home.total,
-              size: 76,
-              strokeWidth: 8,
-              centerLabel: '${home.done}/${home.total}',
-            ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        if (categoryProgress.isEmpty)
-          const _EmptyState()
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: categoryGridColumns(MediaQuery.sizeOf(context).width),
-              mainAxisSpacing: 14,
-              crossAxisSpacing: 14,
-              childAspectRatio: 0.95,
-            ),
-            itemCount: categoryProgress.length,
-            itemBuilder: (context, index) {
-              final progress = categoryProgress[index];
-              final selected = ref.watch(selectedCategoryIdProvider) == progress.category.id;
-              return CategoryCard(
-                progress: progress,
-                accentColor: AppColors.categoryColorFromHex(progress.category.colorHex, index),
-                selected: isWide && selected,
-                onTap: () {
-                  if (isWide) {
-                    ref.read(selectedCategoryIdProvider.notifier).state = progress.category.id;
-                  } else {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => CategoryDetailScreen(
-                          categoryId: progress.category.id,
-                          categoryName: progress.category.name,
-                        ),
-                      ),
-                    );
-                  }
-                },
-              );
-            },
-          ),
-      ],
-    );
-
-    if (!isWide) return level1;
-
-    final selectedId = ref.watch(selectedCategoryIdProvider);
-    return Row(
-      children: [
-        SizedBox(width: 380, child: level1),
-        const SizedBox(width: 24),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 32, 32, 32),
-            child: selectedId == null
-                ? Center(
-                    child: Text(
-                      'Pilih kategori untuk melihat detail',
-                      style: theme.textTheme.bodyMedium,
-                    ),
+                ),
+                IconButton(
+                  onPressed: () => _shiftMonth(ref, month, 1),
+                  icon: const Icon(Icons.chevron_right_rounded),
+                ),
+                if (isEditMode)
+                  TextButton(
+                    onPressed: () => ref.read(homeEditModeProvider.notifier).state = false,
+                    child: const Text('Selesai'),
                   )
-                : CategoryDetailView(categoryId: selectedId),
+                else
+                  TextButton(
+                    onPressed: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
+                    child: const Text('Hari ini'),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+          monthSummariesAsync.when(
+            loading: () => const SizedBox(height: 74),
+            error: (e, st) => const SizedBox(height: 74),
+            data: (summaries) => DateStrip(
+              month: month,
+              selectedDate: selectedDate,
+              summaries: summaries,
+              onSelectDate: (d) => ref.read(selectedHomeDateProvider.notifier).state = d,
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, 16, isTablet ? 32 : 16, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(formatFullDate(selectedDate), style: theme.textTheme.headlineSmall),
+            ),
+          ),
+          Expanded(
+            child: items.isEmpty
+                ? const _EmptyState()
+                : _HabitList(
+                    items: items,
+                    categoryById: categoryById,
+                    categories: categories,
+                    isEditMode: isEditMode,
+                    isWide: isWide,
+                    isTablet: isTablet,
+                    selectedDate: selectedDate,
+                  ),
+          ),
+        ],
+      ),
     );
+  }
+
+  void _shiftMonth(WidgetRef ref, DateTime month, int delta) {
+    final next = DateTime(month.year, month.month + delta, 1);
+    ref.read(selectedHomeDateProvider.notifier).state = next;
+  }
+}
+
+class _HabitList extends ConsumerWidget {
+  const _HabitList({
+    required this.items,
+    required this.categoryById,
+    required this.categories,
+    required this.isEditMode,
+    required this.isWide,
+    required this.isTablet,
+    required this.selectedDate,
+  });
+
+  final List<HabitWithProgress> items;
+  final Map<int, Category> categoryById;
+  final List<Category> categories;
+  final bool isEditMode;
+  final bool isWide;
+  final bool isTablet;
+  final DateTime selectedDate;
+
+  Color _accentFor(int categoryId) {
+    final category = categoryById[categoryId];
+    if (category == null) return AppColors.gold;
+    final index = categories.indexOf(category);
+    return AppColors.categoryColorFromHex(category.colorHex, index);
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final padding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 0, isTablet ? 32 : 16, 110);
+    final crossAxisCount = isWide ? 2 : 1;
+
+    if (!isEditMode) {
+      if (crossAxisCount == 1) {
+        return ListView.separated(
+          padding: padding,
+          itemCount: items.length,
+          separatorBuilder: (_, _) => const SizedBox(height: 10),
+          itemBuilder: (context, index) => _buildCard(context, ref, items[index]),
+        );
+      }
+      return GridView.builder(
+        padding: padding,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 14,
+          childAspectRatio: 3.6,
+        ),
+        itemCount: items.length,
+        itemBuilder: (context, index) => _buildCard(context, ref, items[index]),
+      );
+    }
+
+    return ReorderableListView.builder(
+      padding: padding,
+      itemCount: items.length,
+      onReorder: (oldIndex, newIndex) => _onReorder(ref, oldIndex, newIndex),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Padding(
+          key: ValueKey(item.habit.id),
+          padding: const EdgeInsets.only(bottom: 10),
+          child: HabitProgressCard(
+            item: item,
+            accentColor: _accentFor(item.habit.categoryId),
+            isEditMode: true,
+            onTap: null,
+            onEdit: () => openEditHabitFlow(context, item.habit),
+            onDelete: () => _confirmDeactivate(context, ref, item),
+            dragHandle: ReorderableDragStartListener(
+              index: index,
+              child: const Icon(Icons.drag_indicator_rounded),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item) {
+    return HabitProgressCard(
+      key: ValueKey(item.habit.id),
+      item: item,
+      accentColor: _accentFor(item.habit.categoryId),
+      isEditMode: false,
+      onTap: () => _onTapCard(context, ref, item),
+    );
+  }
+
+  Future<void> _onTapCard(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    final habit = item.habit;
+    final isSimple = habit.goalValue <= 1 && habit.goalUnit == 'x';
+    final repo = ref.read(habitLogRepositoryProvider);
+    try {
+      if (isSimple) {
+        await repo.toggleDone(habit: habit, date: selectedDate, currentlyDone: item.isDone);
+      } else {
+        final value = await showQuickProgressSheet(context, item);
+        if (value == null) return;
+        await repo.setProgress(habit: habit, date: selectedDate, progressValue: value);
+      }
+      _invalidateSummaries(ref);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan progress: $e')));
+      }
+    }
+  }
+
+  Future<void> _confirmDeactivate(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nonaktifkan habit ini?'),
+        content: Text(
+          '"${item.habit.name}" akan disembunyikan dari Beranda. Riwayat progress tetap tersimpan — '
+          'kamu bisa aktifkan lagi lewat form edit.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Nonaktifkan')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(habitRepositoryProvider).setActive(item.habit.id, false);
+  }
+
+  void _onReorder(WidgetRef ref, int oldIndex, int newIndex) {
+    final reordered = [...items];
+    if (newIndex > oldIndex) newIndex -= 1;
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, moved);
+
+    final repo = ref.read(habitRepositoryProvider);
+    for (var i = 0; i < reordered.length; i++) {
+      if (reordered[i].habit.sortOrder != i) {
+        repo.setSortOrder(reordered[i].habit.id, i);
+      }
+    }
+  }
+
+  void _invalidateSummaries(WidgetRef ref) {
+    ref.invalidate(dashboardSummaryProvider);
+    ref.invalidate(monthSummariesProvider);
+    ref.invalidate(daySummaryProvider);
   }
 }
 
@@ -134,21 +268,22 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.category_rounded, size: 48, color: Theme.of(context).disabledColor),
-          const SizedBox(height: 16),
-          Text('Belum ada habit', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          const Text(
-            'Tap tombol Tambah Habit di kiri bawah untuk menambah habit pertamamu. '
-            'Kategori akan muncul di sini setelah ada habit di dalamnya.',
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.checklist_rounded, size: 48, color: Theme.of(context).disabledColor),
+            const SizedBox(height: 16),
+            Text('Belum ada habit terjadwal', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const Text(
+              'Tap tombol Tambah Habit di kiri bawah untuk menambah habit pertamamu di hari ini.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

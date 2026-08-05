@@ -13,51 +13,32 @@ import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_icon.dart';
+import '../../widgets/icon_picker_sheet.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
-import '../../../providers/ui_state_providers.dart';
-import '../home/category_detail_screen.dart';
 
-/// Buka alur Tambah Habit dari FAB (Beranda level 1). Tidak ada Category
-/// Detail yang sudah terbuka di stack, jadi setelah selesai kita push satu
-/// supaya user mendarat di kategori yang baru diisi. CLAUDE.md §3.3.
+/// Buka alur Tambah Habit dari FAB Beranda — mulai dari step 1 (pilih goal
+/// phrase). Beranda flat-list otomatis menampilkan habit baru begitu
+/// tersimpan, jadi cukup pop kembali setelah selesai. CLAUDE.md v3 §3.4.
 Future<void> openAddHabitFlow(BuildContext context) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const AddHabitFlowScreen()),
   );
 }
 
-/// Buka alur langsung di step rekomendasi untuk 1 kategori (dari tombol
-/// "+ Habit" di Category Detail yang sudah terbuka) — setelah selesai cukup
-/// pop kembali ke situ, jangan push Category Detail baru (akan dobel).
-Future<void> openAddHabitFlowInCategory(BuildContext context, int categoryId) {
-  return Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => AddHabitFlowScreen(
-        initialCategoryId: categoryId,
-        navigateToCategoryOnFinish: false,
-      ),
-    ),
-  );
-}
-
-/// Buka alur langsung di form edit untuk habit yang sudah ada (dari Category
-/// Detail atau Settings, keduanya sudah terbuka) — setelah selesai cukup pop
-/// kembali ke layar pemanggil.
+/// Buka alur langsung di form edit untuk habit yang sudah ada (dari Edit
+/// Mode Beranda atau Settings) — setelah selesai cukup pop kembali ke layar
+/// pemanggil.
 Future<void> openEditHabitFlow(BuildContext context, Habit habit) {
   return Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => AddHabitFlowScreen(
-        editingHabit: habit,
-        navigateToCategoryOnFinish: false,
-      ),
-    ),
+    MaterialPageRoute(builder: (_) => AddHabitFlowScreen(editingHabit: habit)),
   );
 }
 
-/// Buka alur langsung di step "Buat Kategori Baru" (dari Settings), lalu
-/// kembali ke Settings setelah kategori dibuat (tidak lanjut ke rekomendasi).
+/// Buka alur langsung di step "Buat Kategori Baru" (dari Settings/onboarding),
+/// lalu kembali ke pemanggil setelah kategori dibuat (tidak lanjut ke
+/// rekomendasi).
 Future<void> openCreateCategoryFlow(BuildContext context) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const AddHabitFlowScreen(startAtNewCategory: true)),
@@ -73,18 +54,11 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
     this.initialCategoryId,
     this.editingHabit,
     this.startAtNewCategory = false,
-    this.navigateToCategoryOnFinish = true,
   });
 
   final int? initialCategoryId;
   final Habit? editingHabit;
   final bool startAtNewCategory;
-
-  /// true kalau belum ada Category Detail di stack (mis. dari FAB Beranda)
-  /// sehingga setelah selesai perlu push satu baru. false kalau Category
-  /// Detail (atau Settings) pemanggil sudah terbuka — cukup pop kembali,
-  /// supaya tidak dobel/tertumpuk.
-  final bool navigateToCategoryOnFinish;
 
   @override
   ConsumerState<AddHabitFlowScreen> createState() => _AddHabitFlowScreenState();
@@ -98,6 +72,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   // Step 3 form state.
   final _nameController = TextEditingController();
   final _goalUnitController = TextEditingController(text: 'x');
+  String _habitIcon = defaultHabitIconKey;
+  String _unitDropdownValue = 'x';
   GoalPeriod _goalPeriod = GoalPeriod.daily;
   int _goalValue = 1;
   Set<String> _taskDays = {allDaysKey};
@@ -140,9 +116,42 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     super.dispose();
   }
 
+  /// Preset satuan progress (CLAUDE.md v3 §8) — 'x' berarti tanpa satuan
+  /// (habit sederhana on/off). Selain ini dianggap satuan custom.
+  static const List<String> unitPresetValues = [
+    'x',
+    'menit',
+    'jam',
+    'langkah',
+    'gelas',
+    'halaman',
+    'kali',
+    'kilometer',
+    'rupiah',
+  ];
+
+  static const Map<String, String> unitPresetLabels = {
+    'x': 'Tanpa satuan',
+    'menit': 'Menit',
+    'jam': 'Jam',
+    'langkah': 'Langkah',
+    'gelas': 'Gelas',
+    'halaman': 'Halaman',
+    'kali': 'Kali',
+    'kilometer': 'Kilometer',
+    'rupiah': 'Rupiah',
+    'custom': 'Custom...',
+  };
+
+  void _applyUnit(String goalUnit) {
+    _goalUnitController.text = goalUnit;
+    _unitDropdownValue = unitPresetValues.contains(goalUnit) ? goalUnit : 'custom';
+  }
+
   void _loadFormFromHabit(Habit habit) {
     _nameController.text = habit.name;
-    _goalUnitController.text = habit.goalUnit;
+    _habitIcon = habit.icon ?? defaultHabitIconKey;
+    _applyUnit(habit.goalUnit);
     _goalPeriod = habit.goalPeriod;
     _goalValue = habit.goalValue;
     _taskDays = habit.taskDays.toSet();
@@ -153,9 +162,17 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _endDate = habit.endDate;
   }
 
-  void _resetFormDraft({String? name, GoalPeriod? goalPeriod, int? goalValue, String? goalUnit, TimeRange? timeRange}) {
+  void _resetFormDraft({
+    String? name,
+    String? icon,
+    GoalPeriod? goalPeriod,
+    int? goalValue,
+    String? goalUnit,
+    TimeRange? timeRange,
+  }) {
     _nameController.text = name ?? '';
-    _goalUnitController.text = goalUnit ?? 'x';
+    _habitIcon = icon ?? defaultHabitIconKey;
+    _applyUnit(goalUnit ?? 'x');
     _goalPeriod = goalPeriod ?? GoalPeriod.daily;
     _goalValue = goalValue ?? 1;
     _taskDays = {allDaysKey};
@@ -192,13 +209,13 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   String get _title {
     switch (_step) {
       case 1:
-        return 'Pilih Kategori';
+        return 'Pilih Goal Phrase';
       case 2:
         return 'Tambah Habit';
       case 3:
         return _isEditing ? 'Edit Habit' : 'Form Habit';
       case 4:
-        return 'Kategori Baru';
+        return 'Goal Baru';
       default:
         return '';
     }
@@ -262,7 +279,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Pilih kategori untuk habit baru.', style: theme.textTheme.bodyMedium),
+        Text('Pilih goal phrase untuk habit baru.', style: theme.textTheme.bodyMedium),
         const SizedBox(height: 20),
         categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -305,7 +322,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Buat Kategori Baru',
+                            'Buat Goal Baru',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontFamily: 'Poppins',
@@ -434,6 +451,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     setState(() {
       _resetFormDraft(
         name: template.name,
+        icon: template.icon,
         goalPeriod: template.goalPeriod,
         goalValue: template.goalValue,
         goalUnit: template.goalUnit,
@@ -458,6 +476,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       final id = await repo.createHabit(
         categoryId: _categoryId!,
         name: template.name,
+        icon: template.icon,
         goalPeriod: template.goalPeriod,
         goalValue: template.goalValue,
         goalUnit: template.goalUnit,
@@ -470,7 +489,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       if (created != null) {
         await _tryScheduleNotification(created);
       }
-      await _finishAndGoToCategory(_categoryId!, toastMessage: 'Habit ditambahkan');
+      await _finishAndReturn(toastMessage: 'Habit ditambahkan');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -503,7 +522,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 6),
         TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Nama habit')),
         const SizedBox(height: 16),
-        _FieldLabel('Kategori'),
+        _FieldLabel('Icon'),
+        const SizedBox(height: 10),
+        InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            final picked = await showIconPickerSheet(context, currentIcon: _habitIcon);
+            if (picked != null) setState(() => _habitIcon = picked);
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
+                child: Center(child: HabitIcon(icon: _habitIcon, size: 16, color: Colors.white)),
+              ),
+              const SizedBox(width: 12),
+              Text('Ganti icon', style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  )),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _FieldLabel('Goal Phrase'),
         const SizedBox(height: 6),
         categoriesAsync.when(
           loading: () => const LinearProgressIndicator(),
@@ -574,10 +618,28 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 children: [
                   _FieldLabel('Satuan'),
                   const SizedBox(height: 6),
-                  TextField(
-                    controller: _goalUnitController,
-                    decoration: const InputDecoration(hintText: 'mis. gelas, menit, x'),
+                  DropdownButtonFormField<String>(
+                    initialValue: _unitDropdownValue,
+                    items: [
+                      for (final value in unitPresetValues)
+                        DropdownMenuItem(value: value, child: Text(unitPresetLabels[value]!)),
+                      DropdownMenuItem(value: 'custom', child: Text(unitPresetLabels['custom']!)),
+                    ],
+                    onChanged: (v) {
+                      if (v == null) return;
+                      setState(() {
+                        _unitDropdownValue = v;
+                        if (v != 'custom') _goalUnitController.text = v;
+                      });
+                    },
                   ),
+                  if (_unitDropdownValue == 'custom') ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _goalUnitController,
+                      decoration: const InputDecoration(hintText: 'mis. halaman buku'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -744,7 +806,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       return;
     }
     if (_categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih kategori dulu')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih goal phrase dulu')));
       return;
     }
     if (_taskDays.isEmpty) {
@@ -765,6 +827,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           categoryId: _categoryId!,
           name: name,
           description: widget.editingHabit!.description,
+          icon: _habitIcon,
           goalPeriod: _goalPeriod,
           goalValue: _goalValue,
           goalUnit: goalUnit,
@@ -775,6 +838,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           startDate: _startDate,
           endDate: _endDate,
           isActive: widget.editingHabit!.isActive,
+          sortOrder: widget.editingHabit!.sortOrder,
           createdAt: widget.editingHabit!.createdAt,
         );
         await repo.updateHabit(updated);
@@ -783,6 +847,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         final id = await repo.createHabit(
           categoryId: _categoryId!,
           name: name,
+          icon: _habitIcon,
           goalPeriod: _goalPeriod,
           goalValue: _goalValue,
           goalUnit: goalUnit,
@@ -799,8 +864,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         }
       }
 
-      await _finishAndGoToCategory(
-        _categoryId!,
+      await _finishAndReturn(
         toastMessage: _isEditing ? 'Habit diperbarui' : 'Habit ditambahkan',
       );
     } catch (e) {
@@ -819,7 +883,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel('Nama Kategori'),
+        _FieldLabel('Nama Goal Phrase'),
         const SizedBox(height: 6),
         TextField(
           controller: _newCatNameController,
@@ -843,23 +907,38 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 20),
         _FieldLabel('Ikon'),
         const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (final token in habitIconMap.keys)
-              _IconSwatch(
-                token: token,
-                color: AppColors.customCategoryColorPalette[_newCatColorIndex],
-                selected: _newCatIcon == token,
-                onTap: () => setState(() => _newCatIcon = token),
+        InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            final picked = await showIconPickerSheet(context, currentIcon: _newCatIcon);
+            if (picked != null) setState(() => _newCatIcon = picked);
+          },
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.customCategoryColorPalette[_newCatColorIndex],
+                  shape: BoxShape.circle,
+                ),
+                child: Center(child: HabitIcon(icon: _newCatIcon, size: 16, color: Colors.white)),
               ),
-          ],
+              const SizedBox(width: 12),
+              Text(
+                'Ganti icon',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitNewCategory,
-          child: const Text('Buat Kategori'),
+          child: const Text('Buat Goal'),
         ),
       ],
     );
@@ -868,7 +947,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   Future<void> _submitNewCategory() async {
     final name = _newCatNameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama kategori wajib diisi')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama goal phrase wajib diisi')));
       return;
     }
     setState(() => _saving = true);
@@ -899,38 +978,17 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     }
   }
 
-  Future<void> _finishAndGoToCategory(int categoryId, {required String toastMessage}) async {
+  /// Beranda flat-list (CLAUDE.md v3 §6.1) menampilkan habit baru secara
+  /// reaktif begitu tersimpan — tidak perlu navigasi ke layar kategori
+  /// manapun lagi, cukup invalidate ringkasan lalu pop kembali.
+  Future<void> _finishAndReturn({required String toastMessage}) async {
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
-    ref.read(selectedCategoryIdProvider.notifier).state = categoryId;
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
-    final isMobile = MediaQuery.sizeOf(context).width < 900;
-
-    // Kalau Category Detail (atau Settings) pemanggil sudah ada di stack,
-    // cukup pop kembali ke situ. Cuma push Category Detail baru kalau flow
-    // ini dibuka dari FAB Beranda level 1 (belum ada Category Detail terbuka)
-    // — kalau tidak, akan ada 2 Category Detail bertumpuk untuk kategori yang
-    // sama.
-    if (widget.navigateToCategoryOnFinish && isMobile) {
-      final categories = ref.read(categoriesProvider).value ?? [];
-      Category? category;
-      for (final c in categories) {
-        if (c.id == categoryId) category = c;
-      }
-      navigator.pop();
-      if (category != null) {
-        navigator.push(
-          MaterialPageRoute(
-            builder: (_) => CategoryDetailScreen(categoryId: category!.id, categoryName: category.name),
-          ),
-        );
-      }
-    } else {
-      navigator.pop();
-    }
+    navigator.pop();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(toastMessage)));
@@ -1211,40 +1269,6 @@ class _ColorSwatch extends StatelessWidget {
               ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
               : null,
         ),
-      ),
-    );
-  }
-}
-
-class _IconSwatch extends StatelessWidget {
-  const _IconSwatch({
-    required this.token,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String token;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: selected
-              ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
-              : null,
-        ),
-        child: Center(child: HabitIcon(icon: token, size: 16, color: Colors.white)),
       ),
     );
   }

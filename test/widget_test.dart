@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:habbit_tracker_app/main.dart';
 import 'package:habbit_tracker_app/providers/core_providers.dart';
+import 'package:habbit_tracker_app/providers/settings_providers.dart';
 
 void main() {
   testWidgets('App boots and shows the splash screen without throwing', (tester) async {
@@ -13,7 +14,15 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          // Deterministic "user baru" path — jangan bergantung ke DB nyata
+          // (via path_provider) yang bisa saja resolve ke direktori asli di
+          // host & membaca profil sungguhan, membuat test tidak stabil dan
+          // (lewat ReturningWelcomeScreen) meninggalkan Timer 1.5 detik yang
+          // belum sempat selesai saat test dibongkar.
+          userProfileStreamProvider.overrideWith((ref) => Stream.value(null)),
+        ],
         child: const HabitTrackerApp(),
       ),
     );

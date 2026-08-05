@@ -1,0 +1,160 @@
+import 'package:flutter/material.dart';
+
+import '../../domain/date_utils.dart';
+import '../../domain/models/day_summary.dart';
+import '../../domain/models/enums.dart';
+import 'daily_progress_ring.dart';
+
+/// Strip tanggal horizontal untuk 1 bulan — hari terpilih diberi ring
+/// progress. CLAUDE.md v3 §6.1.
+class DateStrip extends StatefulWidget {
+  const DateStrip({
+    super.key,
+    required this.month,
+    required this.selectedDate,
+    required this.summaries,
+    required this.onSelectDate,
+  });
+
+  final DateTime month;
+  final DateTime selectedDate;
+  final List<DaySummary> summaries;
+  final ValueChanged<DateTime> onSelectDate;
+
+  @override
+  State<DateStrip> createState() => _DateStripState();
+}
+
+class _DateStripState extends State<DateStrip> {
+  final _controller = ScrollController();
+  static const _itemWidth = 60.0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected(false));
+  }
+
+  @override
+  void didUpdateWidget(DateStrip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!isSameDay(oldWidget.selectedDate, widget.selectedDate) ||
+        oldWidget.month != widget.month) {
+      _scrollToSelected(true);
+    }
+  }
+
+  void _scrollToSelected(bool animate) {
+    if (!_controller.hasClients) return;
+    final daysInMonth = DateTime(widget.month.year, widget.month.month + 1, 0).day;
+    final index = (widget.selectedDate.day - 1).clamp(0, daysInMonth - 1);
+    final viewportWidth = _controller.position.viewportDimension;
+    final target = (index * _itemWidth) - (viewportWidth / 2) + (_itemWidth / 2);
+    final clamped = target.clamp(0.0, _controller.position.maxScrollExtent);
+    if (animate) {
+      _controller.animateTo(clamped, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    } else {
+      _controller.jumpTo(clamped);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final daysInMonth = DateTime(widget.month.year, widget.month.month + 1, 0).day;
+    final byDay = {for (final s in widget.summaries) s.date.day: s};
+
+    return SizedBox(
+      height: 74,
+      child: ListView.builder(
+        controller: _controller,
+        scrollDirection: Axis.horizontal,
+        itemCount: daysInMonth,
+        itemBuilder: (context, index) {
+          final day = DateTime(widget.month.year, widget.month.month, index + 1);
+          final isSelected = isSameDay(day, widget.selectedDate);
+          final summary = byDay[day.day];
+          return _DateStripItem(
+            day: day,
+            selected: isSelected,
+            ratio: summary?.ratio ?? 0,
+            hasData: summary?.hasData ?? false,
+            onTap: () => widget.onSelectDate(day),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DateStripItem extends StatelessWidget {
+  const _DateStripItem({
+    required this.day,
+    required this.selected,
+    required this.ratio,
+    required this.hasData,
+    required this.onTap,
+  });
+
+  final DateTime day;
+  final bool selected;
+  final double ratio;
+  final bool hasData;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final weekdayLabel = weekdayLabels[weekdayKeys[day.weekday - 1]]!;
+    final isToday = isSameDay(day, today());
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 60,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                weekdayLabel,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: selected ? theme.colorScheme.primary : null,
+                  fontWeight: selected ? FontWeight.w700 : null,
+                ),
+              ),
+              const SizedBox(height: 6),
+              selected
+                  ? DailyProgressRing(
+                      done: (ratio * 100).round(),
+                      total: hasData ? 100 : 0,
+                      size: 40,
+                      strokeWidth: 3,
+                      centerLabel: '${day.day}',
+                    )
+                  : Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: isToday
+                          ? BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: theme.dividerColor, width: 1.5),
+                            )
+                          : null,
+                      child: Text('${day.day}', style: theme.textTheme.bodyMedium),
+                    ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
