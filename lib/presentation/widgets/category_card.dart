@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/models/category_progress.dart';
-import 'category_shape_icon.dart';
 import 'daily_progress_ring.dart';
+import 'habit_icon.dart';
 
 /// Kartu kategori grid Beranda level 1. Ikon = bulatan solid warna kategori
 /// + glyph putih, ring progress kecil di kanan. Lihat prototipe baris ~424.
@@ -48,7 +48,7 @@ class CategoryCard extends StatelessWidget {
                     height: 38,
                     decoration: BoxDecoration(color: accentColor, shape: BoxShape.circle),
                     child: Center(
-                      child: CategoryShapeIcon(token: category.icon, size: 15),
+                      child: HabitIcon(icon: category.icon, size: 15, color: Colors.white),
                     ),
                   ),
                   DailyProgressRing(

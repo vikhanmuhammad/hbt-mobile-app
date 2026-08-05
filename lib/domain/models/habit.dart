@@ -6,6 +6,7 @@ class Habit {
     required this.categoryId,
     required this.name,
     this.description,
+    this.icon,
     required this.goalPeriod,
     required this.goalValue,
     this.goalUnit = 'x',
@@ -16,6 +17,7 @@ class Habit {
     required this.startDate,
     this.endDate,
     required this.isActive,
+    this.sortOrder = 0,
     required this.createdAt,
   });
 
@@ -23,6 +25,7 @@ class Habit {
   final int categoryId;
   final String name;
   final String? description;
+  final String? icon;
   final GoalPeriod goalPeriod;
   final int goalValue;
   final String goalUnit;
@@ -33,6 +36,7 @@ class Habit {
   final DateTime startDate;
   final DateTime? endDate;
   final bool isActive;
+  final int sortOrder;
   final DateTime createdAt;
 
   /// Mis. "8 gelas" atau "1x", persis format `unitLabel` di prototipe.

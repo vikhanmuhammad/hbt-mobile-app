@@ -11,8 +11,8 @@ import '../../../providers/core_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/category_shape_icon.dart';
 import '../../widgets/dashed_border.dart';
+import '../../widgets/habit_icon.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
@@ -110,7 +110,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   // Step 4 form state.
   final _newCatNameController = TextEditingController();
   int _newCatColorIndex = 0;
-  String _newCatIcon = 'circle';
+  String _newCatIcon = 'list-check';
 
   bool get _isEditing => widget.editingHabit != null;
   int get _step => _stepStack.last;
@@ -361,7 +361,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           data: (allTemplates) {
             final match = category == null
                 ? const <CategoryTemplate>[]
-                : allTemplates.where((t) => t.name == category!.name).toList();
+                : allTemplates.where((t) => t.defaultGoalPhrase == category!.name).toList();
             final templates = match.isEmpty ? const <HabitTemplate>[] : match.first.habits;
 
             return Column(
@@ -847,7 +847,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           spacing: 10,
           runSpacing: 10,
           children: [
-            for (final token in categoryIconTokens)
+            for (final token in habitIconMap.keys)
               _IconSwatch(
                 token: token,
                 color: AppColors.customCategoryColorPalette[_newCatColorIndex],
@@ -966,7 +966,7 @@ class _CategoryGridTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(child: CategoryShapeIcon(token: icon, size: 18)),
+                child: Center(child: HabitIcon(icon: icon, size: 18, color: Colors.white)),
               ),
               const SizedBox(height: 10),
               Text(
@@ -1244,7 +1244,7 @@ class _IconSwatch extends StatelessWidget {
               ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3)
               : null,
         ),
-        child: Center(child: CategoryShapeIcon(token: token, size: 16)),
+        child: Center(child: HabitIcon(icon: token, size: 16, color: Colors.white)),
       ),
     );
   }

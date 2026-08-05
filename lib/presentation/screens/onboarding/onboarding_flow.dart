@@ -10,7 +10,7 @@ import '../../../providers/settings_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_logo.dart';
-import '../../widgets/category_shape_icon.dart';
+import '../../widgets/habit_icon.dart';
 import '../../widgets/navigation_shell.dart';
 import '../../widgets/responsive_grid.dart';
 
@@ -280,7 +280,7 @@ class _CategoryPickTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(child: CategoryShapeIcon(token: category.icon, size: 18)),
+                child: Center(child: HabitIcon(icon: category.icon, size: 18, color: Colors.white)),
               ),
               const SizedBox(height: 10),
               Text(
@@ -365,7 +365,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   ),
                   const SizedBox(height: 10),
                   Builder(builder: (context) {
-                    final match = allTemplates.where((t) => t.name == category.name);
+                    final match = allTemplates.where((t) => t.defaultGoalPhrase == category.name);
                     final templates = match.isEmpty ? <HabitTemplate>[] : match.first.habits;
                     if (templates.isEmpty) {
                       return Padding(

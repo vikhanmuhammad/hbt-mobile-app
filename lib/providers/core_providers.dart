@@ -8,6 +8,7 @@ import '../data/repositories/category_repository.dart';
 import '../data/repositories/habit_log_repository.dart';
 import '../data/repositories/habit_repository.dart';
 import '../data/repositories/habit_template_repository.dart';
+import '../data/repositories/profile_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/stats_repository.dart';
 import '../services/notification_service.dart';
@@ -58,4 +59,9 @@ HabitTemplateRepository habitTemplateRepository(Ref ref) {
 @riverpod
 SettingsRepository settingsRepository(Ref ref) {
   return SettingsRepository(ref.watch(sharedPreferencesProvider));
+}
+
+@riverpod
+ProfileRepository profileRepository(Ref ref) {
+  return ProfileRepository(ref.watch(appDatabaseProvider));
 }

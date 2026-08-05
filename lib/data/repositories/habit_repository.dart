@@ -42,6 +42,7 @@ class HabitRepository {
     required int categoryId,
     required String name,
     String? description,
+    String? icon,
     required GoalPeriod goalPeriod,
     required int goalValue,
     String goalUnit = 'x',
@@ -51,12 +52,14 @@ class HabitRepository {
     String? reminderTime,
     required DateTime startDate,
     DateTime? endDate,
+    int sortOrder = 0,
   }) {
     return _db.habitDao.insertHabit(
       db.HabitsCompanion.insert(
         categoryId: categoryId,
         name: name,
         description: Value(description),
+        icon: Value(icon),
         goalPeriod: goalPeriod.name,
         goalValue: Value(goalValue),
         goalUnit: Value(goalUnit),
@@ -66,6 +69,7 @@ class HabitRepository {
         reminderTime: Value(reminderTime),
         startDate: startDate,
         endDate: Value(endDate),
+        sortOrder: Value(sortOrder),
       ),
     );
   }
@@ -77,6 +81,7 @@ class HabitRepository {
         categoryId: Value(habit.categoryId),
         name: Value(habit.name),
         description: Value(habit.description),
+        icon: Value(habit.icon),
         goalPeriod: Value(habit.goalPeriod.name),
         goalValue: Value(habit.goalValue),
         goalUnit: Value(habit.goalUnit),
@@ -87,6 +92,7 @@ class HabitRepository {
         startDate: Value(habit.startDate),
         endDate: Value(habit.endDate),
         isActive: Value(habit.isActive),
+        sortOrder: Value(habit.sortOrder),
         createdAt: Value(habit.createdAt),
       ),
     );
@@ -94,6 +100,9 @@ class HabitRepository {
 
   Future<void> setActive(int habitId, bool isActive) =>
       _db.habitDao.setActive(habitId, isActive);
+
+  Future<void> setSortOrder(int habitId, int sortOrder) =>
+      _db.habitDao.setSortOrder(habitId, sortOrder);
 
   Future<void> deleteHabit(int habitId) async {
     await _db.habitLogDao.deleteLogsForHabit(habitId);

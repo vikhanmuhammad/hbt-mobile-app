@@ -31,7 +31,9 @@ class CategoryRepository {
   }
 
   /// Dipanggil sekali di first launch: isi tabel Categories dari template
-  /// JSON bawaan (isDefault = true). Tidak melakukan apa-apa kalau sudah ada isi.
+  /// JSON bawaan (isDefault = true), memakai goal phrase (bukan rawLabel)
+  /// sebagai `name` — lihat CLAUDE.md v3 §3.1. Tidak melakukan apa-apa kalau
+  /// sudah ada isi.
   Future<void> seedDefaultCategories(List<CategoryTemplate> templates) async {
     final existing = await _db.categoryDao.getAllActive();
     if (existing.isNotEmpty) return;
@@ -39,7 +41,7 @@ class CategoryRepository {
     for (final template in templates) {
       await _db.categoryDao.insertCategory(
         db.CategoriesCompanion.insert(
-          name: template.name,
+          name: template.defaultGoalPhrase,
           icon: Value(template.icon),
           colorHex: Value(template.colorHex),
           isDefault: const Value(true),

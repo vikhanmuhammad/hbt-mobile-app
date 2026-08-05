@@ -44,6 +44,12 @@ class HabitDao extends DatabaseAccessor<AppDatabase> with _$HabitDaoMixin {
     );
   }
 
+  Future<void> setSortOrder(int id, int sortOrder) async {
+    await (update(habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(sortOrder: Value(sortOrder)),
+    );
+  }
+
   Future<void> deleteHabit(int id) async {
     await (delete(habits)..where((h) => h.id.equals(id))).go();
   }

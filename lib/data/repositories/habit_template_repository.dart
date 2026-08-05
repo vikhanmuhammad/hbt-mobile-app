@@ -12,10 +12,12 @@ class HabitTemplateRepository {
     return _cache ??= await _loader.load();
   }
 
-  Future<CategoryTemplate?> findByCategoryName(String categoryName) async {
+  /// Cari template kategori mentah yang goal phrase default-nya cocok
+  /// dengan `goalPhrase` (nilai `Category.name` milik user).
+  Future<CategoryTemplate?> findByGoalPhrase(String goalPhrase) async {
     final all = await getAll();
     for (final template in all) {
-      if (template.name == categoryName) return template;
+      if (template.defaultGoalPhrase == goalPhrase) return template;
     }
     return null;
   }

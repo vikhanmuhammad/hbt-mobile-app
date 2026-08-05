@@ -8,13 +8,15 @@ class AppTheme {
   static const String bodyFontFamily = 'Nunito';
   static const String headingFontFamily = 'Poppins';
 
-  static ThemeData light() {
+  /// [accent] = warna primary/interaktif utama, dikendalikan oleh palet
+  /// Personalize terpilih (default gold/"Teal Sage" — lihat app_palettes.dart).
+  static ThemeData light({Color accent = AppColors.gold}) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.gold,
+      seedColor: accent,
       brightness: Brightness.light,
-      primary: AppColors.gold,
+      primary: accent,
       onPrimary: Colors.white,
-      secondary: AppColors.gold,
+      secondary: accent,
       surface: AppColors.lightSurface,
       onSurface: AppColors.lightText,
     );
@@ -30,13 +32,13 @@ class AppTheme {
     );
   }
 
-  static ThemeData dark() {
+  static ThemeData dark({Color accent = AppColors.gold}) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: AppColors.gold,
+      seedColor: accent,
       brightness: Brightness.dark,
-      primary: AppColors.gold,
+      primary: accent,
       onPrimary: Colors.white,
-      secondary: AppColors.gold,
+      secondary: accent,
       surface: AppColors.darkSurface,
       onSurface: AppColors.darkText,
     );
