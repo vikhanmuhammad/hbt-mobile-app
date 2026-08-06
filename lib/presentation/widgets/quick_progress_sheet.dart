@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
 
 /// Bottom sheet input progress cepat untuk habit dengan goalValue > 1 atau
@@ -30,6 +31,11 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
 
   int get _step {
     final goal = widget.item.habit.goalValue;
+    if (widget.item.habit.isRupiah) {
+      if (goal >= 100000) return 5000;
+      if (goal >= 10000) return 1000;
+      return 500;
+    }
     if (goal >= 1000) return 100;
     if (goal >= 100) return 10;
     return 1;
@@ -98,7 +104,7 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final habit = widget.item.habit;
-    final unit = habit.goalUnit == 'x' ? '' : habit.goalUnit;
+    final unit = habit.isRupiah || habit.goalUnit == 'x' ? '' : habit.goalUnit;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
@@ -145,17 +151,18 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
               Column(
                 children: [
                   SizedBox(
-                    width: 90,
+                    width: habit.isRupiah ? 140 : 90,
                     child: TextField(
                       controller: _controller,
                       textAlign: TextAlign.center,
                       keyboardType: TextInputType.number,
                       style: theme.textTheme.headlineMedium,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         filled: false,
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
+                        prefixText: habit.isRupiah ? 'Rp ' : null,
                       ),
                       onChanged: (text) {
                         final parsed = int.tryParse(text);
@@ -163,7 +170,10 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
                       },
                     ),
                   ),
-                  if (unit.isNotEmpty) Text(unit, style: theme.textTheme.bodySmall),
+                  if (habit.isRupiah)
+                    Text(formatRupiah(_value), style: theme.textTheme.bodySmall)
+                  else if (unit.isNotEmpty)
+                    Text(unit, style: theme.textTheme.bodySmall),
                 ],
               ),
               const SizedBox(width: 24),

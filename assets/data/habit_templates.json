@@ -55,6 +55,7 @@
       "color": "#4A82B0",
       "habits": [
         { "name": "Catat pengeluaran harian", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Batasi jajan harian", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
         { "name": "Nabung", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },

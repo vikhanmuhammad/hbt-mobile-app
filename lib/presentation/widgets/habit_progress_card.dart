@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
 import 'habit_icon.dart';
 
@@ -31,6 +32,9 @@ class HabitProgressCard extends StatelessWidget {
 
   String get _progressLabel {
     final h = item.habit;
+    if (h.isRupiah) {
+      return '${formatRupiah(item.progressValue)}/${formatRupiah(h.goalValue)}';
+    }
     final target = h.goalUnit == 'x' ? '${h.goalValue}x' : '${h.goalValue} ${h.goalUnit}';
     return '${item.progressValue}/$target';
   }

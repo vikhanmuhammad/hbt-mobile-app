@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/format_utils.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
@@ -147,6 +148,17 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   void _applyUnit(String goalUnit) {
     _goalUnitController.text = goalUnit;
     _unitDropdownValue = unitPresetValues.contains(goalUnit) ? goalUnit : 'custom';
+  }
+
+  bool get _isRupiahUnit => _goalUnitController.text.trim() == 'rupiah';
+
+  /// Step lebih besar untuk satuan rupiah supaya tidak perlu menekan +/-
+  /// ratusan kali untuk mencapai nominal yang wajar.
+  int get _goalValueStep {
+    if (!_isRupiahUnit) return 1;
+    if (_goalValue >= 100000) return 5000;
+    if (_goalValue >= 10000) return 1000;
+    return 500;
   }
 
   void _loadFormFromHabit(Habit habit) {
@@ -459,6 +471,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         goalPeriod: template.goalPeriod,
         goalValue: template.goalValue,
         goalUnit: template.goalUnit,
+        goalDirection: template.goalDirection,
         timeRange: template.timeRange,
       );
       _stepStack.add(3);
@@ -484,6 +497,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         goalPeriod: template.goalPeriod,
         goalValue: template.goalValue,
         goalUnit: template.goalUnit,
+        goalDirection: template.goalDirection,
         taskDays: const [allDaysKey],
         timeRange: template.timeRange,
         reminderEnabled: false,
@@ -599,16 +613,21 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                     children: [
                       _StepperButton(
                         icon: Icons.remove_rounded,
-                        onTap: _goalValue > 0 ? () => setState(() => _goalValue--) : null,
+                        onTap: _goalValue > 0
+                            ? () => setState(() => _goalValue = (_goalValue - _goalValueStep).clamp(0, 1 << 30))
+                            : null,
                       ),
                       Expanded(
                         child: Center(
-                          child: Text('$_goalValue', style: theme.textTheme.titleMedium),
+                          child: Text(
+                            _isRupiahUnit ? formatRupiah(_goalValue) : '$_goalValue',
+                            style: theme.textTheme.titleMedium,
+                          ),
                         ),
                       ),
                       _StepperButton(
                         icon: Icons.add_rounded,
-                        onTap: () => setState(() => _goalValue++),
+                        onTap: () => setState(() => _goalValue += _goalValueStep),
                       ),
                     ],
                   ),
@@ -634,6 +653,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       setState(() {
                         _unitDropdownValue = v;
                         if (v != 'custom') _goalUnitController.text = v;
+                        // Nominal awal yang wajar untuk rupiah — lebih masuk
+                        // akal daripada mulai dari 1 lalu step 500-an.
+                        if (v == 'rupiah' && _goalValue < 1000) _goalValue = 50000;
                       });
                     },
                   ),

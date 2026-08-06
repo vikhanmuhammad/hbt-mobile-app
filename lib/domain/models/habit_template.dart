@@ -1,3 +1,4 @@
+import '../format_utils.dart';
 import 'enums.dart';
 
 class HabitTemplate {
@@ -7,6 +8,7 @@ class HabitTemplate {
     required this.goalPeriod,
     required this.goalValue,
     this.goalUnit = 'x',
+    this.goalDirection = GoalDirection.atLeast,
     required this.timeRange,
   });
 
@@ -15,6 +17,7 @@ class HabitTemplate {
   final GoalPeriod goalPeriod;
   final int goalValue;
   final String goalUnit;
+  final GoalDirection goalDirection;
   final TimeRange timeRange;
 
   factory HabitTemplate.fromJson(Map<String, dynamic> json) {
@@ -24,13 +27,20 @@ class HabitTemplate {
       goalPeriod: GoalPeriod.fromValue(json['goalPeriod'] as String),
       goalValue: json['goalValue'] as int,
       goalUnit: json['unit'] as String? ?? json['goalUnit'] as String? ?? 'x',
+      goalDirection: GoalDirection.fromValue(json['goalDirection'] as String? ?? 'atLeast'),
       timeRange: TimeRange.fromValue(json['timeRange'] as String),
     );
   }
 
-  /// Mis. "8 gelas" atau "1x", persis format `unitLabel` di prototipe.
-  String get goalValueLabel =>
-      goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+  /// Mis. "8 gelas", "1x", atau "Rp 50.000" untuk satuan rupiah, persis
+  /// format `unitLabel` di prototipe. Diberi prefix "Maks." untuk template
+  /// `atMost` (mis. batas pengeluaran).
+  String get goalValueLabel {
+    final value = goalUnit == 'rupiah'
+        ? formatRupiah(goalValue)
+        : (goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit');
+    return goalDirection == GoalDirection.atMost ? 'Maks. $value' : value;
+  }
 
   String get goalLabel => '$goalValueLabel • ${goalPeriod.label}';
 }

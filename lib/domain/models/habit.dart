@@ -1,3 +1,4 @@
+import '../format_utils.dart';
 import 'enums.dart';
 
 class Habit {
@@ -41,11 +42,16 @@ class Habit {
   final int sortOrder;
   final DateTime createdAt;
 
-  /// Mis. "8 gelas" atau "1x", persis format `unitLabel` di prototipe.
-  /// Diberi prefix "Maks." untuk habit `atMost` (mis. batas pengeluaran)
-  /// supaya arah target langsung jelas dibaca.
+  bool get isRupiah => goalUnit == 'rupiah';
+
+  /// Mis. "8 gelas", "1x", atau "Rp 50.000" untuk satuan rupiah, persis
+  /// format `unitLabel` di prototipe. Diberi prefix "Maks." untuk habit
+  /// `atMost` (mis. batas pengeluaran) supaya arah target langsung jelas
+  /// dibaca.
   String get goalValueLabel {
-    final value = goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+    final value = isRupiah
+        ? formatRupiah(goalValue)
+        : (goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit');
     return goalDirection == GoalDirection.atMost ? 'Maks. $value' : value;
   }
 
