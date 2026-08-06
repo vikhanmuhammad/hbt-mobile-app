@@ -5,7 +5,6 @@ import '../../providers/ui_state_providers.dart';
 import '../screens/add_habit/add_habit_flow_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/finance/finance_summary_screen.dart';
-import '../screens/history/history_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/settings/settings_screen.dart';
 
@@ -24,7 +23,6 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
 
   static const _destinations = [
     (icon: Icons.home_rounded, label: 'Beranda'),
-    (icon: Icons.calendar_month_rounded, label: 'Riwayat'),
     (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
     (icon: Icons.account_balance_wallet_rounded, label: 'Keuangan'),
     (icon: Icons.settings_rounded, label: 'Pengaturan'),
@@ -32,7 +30,6 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
 
   static final _screens = [
     const HomeScreen(),
-    const HistoryScreen(),
     const DashboardScreen(),
     const FinanceSummaryScreen(),
     const SettingsScreen(),

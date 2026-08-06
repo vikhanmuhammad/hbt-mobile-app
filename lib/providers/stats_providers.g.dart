@@ -8,9 +8,18 @@ part of 'stats_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Otomatis reaktif terhadap filter icon habit di layar Dashboard —
+/// `selectedDashboardHabitIdsProvider` di-watch di sini (bukan lewat family
+/// parameter) supaya perubahan Set tidak bergantung pada `Set` punya value
+/// equality (defaultnya identity-based di Dart).
 
 @ProviderFor(dashboardSummary)
 final dashboardSummaryProvider = DashboardSummaryProvider._();
+
+/// Otomatis reaktif terhadap filter icon habit di layar Dashboard —
+/// `selectedDashboardHabitIdsProvider` di-watch di sini (bukan lewat family
+/// parameter) supaya perubahan Set tidak bergantung pada `Set` punya value
+/// equality (defaultnya identity-based di Dart).
 
 final class DashboardSummaryProvider
     extends
@@ -20,6 +29,10 @@ final class DashboardSummaryProvider
           FutureOr<DashboardSummary>
         >
     with $FutureModifier<DashboardSummary>, $FutureProvider<DashboardSummary> {
+  /// Otomatis reaktif terhadap filter icon habit di layar Dashboard —
+  /// `selectedDashboardHabitIdsProvider` di-watch di sini (bukan lewat family
+  /// parameter) supaya perubahan Set tidak bergantung pada `Set` punya value
+  /// equality (defaultnya identity-based di Dart).
   DashboardSummaryProvider._()
     : super(
         from: null,
@@ -46,7 +59,7 @@ final class DashboardSummaryProvider
   }
 }
 
-String _$dashboardSummaryHash() => r'0fcb44d745a3f7eaa2d44586f62515e7718f3eea';
+String _$dashboardSummaryHash() => r'351c3cad5db71139509530b16989e5d185245b22';
 
 @ProviderFor(monthSummaries)
 final monthSummariesProvider = MonthSummariesFamily._();
@@ -103,7 +116,7 @@ final class MonthSummariesProvider
   }
 }
 
-String _$monthSummariesHash() => r'2825ab0921c77b6233e8d22d5c3cd980abd5592f';
+String _$monthSummariesHash() => r'f2337fa0601eef324fe0a7b8827b7597d7cbe392';
 
 final class MonthSummariesFamily extends $Family
     with $FunctionalFamilyOverride<FutureOr<List<DaySummary>>, DateTime> {

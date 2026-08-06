@@ -15,7 +15,7 @@ class UsageTipsScreen extends StatelessWidget {
     (
       icon: Icons.edit_calendar_rounded,
       title: 'Backfill Progress',
-      body: 'Lewat tab Riwayat, tap tanggal yang sudah lewat untuk melihat detail habit hari itu. '
+      body: 'Lewat tab Dashboard, tap tanggal yang sudah lewat di kalender untuk melihat detail habit hari itu. '
           'Kamu bisa tetap menandai/mengubah progress hari-hari sebelumnya dari sana.',
     ),
     (

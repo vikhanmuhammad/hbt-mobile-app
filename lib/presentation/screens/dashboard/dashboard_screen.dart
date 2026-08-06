@@ -1,77 +1,414 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/date_utils.dart';
 import '../../../domain/models/dashboard_summary.dart';
+import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
+import '../../../providers/core_providers.dart';
+import '../../../providers/habit_providers.dart';
+import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
+import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/daily_progress_ring.dart';
+import '../../widgets/habit_icon.dart';
+import '../../widgets/monthly_calendar_grid.dart';
 
-/// Dashboard/Ringkasan: ring keberhasilan keseluruhan, breakdown per
-/// kategori, per habit, dan tren bulanan. Tanpa AppBar/judul halaman,
-/// persis prototipe. Lihat DESIGN.md §4.4.
+/// Dashboard gabungan: kalender bulanan (dulu tab Riwayat terpisah) + filter
+/// icon habit + ringkasan keberhasilan (ring, breakdown per kategori/habit,
+/// tren bulanan). Tap tanggal di kalender membuka bottom sheet detail hari
+/// itu (backfill progress). Filter habit di atas kalender mempersempit data
+/// ring kalender & ringkasan cuma ke habit yang dipilih. Tanpa AppBar/judul
+/// halaman, persis prototipe. Lihat DESIGN.md §4.3/§4.4.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(dashboardSummaryProvider);
+    final month = ref.watch(selectedDashboardMonthProvider);
+    final selectedDate = ref.watch(selectedDashboardDateProvider);
+    final summariesAsync = ref.watch(monthSummariesProvider(month));
+    final dashboardAsync = ref.watch(dashboardSummaryProvider);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
-    return Scaffold(
-      body: summaryAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Gagal memuat dashboard: $e')),
-        data: (summary) {
-          if (summary.totalLogs == 0) {
-            return const _EmptyDashboard();
-          }
+    const filterRow = _HabitFilterRow();
 
-          final header = _SummaryHeader(summary: summary);
-          final categorySection = _CategoryBreakdown(summary: summary);
-          final habitSection = _HabitBreakdown(summary: summary);
-          final trendSection = _MonthlyTrend(summary: summary);
+    final calendarCard = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: summariesAsync.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (e, st) => Text('Gagal memuat kalender: $e'),
+          data: (summaries) => MonthlyCalendarGrid(
+            month: month,
+            summaries: summaries,
+            selectedDate: selectedDate,
+            onSelectDate: (d) {
+              ref.read(selectedDashboardDateProvider.notifier).state = d;
+              _showDayDetailSheet(context, d);
+            },
+            onChangeMonth: (m) => ref.read(selectedDashboardMonthProvider.notifier).state = m,
+          ),
+        ),
+      ),
+    );
 
-          if (isWide) {
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
-              child: Row(
+    final statsSection = dashboardAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, st) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text('Gagal memuat dashboard: $e'),
+      ),
+      data: (summary) {
+        if (summary.totalLogs == 0) return const _EmptyDashboard();
+        return isWide
+            ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        header,
+                        _SummaryHeader(summary: summary),
                         const SizedBox(height: 20),
-                        categorySection,
-                        const SizedBox(height: 20),
-                        habitSection,
+                        _CategoryBreakdown(summary: summary),
                       ],
                     ),
                   ),
                   const SizedBox(width: 24),
-                  Expanded(child: trendSection),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _HabitBreakdown(summary: summary),
+                        const SizedBox(height: 20),
+                        _MonthlyTrend(summary: summary),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
-            );
-          }
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SummaryHeader(summary: summary),
+                  const SizedBox(height: 20),
+                  _CategoryBreakdown(summary: summary),
+                  const SizedBox(height: 20),
+                  _HabitBreakdown(summary: summary),
+                  const SizedBox(height: 20),
+                  _MonthlyTrend(summary: summary),
+                ],
+              );
+      },
+    );
 
-          return ListView(
-            padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
+    if (isWide) {
+      return Scaffold(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(32),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              header,
-              const SizedBox(height: 20),
-              categorySection,
-              const SizedBox(height: 20),
-              habitSection,
-              const SizedBox(height: 20),
-              trendSection,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [filterRow, const SizedBox(height: 16), calendarCard],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(child: statsSection),
             ],
-          );
-        },
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
+        children: [
+          filterRow,
+          const SizedBox(height: 16),
+          calendarCard,
+          const SizedBox(height: 24),
+          statsSection,
+        ],
       ),
+    );
+  }
+
+  Future<void> _showDayDetailSheet(BuildContext context, DateTime date) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _DayDetailSheet(date: date),
+    );
+  }
+}
+
+/// Baris icon habit yang bisa discroll horizontal untuk memfilter kalender +
+/// ringkasan dashboard. "All" (default) = tanpa filter. Multi-select: tiap
+/// icon habit toggle independen.
+class _HabitFilterRow extends ConsumerWidget {
+  const _HabitFilterRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final habits = ref.watch(allActiveHabitsProvider).value ?? const [];
+    final categories = ref.watch(categoriesProvider).value ?? const [];
+    final selected = ref.watch(selectedDashboardHabitIdsProvider);
+
+    if (habits.isEmpty) return const SizedBox.shrink();
+
+    final colorByCategory = {
+      for (var i = 0; i < categories.length; i++)
+        categories[i].id: AppColors.categoryColorFromHex(categories[i].colorHex, i),
+    };
+
+    void toggleHabit(int habitId) {
+      final next = Set<int>.from(selected);
+      if (!next.remove(habitId)) next.add(habitId);
+      ref.read(selectedDashboardHabitIdsProvider.notifier).state = next;
+    }
+
+    return SizedBox(
+      height: 78,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _FilterChip(
+            label: 'All',
+            selected: selected.isEmpty,
+            color: theme.colorScheme.primary,
+            child: const Icon(Icons.apps_rounded, size: 16, color: Colors.white),
+            onTap: () => ref.read(selectedDashboardHabitIdsProvider.notifier).state = <int>{},
+          ),
+          for (final habit in habits)
+            _FilterChip(
+              label: habit.name,
+              selected: selected.contains(habit.id),
+              color: colorByCategory[habit.categoryId] ?? AppColors.gold,
+              child: HabitIcon(icon: habit.icon, size: 15, color: Colors.white),
+              onTap: () => toggleHabit(habit.id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.color,
+    required this.child,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final Color color;
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(right: 14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: SizedBox(
+          width: 64,
+          child: Column(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? color
+                      : (theme.brightness == Brightness.light
+                          ? AppColors.lightSurfaceAlt
+                          : AppColors.darkSurfaceAlt),
+                  shape: BoxShape.circle,
+                  border: selected ? null : Border.all(color: theme.dividerColor),
+                ),
+                child: Center(
+                  child: selected
+                      ? child
+                      : Opacity(opacity: 0.55, child: child),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? color : theme.textTheme.bodySmall?.color,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom sheet detail 1 hari (checklist habit + toggle progress) — dibuka
+/// dengan tap tanggal di kalender. Selalu menampilkan semua habit terjadwal
+/// hari itu, tidak ikut filter icon habit (dipakai sebagai alat backfill,
+/// bukan bagian dari ringkasan yang difilter).
+class _DayDetailSheet extends ConsumerWidget {
+  const _DayDetailSheet({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final items = ref.watch(habitsWithProgressForDateProvider(date));
+    final categories = ref.watch(categoriesProvider).value ?? const [];
+    final colorByCategory = {
+      for (var i = 0; i < categories.length; i++)
+        categories[i].id: AppColors.categoryColorFromHex(categories[i].colorHex, i),
+    };
+    final done = items.where((i) => i.isDone).length;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(24, 12, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(child: Text(_formatDate(date), style: theme.textTheme.titleLarge)),
+                if (items.isNotEmpty)
+                  Text(
+                    '${((done / items.length) * 100).round()}%',
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Text('Tidak ada habit terjadwal hari ini.', style: theme.textTheme.bodySmall),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                  itemBuilder: (context, i) {
+                    final item = items[i];
+                    return InkWell(
+                      onTap: () => _toggle(context, ref, item),
+                      child: Row(
+                        children: [
+                          _MiniCheckbox(checked: item.isDone),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: colorByCategory[item.habit.categoryId] ?? AppColors.gold,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(item.habit.name, style: theme.textTheme.bodyMedium)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _toggle(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    try {
+      final repo = ref.read(habitLogRepositoryProvider);
+      await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal memperbarui progress: $e')));
+      }
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final isToday = isSameDay(date, today());
+    final label = formatFullDate(date);
+    return isToday ? '$label (Hari ini)' : label;
+  }
+}
+
+class _MiniCheckbox extends StatelessWidget {
+  const _MiniCheckbox({required this.checked});
+
+  final bool checked;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: checked ? theme.colorScheme.primary : theme.scaffoldBackgroundColor,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: checked ? theme.colorScheme.primary : theme.dividerColor,
+          width: 2,
+        ),
+      ),
+      child: checked ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
     );
   }
 }

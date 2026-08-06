@@ -9,8 +9,14 @@ class StatsRepository {
 
   final db.AppDatabase _db;
 
-  Future<DashboardSummary> computeDashboard() async {
-    final habits = (await _db.habitDao.getAll()).map(mapHabit).toList();
+  /// [habitIds] kosong berarti tanpa filter (semua habit ikut dihitung) —
+  /// non-kosong membatasi agregasi cuma ke habit yang id-nya ada di set itu
+  /// (dipakai filter icon habit di layar Dashboard gabungan).
+  Future<DashboardSummary> computeDashboard({Set<int> habitIds = const {}}) async {
+    final allHabits = (await _db.habitDao.getAll()).map(mapHabit).toList();
+    final habits = habitIds.isEmpty
+        ? allHabits
+        : allHabits.where((h) => habitIds.contains(h.id)).toList();
     final categories =
         (await _db.categoryDao.getAllActive()).map(mapCategory).toList();
     final logs = (await _db.habitLogDao.getAllLogs()).map(mapHabitLog).toList();
@@ -88,9 +94,16 @@ class StatsRepository {
   }
 
   /// Ringkasan tiap hari dalam bulan yang memuat [monthAnchor], dipakai untuk
-  /// gradasi warna kalender riwayat.
-  Future<List<DaySummary>> computeMonthSummaries(DateTime monthAnchor) async {
-    final habits = (await _db.habitDao.getAll()).map(mapHabit).toList();
+  /// gradasi warna kalender Dashboard. Sama seperti [computeDashboard],
+  /// [habitIds] kosong berarti tanpa filter.
+  Future<List<DaySummary>> computeMonthSummaries(
+    DateTime monthAnchor, {
+    Set<int> habitIds = const {},
+  }) async {
+    final allHabits = (await _db.habitDao.getAll()).map(mapHabit).toList();
+    final habits = habitIds.isEmpty
+        ? allHabits
+        : allHabits.where((h) => habitIds.contains(h.id)).toList();
     final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
     final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
     final logs = (await _db.habitLogDao.getLogsInRange(firstDay, lastDay))
