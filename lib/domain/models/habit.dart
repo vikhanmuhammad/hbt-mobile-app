@@ -10,6 +10,7 @@ class Habit {
     required this.goalPeriod,
     required this.goalValue,
     this.goalUnit = 'x',
+    this.goalDirection = GoalDirection.atLeast,
     required this.taskDays,
     required this.timeRange,
     required this.reminderEnabled,
@@ -29,6 +30,7 @@ class Habit {
   final GoalPeriod goalPeriod;
   final int goalValue;
   final String goalUnit;
+  final GoalDirection goalDirection;
   final List<String> taskDays;
   final TimeRange timeRange;
   final bool reminderEnabled;
@@ -40,8 +42,21 @@ class Habit {
   final DateTime createdAt;
 
   /// Mis. "8 gelas" atau "1x", persis format `unitLabel` di prototipe.
-  String get goalValueLabel =>
-      goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+  /// Diberi prefix "Maks." untuk habit `atMost` (mis. batas pengeluaran)
+  /// supaya arah target langsung jelas dibaca.
+  String get goalValueLabel {
+    final value = goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+    return goalDirection == GoalDirection.atMost ? 'Maks. $value' : value;
+  }
 
   String get goalLabel => '$goalValueLabel • ${goalPeriod.label}';
+
+  /// Satu sumber kebenaran untuk "tercapai atau belum" — dipakai baik saat
+  /// menyimpan progress (`HabitLogRepository.setProgress`) maupun di tempat
+  /// lain yang perlu mengevaluasi ulang. `atLeast` (standar): tercapai kalau
+  /// progress >= goalValue. `atMost` (mis. batas pengeluaran harian):
+  /// tercapai kalau progress <= goalValue.
+  bool isAchieved(int progressValue) => goalDirection == GoalDirection.atMost
+      ? progressValue <= goalValue
+      : progressValue >= goalValue;
 }

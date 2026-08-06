@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
 import '../../../domain/models/category.dart';
+import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/core_providers.dart';
@@ -205,7 +206,9 @@ class _HabitList extends ConsumerWidget {
 
   Future<void> _onTapCard(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
     final habit = item.habit;
-    final isSimple = habit.goalValue <= 1 && habit.goalUnit == 'x';
+    final isSimple = habit.goalValue <= 1 &&
+        habit.goalUnit == 'x' &&
+        habit.goalDirection == GoalDirection.atLeast;
     final repo = ref.read(habitLogRepositoryProvider);
     try {
       if (isSimple) {

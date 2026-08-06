@@ -35,7 +35,9 @@ class HabitLogRepository {
   }
 
   /// Set progress mutlak untuk habit pada tanggal tertentu. `isDone` dihitung
-  /// otomatis: progressValue >= goalValue (CLAUDE.md §4).
+  /// otomatis lewat `habit.isAchieved()` — standar progressValue >=
+  /// goalValue, kecuali habit `atMost` (mis. batas pengeluaran) yang
+  /// terbalik: progressValue <= goalValue (CLAUDE.md §4).
   Future<void> setProgress({
     required Habit habit,
     required DateTime date,
@@ -46,7 +48,7 @@ class HabitLogRepository {
       habitId: habit.id,
       date: date,
       progressValue: clamped,
-      isDone: clamped >= habit.goalValue,
+      isDone: habit.isAchieved(clamped),
     );
   }
 

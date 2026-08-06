@@ -58,6 +58,10 @@ class Habits extends Table {
   TextColumn get goalPeriod => text()();
   IntColumn get goalValue => integer().withDefault(const Constant(1))();
   TextColumn get goalUnit => text().withDefault(const Constant('x'))();
+  // 'atLeast' (standar, progress >= goalValue) atau 'atMost' (progress <=
+  // goalValue, mis. batas pengeluaran harian).
+  TextColumn get goalDirection =>
+      text().withDefault(const Constant('atLeast'))();
   TextColumn get taskDays => text()();
   TextColumn get timeRange =>
       text().withDefault(const Constant('anytime'))();

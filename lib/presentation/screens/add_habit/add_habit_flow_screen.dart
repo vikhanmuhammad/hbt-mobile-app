@@ -76,6 +76,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   String _unitDropdownValue = 'x';
   GoalPeriod _goalPeriod = GoalPeriod.daily;
   int _goalValue = 1;
+  GoalDirection _goalDirection = GoalDirection.atLeast;
   Set<String> _taskDays = {allDaysKey};
   TimeRange _timeRange = TimeRange.anytime;
   bool _reminderEnabled = false;
@@ -154,6 +155,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _applyUnit(habit.goalUnit);
     _goalPeriod = habit.goalPeriod;
     _goalValue = habit.goalValue;
+    _goalDirection = habit.goalDirection;
     _taskDays = habit.taskDays.toSet();
     _timeRange = habit.timeRange;
     _reminderEnabled = habit.reminderEnabled;
@@ -169,12 +171,14 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     int? goalValue,
     String? goalUnit,
     TimeRange? timeRange,
+    GoalDirection? goalDirection,
   }) {
     _nameController.text = name ?? '';
     _habitIcon = icon ?? defaultHabitIconKey;
     _applyUnit(goalUnit ?? 'x');
     _goalPeriod = goalPeriod ?? GoalPeriod.daily;
     _goalValue = goalValue ?? 1;
+    _goalDirection = goalDirection ?? GoalDirection.atLeast;
     _taskDays = {allDaysKey};
     _timeRange = timeRange ?? TimeRange.anytime;
     _reminderEnabled = false;
@@ -646,6 +650,26 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 16),
+        _FieldLabel('Arah Target'),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            for (final direction in GoalDirection.values)
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: direction == GoalDirection.values.last ? 0 : 8),
+                  child: _SelectablePill(
+                    label: direction.label,
+                    selected: _goalDirection == direction,
+                    onTap: () => setState(() => _goalDirection = direction),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(_goalDirection.helperText, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -831,6 +855,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           goalPeriod: _goalPeriod,
           goalValue: _goalValue,
           goalUnit: goalUnit,
+          goalDirection: _goalDirection,
           taskDays: taskDaysList,
           timeRange: _timeRange,
           reminderEnabled: _reminderEnabled,
@@ -851,6 +876,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           goalPeriod: _goalPeriod,
           goalValue: _goalValue,
           goalUnit: goalUnit,
+          goalDirection: _goalDirection,
           taskDays: taskDaysList,
           timeRange: _timeRange,
           reminderEnabled: _reminderEnabled,
