@@ -52,7 +52,8 @@ class DashboardScreen extends ConsumerWidget {
               ref.read(selectedDashboardDateProvider.notifier).state = d;
               _showDayDetailSheet(context, d);
             },
-            onChangeMonth: (m) => ref.read(selectedDashboardMonthProvider.notifier).state = m,
+            onChangeMonth: (m) =>
+                ref.read(selectedDashboardMonthProvider.notifier).state = m,
           ),
         ),
       ),
@@ -121,7 +122,11 @@ class DashboardScreen extends ConsumerWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [filterRow, const SizedBox(height: 16), calendarCard],
+                  children: [
+                    filterRow,
+                    const SizedBox(height: 16),
+                    calendarCard,
+                  ],
                 ),
               ),
               const SizedBox(width: 24),
@@ -134,7 +139,12 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       body: ListView(
-        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
+        padding: EdgeInsets.fromLTRB(
+          isTablet ? 32 : 16,
+          isTablet ? 32 : 20,
+          isTablet ? 32 : 16,
+          24,
+        ),
         children: [
           filterRow,
           const SizedBox(height: 16),
@@ -161,12 +171,61 @@ class DashboardScreen extends ConsumerWidget {
 /// Baris icon habit yang bisa discroll horizontal untuk memfilter kalender +
 /// ringkasan dashboard. "All" (default) = tanpa filter. Multi-select: tiap
 /// icon habit toggle independen.
-class _HabitFilterRow extends ConsumerWidget {
+class _HabitFilterRow extends ConsumerStatefulWidget {
   const _HabitFilterRow();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HabitFilterRow> createState() => _HabitFilterRowState();
+}
+
+class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showLeftHint = false;
+  bool _showRightHint = false;
+
+  Color _scrollHintColor(ThemeData theme) {
+    return theme.brightness == Brightness.light
+        ? theme.colorScheme.onSurface.withValues(alpha: 0.65)
+        : theme.colorScheme.onSurface.withValues(alpha: 0.78);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _handleScroll());
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position;
+    final canScroll = position.maxScrollExtent > 0;
+    final showLeft = canScroll && position.pixels > 8;
+    final showRight =
+        canScroll && position.pixels < position.maxScrollExtent - 8;
+
+    if (showLeft != _showLeftHint || showRight != _showRightHint) {
+      if (!mounted) return;
+      setState(() {
+        _showLeftHint = showLeft;
+        _showRightHint = showRight;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hintColor = _scrollHintColor(theme);
     final habits = ref.watch(allActiveHabitsProvider).value ?? const [];
     final categories = ref.watch(categoriesProvider).value ?? const [];
     final selected = ref.watch(selectedDashboardHabitIdsProvider);
@@ -175,7 +234,10 @@ class _HabitFilterRow extends ConsumerWidget {
 
     final colorByCategory = {
       for (var i = 0; i < categories.length; i++)
-        categories[i].id: AppColors.categoryColorFromHex(categories[i].colorHex, i),
+        categories[i].id: AppColors.categoryColorFromHex(
+          categories[i].colorHex,
+          i,
+        ),
     };
 
     void toggleHabit(int habitId) {
@@ -184,28 +246,146 @@ class _HabitFilterRow extends ConsumerWidget {
       ref.read(selectedDashboardHabitIdsProvider.notifier).state = next;
     }
 
-    return SizedBox(
-      height: 78,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: [
-          _FilterChip(
-            label: 'All',
-            selected: selected.isEmpty,
-            color: theme.colorScheme.primary,
-            child: const Icon(Icons.apps_rounded, size: 16, color: Colors.white),
-            onTap: () => ref.read(selectedDashboardHabitIdsProvider.notifier).state = <int>{},
+    final isScrollable = _showLeftHint || _showRightHint;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Filter Habit', style: theme.textTheme.titleSmall),
+            const SizedBox(width: 10),
+            if (isScrollable)
+              Row(
+                children: [
+                  Icon(Icons.swipe_rounded, size: 16, color: hintColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Geser untuk lihat lainnya',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: hintColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 78,
+          child: Stack(
+            children: [
+              RawScrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                trackVisibility: false,
+                thickness: 4,
+                radius: const Radius.circular(999),
+                thumbColor: theme.colorScheme.primary.withValues(
+                  alpha: theme.brightness == Brightness.light ? 0.65 : 0.8,
+                ),
+                child: ListView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    _FilterChip(
+                      label: 'All',
+                      selected: selected.isEmpty,
+                      color: theme.colorScheme.primary,
+                      child: const Icon(
+                        Icons.apps_rounded,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                      onTap: () =>
+                          ref
+                                  .read(
+                                    selectedDashboardHabitIdsProvider.notifier,
+                                  )
+                                  .state =
+                              <int>{},
+                    ),
+                    for (final habit in habits)
+                      _FilterChip(
+                        label: habit.name,
+                        selected: selected.contains(habit.id),
+                        color:
+                            colorByCategory[habit.categoryId] ?? AppColors.gold,
+                        child: HabitIcon(
+                          icon: habit.icon,
+                          size: 15,
+                          color: Colors.white,
+                        ),
+                        onTap: () => toggleHabit(habit.id),
+                      ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _showLeftHint ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Container(
+                      width: 30,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                          colors: [
+                            theme.colorScheme.surface,
+                            theme.scaffoldBackgroundColor.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                      alignment: Alignment.centerLeft,
+                      child: Icon(
+                        Icons.chevron_left_rounded,
+                        color: hintColor,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                top: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  child: AnimatedOpacity(
+                    opacity: _showRightHint ? 1 : 0,
+                    duration: const Duration(milliseconds: 180),
+                    child: Container(
+                      width: 30,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
+                          colors: [
+                            theme.colorScheme.surface,
+                            theme.scaffoldBackgroundColor.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                      alignment: Alignment.centerRight,
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        color: hintColor,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          for (final habit in habits)
-            _FilterChip(
-              label: habit.name,
-              selected: selected.contains(habit.id),
-              color: colorByCategory[habit.categoryId] ?? AppColors.gold,
-              child: HabitIcon(icon: habit.icon, size: 15, color: Colors.white),
-              onTap: () => toggleHabit(habit.id),
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -244,10 +424,12 @@ class _FilterChip extends StatelessWidget {
                   color: selected
                       ? color
                       : (theme.brightness == Brightness.light
-                          ? AppColors.lightSurfaceAlt
-                          : AppColors.darkSurfaceAlt),
+                            ? AppColors.lightSurfaceAlt
+                            : AppColors.darkSurfaceAlt),
                   shape: BoxShape.circle,
-                  border: selected ? null : Border.all(color: theme.dividerColor),
+                  border: selected
+                      ? null
+                      : Border.all(color: theme.dividerColor),
                 ),
                 child: Center(
                   child: selected
@@ -290,14 +472,24 @@ class _DayDetailSheet extends ConsumerWidget {
     final categories = ref.watch(categoriesProvider).value ?? const [];
     final colorByCategory = {
       for (var i = 0; i < categories.length; i++)
-        categories[i].id: AppColors.categoryColorFromHex(categories[i].colorHex, i),
+        categories[i].id: AppColors.categoryColorFromHex(
+          categories[i].colorHex,
+          i,
+        ),
     };
     final done = items.where((i) => i.isDone).length;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+      ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(24, 12, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          12,
+          24,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,12 +508,19 @@ class _DayDetailSheet extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(child: Text(_formatDate(date), style: theme.textTheme.titleLarge)),
+                Expanded(
+                  child: Text(
+                    _formatDate(date),
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
                 if (items.isNotEmpty)
                   Text(
                     '${((done / items.length) * 100).round()}%',
-                    style: theme.textTheme.labelMedium
-                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
               ],
             ),
@@ -329,7 +528,10 @@ class _DayDetailSheet extends ConsumerWidget {
             if (items.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 24),
-                child: Text('Tidak ada habit terjadwal hari ini.', style: theme.textTheme.bodySmall),
+                child: Text(
+                  'Tidak ada habit terjadwal hari ini.',
+                  style: theme.textTheme.bodySmall,
+                ),
               )
             else
               Flexible(
@@ -349,12 +551,19 @@ class _DayDetailSheet extends ConsumerWidget {
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
-                              color: colorByCategory[item.habit.categoryId] ?? AppColors.gold,
+                              color:
+                                  colorByCategory[item.habit.categoryId] ??
+                                  AppColors.gold,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Expanded(child: Text(item.habit.name, style: theme.textTheme.bodyMedium)),
+                          Expanded(
+                            child: Text(
+                              item.habit.name,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -367,17 +576,26 @@ class _DayDetailSheet extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggle(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+  Future<void> _toggle(
+    BuildContext context,
+    WidgetRef ref,
+    HabitWithProgress item,
+  ) async {
     try {
       final repo = ref.read(habitLogRepositoryProvider);
-      await repo.toggleDone(habit: item.habit, date: date, currentlyDone: item.isDone);
+      await repo.toggleDone(
+        habit: item.habit,
+        date: date,
+        currentlyDone: item.isDone,
+      );
       ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(monthSummariesProvider);
       ref.invalidate(daySummaryProvider);
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal memperbarui progress: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memperbarui progress: $e')),
+        );
       }
     }
   }
@@ -401,14 +619,18 @@ class _MiniCheckbox extends StatelessWidget {
       width: 24,
       height: 24,
       decoration: BoxDecoration(
-        color: checked ? theme.colorScheme.primary : theme.scaffoldBackgroundColor,
+        color: checked
+            ? theme.colorScheme.primary
+            : theme.scaffoldBackgroundColor,
         shape: BoxShape.circle,
         border: Border.all(
           color: checked ? theme.colorScheme.primary : theme.dividerColor,
           width: 2,
         ),
       ),
-      child: checked ? const Icon(Icons.check_rounded, size: 14, color: Colors.white) : null,
+      child: checked
+          ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+          : null,
     );
   }
 }
@@ -424,7 +646,11 @@ class _EmptyDashboard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.bar_chart_rounded, size: 48, color: Theme.of(context).disabledColor),
+            Icon(
+              Icons.bar_chart_rounded,
+              size: 48,
+              color: Theme.of(context).disabledColor,
+            ),
             const SizedBox(height: 16),
             const Text('Belum ada data untuk ditampilkan'),
             const SizedBox(height: 8),
@@ -464,9 +690,15 @@ class _SummaryHeader extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${summary.totalDaysTracked} hari tercatat', style: theme.textTheme.titleLarge),
+                  Text(
+                    '${summary.totalDaysTracked} hari tercatat',
+                    style: theme.textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 4),
-                  Text('Rata-rata keberhasilan keseluruhan', style: theme.textTheme.bodySmall),
+                  Text(
+                    'Rata-rata keberhasilan keseluruhan',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -486,7 +718,9 @@ class _CategoryBreakdown extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final categories = ref.watch(categoriesProvider).value ?? [];
-    final indexById = {for (var i = 0; i < categories.length; i++) categories[i].id: i};
+    final indexById = {
+      for (var i = 0; i < categories.length; i++) categories[i].id: i,
+    };
 
     return Card(
       child: Padding(
@@ -554,8 +788,18 @@ class _MonthlyTrend extends StatelessWidget {
   final DashboardSummary summary;
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-    'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'Mei',
+    'Jun',
+    'Jul',
+    'Agu',
+    'Sep',
+    'Okt',
+    'Nov',
+    'Des',
   ];
 
   @override
@@ -592,9 +836,14 @@ class _MonthlyTrend extends StatelessWidget {
                               child: Align(
                                 alignment: Alignment.bottomCenter,
                                 child: FractionallySizedBox(
-                                  heightFactor: point.successRate.clamp(0.03, 1),
+                                  heightFactor: point.successRate.clamp(
+                                    0.03,
+                                    1,
+                                  ),
                                   child: ConstrainedBox(
-                                    constraints: const BoxConstraints(maxWidth: 44),
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 44,
+                                    ),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         color: theme.colorScheme.primary,
@@ -611,8 +860,12 @@ class _MonthlyTrend extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(_months[point.month.month - 1],
-                                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            Text(
+                              _months[point.month.month - 1],
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -656,7 +909,10 @@ class _ProgressRow extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -665,7 +921,9 @@ class _ProgressRow extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
