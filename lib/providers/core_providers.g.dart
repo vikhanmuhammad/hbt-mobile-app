@@ -278,6 +278,53 @@ final class StatsRepositoryProvider
 
 String _$statsRepositoryHash() => r'd7f53f9ba3b0ce78f4893ed16f37af5c04e57e68';
 
+@ProviderFor(financeRepository)
+final financeRepositoryProvider = FinanceRepositoryProvider._();
+
+final class FinanceRepositoryProvider
+    extends
+        $FunctionalProvider<
+          FinanceRepository,
+          FinanceRepository,
+          FinanceRepository
+        >
+    with $Provider<FinanceRepository> {
+  FinanceRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'financeRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$financeRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<FinanceRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  FinanceRepository create(Ref ref) {
+    return financeRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(FinanceRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<FinanceRepository>(value),
+    );
+  }
+}
+
+String _$financeRepositoryHash() => r'f685f1e19dff1d4bef15fed9fcc58c6baaef25a0';
+
 @ProviderFor(habitTemplateRepository)
 final habitTemplateRepositoryProvider = HabitTemplateRepositoryProvider._();
 

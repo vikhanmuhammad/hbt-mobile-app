@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../data/assets/habit_templates_loader.dart';
 import '../data/database/app_database.dart';
 import '../data/repositories/category_repository.dart';
+import '../data/repositories/finance_repository.dart';
 import '../data/repositories/habit_log_repository.dart';
 import '../data/repositories/habit_repository.dart';
 import '../data/repositories/habit_template_repository.dart';
@@ -49,6 +50,11 @@ HabitLogRepository habitLogRepository(Ref ref) {
 @riverpod
 StatsRepository statsRepository(Ref ref) {
   return StatsRepository(ref.watch(appDatabaseProvider));
+}
+
+@riverpod
+FinanceRepository financeRepository(Ref ref) {
+  return FinanceRepository(ref.watch(appDatabaseProvider));
 }
 
 @riverpod

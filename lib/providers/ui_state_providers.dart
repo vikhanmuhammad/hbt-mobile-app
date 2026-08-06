@@ -19,3 +19,7 @@ final selectedHomeDateProvider = StateProvider<DateTime>((ref) => today());
 /// state global (bukan lokal HomeScreen) supaya NavigationShell juga bisa
 /// merender FAB yang sesuai.
 final homeEditModeProvider = StateProvider<bool>((ref) => false);
+
+/// Bulan yang sedang ditampilkan di layar Rangkuman Keuangan.
+final selectedFinanceMonthProvider =
+    StateProvider<DateTime>((ref) => DateTime(today().year, today().month));
