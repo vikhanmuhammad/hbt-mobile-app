@@ -8,9 +8,22 @@ part of 'template_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// keepAlive supaya instance `HabitTemplate` tetap sama sepanjang sesi app —
+/// data statis dari asset JSON, tidak pernah berubah saat runtime. Tanpa ini,
+/// provider di-dispose tiap kali halaman yang mem-watch-nya keluar dari
+/// viewport (mis. PageView onboarding), lalu di-refetch jadi instance BARU
+/// saat kembali — merusak `Set<HabitTemplate>.contains()` yang dipakai untuk
+/// state "template mana yang sudah dicentang" di alur onboarding.
 
 @ProviderFor(habitTemplates)
 final habitTemplatesProvider = HabitTemplatesProvider._();
+
+/// keepAlive supaya instance `HabitTemplate` tetap sama sepanjang sesi app —
+/// data statis dari asset JSON, tidak pernah berubah saat runtime. Tanpa ini,
+/// provider di-dispose tiap kali halaman yang mem-watch-nya keluar dari
+/// viewport (mis. PageView onboarding), lalu di-refetch jadi instance BARU
+/// saat kembali — merusak `Set<HabitTemplate>.contains()` yang dipakai untuk
+/// state "template mana yang sudah dicentang" di alur onboarding.
 
 final class HabitTemplatesProvider
     extends
@@ -22,13 +35,19 @@ final class HabitTemplatesProvider
     with
         $FutureModifier<List<CategoryTemplate>>,
         $FutureProvider<List<CategoryTemplate>> {
+  /// keepAlive supaya instance `HabitTemplate` tetap sama sepanjang sesi app —
+  /// data statis dari asset JSON, tidak pernah berubah saat runtime. Tanpa ini,
+  /// provider di-dispose tiap kali halaman yang mem-watch-nya keluar dari
+  /// viewport (mis. PageView onboarding), lalu di-refetch jadi instance BARU
+  /// saat kembali — merusak `Set<HabitTemplate>.contains()` yang dipakai untuk
+  /// state "template mana yang sudah dicentang" di alur onboarding.
   HabitTemplatesProvider._()
     : super(
         from: null,
         argument: null,
         retry: null,
         name: r'habitTemplatesProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -48,4 +67,4 @@ final class HabitTemplatesProvider
   }
 }
 
-String _$habitTemplatesHash() => r'8c844310ec184c161c98687bced52c48b70d33d3';
+String _$habitTemplatesHash() => r'67e0446b01f49c6c653791a4aabfe8edefba30a2';

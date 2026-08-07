@@ -8,6 +8,7 @@ import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
 import '../../../providers/category_providers.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
@@ -16,8 +17,12 @@ import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
 import '../../widgets/pill_button.dart';
+import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
+
+/// Batas habit aktif untuk user Free — lebih dari ini harus upgrade Pro.
+const _freeActiveHabitLimit = 5;
 
 /// Buka alur Tambah Habit dari FAB Beranda — mulai dari step 1 (pilih goal
 /// phrase). Beranda flat-list otomatis menampilkan habit baru begitu
@@ -212,6 +217,46 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   String _formatTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
+  /// True kalau [categoryId] adalah kategori Keuangan bawaan — dicek lewat
+  /// cache `categoriesProvider` yang sudah di-watch di build(), jadi aman
+  /// dipanggil dari handler async tanpa nunggu load ulang.
+  bool _categoryIdIsFinance(int? categoryId) {
+    final categories = ref.read(categoriesProvider).value ?? const <Category>[];
+    for (final c in categories) {
+      if (c.id == categoryId) return isFinanceCategory(c);
+    }
+    return false;
+  }
+
+  /// Kategori Keuangan (Jadi Hemat) khusus Pro — dicek di titik pilih
+  /// kategori (step 1) DAN di titik submit (step 3 punya dropdown goal
+  /// phrase sendiri yang bisa mengubah _categoryId tanpa lewat step 1 lagi).
+  Future<bool> _blockedByFinanceGate() async {
+    if (!_categoryIdIsFinance(_categoryId) || ref.read(isProProvider)) return false;
+    await showProRequiredDialog(
+      context,
+      message: 'Kategori Keuangan (Jadi Hemat) khusus pengguna Pro. Upgrade ke Pro '
+          'untuk mengelola habit keuangan & lihat ringkasan tabungan.',
+    );
+    return true;
+  }
+
+  /// User Free maksimal 5 habit aktif — cuma relevan saat membuat habit
+  /// baru, bukan saat mengedit habit yang sudah ada.
+  Future<bool> _blockedByFreeHabitLimit() async {
+    if (ref.read(isProProvider)) return false;
+    final activeHabits = await ref.read(habitRepositoryProvider).getAllActive();
+    if (activeHabits.length < _freeActiveHabitLimit) return false;
+    if (mounted) {
+      await showProRequiredDialog(
+        context,
+        message: 'Kamu sudah mencapai batas $_freeActiveHabitLimit habit aktif untuk '
+            'pengguna Free. Upgrade ke Pro untuk menambah habit tanpa batas.',
+      );
+    }
+    return true;
+  }
+
   void _push(int step) => setState(() => _stepStack.add(step));
 
   void _back() {
@@ -357,6 +402,15 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   icon: category.icon,
                   color: color,
                   onTap: () {
+                    if (isFinanceCategory(category) && !ref.read(isProProvider)) {
+                      showProRequiredDialog(
+                        context,
+                        message:
+                            'Kategori Keuangan (Jadi Hemat) khusus pengguna Pro. Upgrade ke '
+                            'Pro untuk mengelola habit keuangan & lihat ringkasan tabungan.',
+                      );
+                      return;
+                    }
                     _categoryId = category.id;
                     _push(2);
                   },
@@ -487,6 +541,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Future<void> _quickAddTemplate(HabitTemplate template) async {
     if (_categoryId == null) return;
+    if (await _blockedByFinanceGate() || await _blockedByFreeHabitLimit()) return;
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
@@ -859,6 +914,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal 1 hari aktif')));
       return;
     }
+    if (await _blockedByFinanceGate()) return;
+    if (!_isEditing && await _blockedByFreeHabitLimit()) return;
 
     setState(() => _saving = true);
     try {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/community/app_group.dart';
 import '../../../providers/community_providers.dart';
 import '../../widgets/pill_button.dart';
+import '../../widgets/pro_feature_teaser.dart';
 import 'create_group_screen.dart';
 import 'group_detail_screen.dart';
 import 'join_group_screen.dart';
@@ -31,35 +32,11 @@ class _ProTeaser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.groups_rounded, size: 64, color: theme.colorScheme.primary),
-              const SizedBox(height: 20),
-              Text('Community — Fitur Pro', style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(
-                'Buat/gabung grup habit bareng teman, saingan lewat leaderboard, dan chat '
-                'real-time. Upgrade ke Pro untuk membuka fitur ini.',
-                style: theme.textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Integrasi pembelian Pro sungguhan belum tersedia — aktifkan lewat '
-                'toggle "Mode Pro (Debug)" di Pengaturan untuk mencoba fitur ini.',
-                style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
+    return const ProFeatureTeaser(
+      icon: Icons.groups_rounded,
+      title: 'Community — Fitur Pro',
+      description: 'Buat/gabung grup habit bareng teman, saingan lewat leaderboard, dan chat '
+          'real-time. Upgrade ke Pro untuk membuka fitur ini.',
     );
   }
 }

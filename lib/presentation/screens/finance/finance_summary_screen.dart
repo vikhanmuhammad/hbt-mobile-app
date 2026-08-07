@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/format_utils.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/habit_icon.dart';
+import '../../widgets/pro_feature_teaser.dart';
 
 const _monthNames = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -22,6 +24,16 @@ class FinanceSummaryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isPro = ref.watch(isProProvider);
+    if (!isPro) {
+      return const ProFeatureTeaser(
+        icon: Icons.account_balance_wallet_rounded,
+        title: 'Keuangan — Fitur Pro',
+        description: 'Lacak pengeluaran, tabungan, dan habit hemat dalam satu ringkasan bulanan. '
+            'Upgrade ke Pro untuk membuka fitur ini.',
+      );
+    }
+
     final month = ref.watch(selectedFinanceMonthProvider);
     final summaryAsync = ref.watch(financeSummaryProvider(month));
     final isTablet = MediaQuery.sizeOf(context).width >= 600;

@@ -7,6 +7,7 @@ import '../../../domain/models/habit_template.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/onboarding_response.dart';
 import '../../../providers/category_providers.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/template_providers.dart';
@@ -15,6 +16,7 @@ import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_curve_chart.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/navigation_shell.dart';
+import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
@@ -35,6 +37,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final Map<String, String> _lifestyleAnswers = {};
   final Set<int> _selectedCategoryIds = {};
   final Map<int, Set<HabitTemplate>> _selectedTemplates = {};
+
+  /// Template yang sudah benar-benar tersimpan ke DB (template -> id habit)
+  /// — dipakai `_RecommendationStep` untuk reconcile create/delete tiap kali
+  /// "Lanjut" ditekan (idempotent, aman dipanggil berkali-kali walau user
+  /// bolak-balik ke halaman ini) dan oleh `_SummaryStep` untuk sinkronisasi
+  /// balik saat user menghapus habit dari Ringkasan.
+  final Map<HabitTemplate, int> _createdHabitIds = {};
 
   void _goTo(int step) {
     _pageController.animateToPage(
@@ -94,6 +103,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
             _RecommendationStep(
               selectedCategoryIds: _selectedCategoryIds,
               selectedTemplates: _selectedTemplates,
+              createdHabitIds: _createdHabitIds,
               onToggleTemplate: (categoryId, template) => setState(() {
                 final set = _selectedTemplates.putIfAbsent(categoryId, () => {});
                 if (set.contains(template)) {
@@ -102,10 +112,22 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   set.add(template);
                 }
               }),
+              onHabitCreated: (template, id) =>
+                  setState(() => _createdHabitIds[template] = id),
+              onHabitRemoved: (template) => setState(() {
+                _createdHabitIds.remove(template);
+                for (final set in _selectedTemplates.values) {
+                  set.remove(template);
+                }
+              }),
               onBack: () => _goTo(5),
               onNext: () => _goTo(7),
             ),
-            _SummaryStep(onBack: () => _goTo(6), onFinish: _completeOnboarding),
+            _SummaryStep(
+              onBack: () => _goTo(6),
+              onFinish: _completeOnboarding,
+              onRemoveHabit: _removeHabit,
+            ),
           ],
         ),
       ),
@@ -132,6 +154,33 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
         (route) => false,
       );
     }
+  }
+
+  /// Batalkan habit dari halaman Ringkasan (§4.1 langkah 7) — habit yang
+  /// asalnya dari checkbox Rekomendasi juga di-uncheck & dilepas dari
+  /// `_createdHabitIds` supaya konsisten kalau user balik ke halaman
+  /// Rekomendasi. Habit yang ditambah lewat jalan pintas Tambah Habit
+  /// (tidak tercatat di `_createdHabitIds`) cukup dihapus dari DB.
+  Future<void> _removeHabit(int habitId) async {
+    try {
+      await ref.read(notificationServiceProvider).cancelForHabit(habitId);
+    } catch (_) {
+      // Notifikasi gagal dibatalkan (mis. platform tidak mendukung) —
+      // jangan gagalkan penghapusan habit karena ini.
+    }
+    await ref.read(habitRepositoryProvider).deleteHabit(habitId);
+
+    HabitTemplate? matchedTemplate;
+    _createdHabitIds.forEach((template, id) {
+      if (id == habitId) matchedTemplate = template;
+    });
+    if (matchedTemplate == null) return;
+    setState(() {
+      _createdHabitIds.remove(matchedTemplate);
+      for (final set in _selectedTemplates.values) {
+        set.remove(matchedTemplate);
+      }
+    });
   }
 }
 
@@ -574,14 +623,20 @@ class _RecommendationStep extends ConsumerStatefulWidget {
   const _RecommendationStep({
     required this.selectedCategoryIds,
     required this.selectedTemplates,
+    required this.createdHabitIds,
     required this.onToggleTemplate,
+    required this.onHabitCreated,
+    required this.onHabitRemoved,
     required this.onBack,
     required this.onNext,
   });
 
   final Set<int> selectedCategoryIds;
   final Map<int, Set<HabitTemplate>> selectedTemplates;
+  final Map<HabitTemplate, int> createdHabitIds;
   final void Function(int categoryId, HabitTemplate template) onToggleTemplate;
+  final void Function(HabitTemplate template, int habitId) onHabitCreated;
+  final void Function(HabitTemplate template) onHabitRemoved;
   final VoidCallback onBack;
   final VoidCallback onNext;
 
@@ -647,34 +702,72 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       );
                     }
                     final selectedSet = widget.selectedTemplates[category.id] ?? {};
+                    // Kategori Keuangan (Jadi Hemat) khusus Pro — tetap
+                    // ditampilkan di sini (bukan disembunyikan) supaya user
+                    // tahu fiturnya ada, tapi digrayscale + badge PRO dan tap
+                    // membuka paywall, bukan toggle. Alur Tambah Habit lewat
+                    // Beranda sudah punya gate yang sama (lihat
+                    // add_habit_flow_screen.dart).
+                    final locked = isFinanceCategory(category) && !ref.watch(isProProvider);
                     return Column(
                       children: [
                         for (final t in templates)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Card(
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(14),
-                                onTap: () => widget.onToggleTemplate(category.id, t),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  child: Row(
-                                    children: [
-                                      _SquareCheckbox(checked: selectedSet.contains(t)),
-                                      const SizedBox(width: 14),
-                                      HabitIcon(icon: t.icon, size: 16, color: theme.textTheme.bodySmall?.color),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(t.name, style: theme.textTheme.titleSmall),
-                                            const SizedBox(height: 2),
-                                            Text(t.goalLabel, style: theme.textTheme.bodySmall),
-                                          ],
+                            child: Opacity(
+                              opacity: locked ? 0.5 : 1,
+                              child: Card(
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: locked
+                                      ? () => showProRequiredDialog(
+                                            context,
+                                            message: 'Habit keuangan (menabung/menghemat dengan '
+                                                'nominal) khusus pengguna Pro. Upgrade ke Pro untuk '
+                                                'mulai melacaknya.',
+                                          )
+                                      : () => widget.onToggleTemplate(category.id, t),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                    child: Row(
+                                      children: [
+                                        locked
+                                            ? Icon(Icons.lock_rounded,
+                                                size: 20, color: theme.textTheme.bodySmall?.color)
+                                            : _SquareCheckbox(checked: selectedSet.contains(t)),
+                                        const SizedBox(width: 14),
+                                        HabitIcon(icon: t.icon, size: 16, color: theme.textTheme.bodySmall?.color),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(t.name, style: theme.textTheme.titleSmall),
+                                              const SizedBox(height: 2),
+                                              Text(t.goalLabel, style: theme.textTheme.bodySmall),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                        if (locked) ...[
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary,
+                                              borderRadius: BorderRadius.circular(999),
+                                            ),
+                                            child: const Text(
+                                              'PRO',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -726,14 +819,39 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     );
   }
 
+  /// Reconcile, bukan create-selalu — supaya idempotent walau dipanggil
+  /// berkali-kali (user bolak-balik Rekomendasi <-> Ringkasan): template yang
+  /// dicentang tapi belum ada di `createdHabitIds` baru dibuat, template yang
+  /// sebelumnya sudah dibuat tapi sekarang di-uncheck akan dihapus lagi. Ini
+  /// yang mencegah habit ganda pada bug sebelumnya (checkbox kelihatan
+  /// kosong padahal sudah tersimpan, lalu user centang ulang & lanjut lagi).
   Future<void> _saveSelections() async {
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
       final notif = ref.read(notificationServiceProvider);
 
+      final currentlySelected = <HabitTemplate>{
+        for (final set in widget.selectedTemplates.values) ...set,
+      };
+
+      final toRemove = widget.createdHabitIds.keys
+          .where((t) => !currentlySelected.contains(t))
+          .toList();
+      for (final template in toRemove) {
+        final id = widget.createdHabitIds[template]!;
+        try {
+          await notif.cancelForHabit(id);
+        } catch (_) {
+          // Notifikasi gagal dibatalkan — jangan gagalkan penghapusan habit.
+        }
+        await repo.deleteHabit(id);
+        widget.onHabitRemoved(template);
+      }
+
       for (final entry in widget.selectedTemplates.entries) {
         for (final template in entry.value) {
+          if (widget.createdHabitIds.containsKey(template)) continue;
           final id = await repo.createHabit(
             categoryId: entry.key,
             name: template.name,
@@ -741,11 +859,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
             goalPeriod: template.goalPeriod,
             goalValue: template.goalValue,
             goalUnit: template.goalUnit,
+            goalDirection: template.goalDirection,
             taskDays: const ['all'],
             timeRange: template.timeRange,
             reminderEnabled: false,
             startDate: today(),
           );
+          widget.onHabitCreated(template, id);
           final created = await repo.getById(id);
           if (created != null) {
             try {
@@ -798,10 +918,15 @@ class _SquareCheckbox extends StatelessWidget {
 /// live dari DB, bukan snapshot lokal, supaya habit yang ditambah lewat
 /// jalan pintas Tambah Habit ikut tampil). CLAUDE.md v3 §4.1 langkah 7.
 class _SummaryStep extends ConsumerWidget {
-  const _SummaryStep({required this.onBack, required this.onFinish});
+  const _SummaryStep({
+    required this.onBack,
+    required this.onFinish,
+    required this.onRemoveHabit,
+  });
 
   final VoidCallback onBack;
   final Future<void> Function() onFinish;
+  final Future<void> Function(int habitId) onRemoveHabit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -835,12 +960,18 @@ class _SummaryStep extends ConsumerWidget {
                   Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       child: Row(
                         children: [
+                          const SizedBox(width: 8),
                           HabitIcon(icon: habit.icon, size: 16, color: theme.colorScheme.primary),
                           const SizedBox(width: 12),
                           Expanded(child: Text(habit.name, style: theme.textTheme.titleSmall)),
+                          IconButton(
+                            tooltip: 'Batalkan habit ini',
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () => onRemoveHabit(habit.id),
+                          ),
                         ],
                       ),
                     ),

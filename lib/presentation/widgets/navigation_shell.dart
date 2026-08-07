@@ -25,8 +25,8 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
   static const _destinations = [
     (icon: Icons.home_rounded, label: 'Beranda'),
     (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
-    (icon: Icons.account_balance_wallet_rounded, label: 'Keuangan'),
     (icon: Icons.groups_rounded, label: 'Community'),
+    (icon: Icons.account_balance_wallet_rounded, label: 'Keuangan'),
     (icon: Icons.settings_rounded, label: 'Pengaturan'),
   ];
 

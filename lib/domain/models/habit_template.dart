@@ -43,6 +43,27 @@ class HabitTemplate {
   }
 
   String get goalLabel => '$goalValueLabel • ${goalPeriod.label}';
+
+  /// Value equality — dipakai `Set<HabitTemplate>.contains()` di state
+  /// seleksi alur onboarding (CLAUDE.md v3 §4.1 langkah 6). Tanpa ini,
+  /// instance baru hasil re-parse `habit_templates.json` (mis. provider yang
+  /// di-dispose lalu di-watch ulang) tidak akan cocok dengan instance lama
+  /// yang tersimpan di state, walau isinya identik.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is HabitTemplate &&
+          name == other.name &&
+          icon == other.icon &&
+          goalPeriod == other.goalPeriod &&
+          goalValue == other.goalValue &&
+          goalUnit == other.goalUnit &&
+          goalDirection == other.goalDirection &&
+          timeRange == other.timeRange;
+
+  @override
+  int get hashCode =>
+      Object.hash(name, icon, goalPeriod, goalValue, goalUnit, goalDirection, timeRange);
 }
 
 /// Grouping kategori mentah dari `habit_templates.json` — cuma dipakai untuk
