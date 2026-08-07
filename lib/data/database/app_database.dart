@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'daos/category_dao.dart';
 import 'daos/habit_dao.dart';
+import 'daos/habit_group_link_dao.dart';
 import 'daos/habit_log_dao.dart';
 import 'daos/profile_dao.dart';
 import 'tables.dart';
@@ -14,8 +15,15 @@ import 'tables.dart';
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [Categories, Habits, HabitLogs, UserProfile, OnboardingResponses],
-  daos: [CategoryDao, HabitDao, HabitLogDao, ProfileDao],
+  tables: [
+    Categories,
+    Habits,
+    HabitLogs,
+    UserProfile,
+    OnboardingResponses,
+    HabitGroupLinks,
+  ],
+  daos: [CategoryDao, HabitDao, HabitLogDao, ProfileDao, HabitGroupLinkDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -23,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -53,6 +61,11 @@ class AppDatabase extends _$AppDatabase {
             // v4: goalDirection (atLeast/atMost) — kolom baru dengan default
             // 'atLeast', jadi cukup addColumn, tidak perlu wipe data.
             await m.addColumn(habits, habits.goalDirection);
+          }
+          if (from < 5) {
+            // v5: HabitGroupLinks — tabel baru untuk fitur Community (Pro),
+            // relasi habit lokal ke Group Habit di Firestore.
+            await m.createTable(habitGroupLinks);
           }
         },
       );

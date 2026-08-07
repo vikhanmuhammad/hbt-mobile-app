@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/toggle_switch.dart';
@@ -74,6 +76,12 @@ class SettingsScreen extends ConsumerWidget {
                   MaterialPageRoute(builder: (_) => const PersonalizeScreen()),
                 ),
               ),
+              if (kDebugMode) ...[
+                const SizedBox(height: 24),
+                _SectionLabel('Community (Debug)'),
+                const SizedBox(height: 10),
+                const _DebugProToggleTile(),
+              ],
               const SizedBox(height: 24),
               _SectionLabel('Reminder Default'),
               const SizedBox(height: 10),
@@ -246,6 +254,36 @@ class _NavTile extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Toggle status Pro lewat `MockEntitlementService` — cuma tampil di debug
+/// build. Menggantikan integrasi Play Billing/StoreKit yang ditunda ke
+/// mendekati rilis (update_v2.md §1.1).
+class _DebugProToggleTile extends ConsumerWidget {
+  const _DebugProToggleTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final isPro = ref.watch(isProProvider);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text('Mode Pro (Debug)', style: theme.textTheme.bodyMedium),
+            ),
+            ToggleSwitch(
+              value: isPro,
+              onChanged: (v) => ref.read(isProProvider.notifier).setPro(v),
+            ),
+          ],
         ),
       ),
     );

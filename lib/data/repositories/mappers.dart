@@ -1,4 +1,5 @@
 import '../../domain/models/category.dart' as domain;
+import '../../domain/models/community/habit_group_link.dart' as domain;
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart' as domain;
 import '../../domain/models/habit_log.dart' as domain;
@@ -62,4 +63,14 @@ domain.OnboardingResponse mapOnboardingResponse(
     domain.OnboardingResponse(
       questionKey: row.questionKey,
       answerValue: row.answerValue,
+    );
+
+domain.HabitGroupLink mapHabitGroupLink(db.HabitGroupLink row) =>
+    domain.HabitGroupLink(
+      id: row.id,
+      habitId: row.habitId,
+      groupId: row.groupId,
+      groupHabitId: row.groupHabitId,
+      linkedAt: row.linkedAt,
+      lastSyncedAt: row.lastSyncedAt,
     );

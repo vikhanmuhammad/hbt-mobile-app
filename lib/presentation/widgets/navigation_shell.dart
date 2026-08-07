@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/ui_state_providers.dart';
 import '../screens/add_habit/add_habit_flow_screen.dart';
+import '../screens/community/community_entry_screen.dart';
 import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/finance/finance_summary_screen.dart';
 import '../screens/home/home_screen.dart';
@@ -25,6 +26,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
     (icon: Icons.home_rounded, label: 'Beranda'),
     (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
     (icon: Icons.account_balance_wallet_rounded, label: 'Keuangan'),
+    (icon: Icons.groups_rounded, label: 'Community'),
     (icon: Icons.settings_rounded, label: 'Pengaturan'),
   ];
 
@@ -32,6 +34,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
     const HomeScreen(),
     const DashboardScreen(),
     const FinanceSummaryScreen(),
+    const CommunityEntryScreen(),
     const SettingsScreen(),
   ];
 

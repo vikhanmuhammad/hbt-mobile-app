@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,6 +7,7 @@ import '../../../domain/date_utils.dart';
 import '../../../domain/models/dashboard_summary.dart';
 import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/progress_providers.dart';
@@ -591,6 +594,7 @@ class _DayDetailSheet extends ConsumerWidget {
       ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(monthSummariesProvider);
       ref.invalidate(daySummaryProvider);
+      unawaited(syncCommunityHabit(ref, item.habit.id));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

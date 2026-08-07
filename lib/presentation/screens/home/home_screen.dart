@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -6,6 +8,7 @@ import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
@@ -219,6 +222,7 @@ class _HabitList extends ConsumerWidget {
         await repo.setProgress(habit: habit, date: selectedDate, progressValue: value);
       }
       _invalidateSummaries(ref);
+      unawaited(syncCommunityHabit(ref, habit.id));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan progress: $e')));

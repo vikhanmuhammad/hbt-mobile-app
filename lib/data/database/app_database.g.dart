@@ -2509,6 +2509,422 @@ class OnboardingResponsesCompanion extends UpdateCompanion<OnboardingResponse> {
   }
 }
 
+class $HabitGroupLinksTable extends HabitGroupLinks
+    with TableInfo<$HabitGroupLinksTable, HabitGroupLink> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitGroupLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<int> habitId = GeneratedColumn<int>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habits (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _groupIdMeta = const VerificationMeta(
+    'groupId',
+  );
+  @override
+  late final GeneratedColumn<String> groupId = GeneratedColumn<String>(
+    'group_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _groupHabitIdMeta = const VerificationMeta(
+    'groupHabitId',
+  );
+  @override
+  late final GeneratedColumn<String> groupHabitId = GeneratedColumn<String>(
+    'group_habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _linkedAtMeta = const VerificationMeta(
+    'linkedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> linkedAt = GeneratedColumn<DateTime>(
+    'linked_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _lastSyncedAtMeta = const VerificationMeta(
+    'lastSyncedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastSyncedAt = GeneratedColumn<DateTime>(
+    'last_synced_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    habitId,
+    groupId,
+    groupHabitId,
+    linkedAt,
+    lastSyncedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_group_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitGroupLink> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('group_id')) {
+      context.handle(
+        _groupIdMeta,
+        groupId.isAcceptableOrUnknown(data['group_id']!, _groupIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_groupIdMeta);
+    }
+    if (data.containsKey('group_habit_id')) {
+      context.handle(
+        _groupHabitIdMeta,
+        groupHabitId.isAcceptableOrUnknown(
+          data['group_habit_id']!,
+          _groupHabitIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_groupHabitIdMeta);
+    }
+    if (data.containsKey('linked_at')) {
+      context.handle(
+        _linkedAtMeta,
+        linkedAt.isAcceptableOrUnknown(data['linked_at']!, _linkedAtMeta),
+      );
+    }
+    if (data.containsKey('last_synced_at')) {
+      context.handle(
+        _lastSyncedAtMeta,
+        lastSyncedAt.isAcceptableOrUnknown(
+          data['last_synced_at']!,
+          _lastSyncedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {habitId, groupHabitId},
+  ];
+  @override
+  HabitGroupLink map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitGroupLink(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      groupId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_id'],
+      )!,
+      groupHabitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}group_habit_id'],
+      )!,
+      linkedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}linked_at'],
+      )!,
+      lastSyncedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_synced_at'],
+      ),
+    );
+  }
+
+  @override
+  $HabitGroupLinksTable createAlias(String alias) {
+    return $HabitGroupLinksTable(attachedDatabase, alias);
+  }
+}
+
+class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
+  final int id;
+  final int habitId;
+  final String groupId;
+  final String groupHabitId;
+  final DateTime linkedAt;
+  final DateTime? lastSyncedAt;
+  const HabitGroupLink({
+    required this.id,
+    required this.habitId,
+    required this.groupId,
+    required this.groupHabitId,
+    required this.linkedAt,
+    this.lastSyncedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['habit_id'] = Variable<int>(habitId);
+    map['group_id'] = Variable<String>(groupId);
+    map['group_habit_id'] = Variable<String>(groupHabitId);
+    map['linked_at'] = Variable<DateTime>(linkedAt);
+    if (!nullToAbsent || lastSyncedAt != null) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    return map;
+  }
+
+  HabitGroupLinksCompanion toCompanion(bool nullToAbsent) {
+    return HabitGroupLinksCompanion(
+      id: Value(id),
+      habitId: Value(habitId),
+      groupId: Value(groupId),
+      groupHabitId: Value(groupHabitId),
+      linkedAt: Value(linkedAt),
+      lastSyncedAt: lastSyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastSyncedAt),
+    );
+  }
+
+  factory HabitGroupLink.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitGroupLink(
+      id: serializer.fromJson<int>(json['id']),
+      habitId: serializer.fromJson<int>(json['habitId']),
+      groupId: serializer.fromJson<String>(json['groupId']),
+      groupHabitId: serializer.fromJson<String>(json['groupHabitId']),
+      linkedAt: serializer.fromJson<DateTime>(json['linkedAt']),
+      lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'habitId': serializer.toJson<int>(habitId),
+      'groupId': serializer.toJson<String>(groupId),
+      'groupHabitId': serializer.toJson<String>(groupHabitId),
+      'linkedAt': serializer.toJson<DateTime>(linkedAt),
+      'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+    };
+  }
+
+  HabitGroupLink copyWith({
+    int? id,
+    int? habitId,
+    String? groupId,
+    String? groupHabitId,
+    DateTime? linkedAt,
+    Value<DateTime?> lastSyncedAt = const Value.absent(),
+  }) => HabitGroupLink(
+    id: id ?? this.id,
+    habitId: habitId ?? this.habitId,
+    groupId: groupId ?? this.groupId,
+    groupHabitId: groupHabitId ?? this.groupHabitId,
+    linkedAt: linkedAt ?? this.linkedAt,
+    lastSyncedAt: lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+  );
+  HabitGroupLink copyWithCompanion(HabitGroupLinksCompanion data) {
+    return HabitGroupLink(
+      id: data.id.present ? data.id.value : this.id,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      groupId: data.groupId.present ? data.groupId.value : this.groupId,
+      groupHabitId: data.groupHabitId.present
+          ? data.groupHabitId.value
+          : this.groupHabitId,
+      linkedAt: data.linkedAt.present ? data.linkedAt.value : this.linkedAt,
+      lastSyncedAt: data.lastSyncedAt.present
+          ? data.lastSyncedAt.value
+          : this.lastSyncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitGroupLink(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('groupId: $groupId, ')
+          ..write('groupHabitId: $groupHabitId, ')
+          ..write('linkedAt: $linkedAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, habitId, groupId, groupHabitId, linkedAt, lastSyncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitGroupLink &&
+          other.id == this.id &&
+          other.habitId == this.habitId &&
+          other.groupId == this.groupId &&
+          other.groupHabitId == this.groupHabitId &&
+          other.linkedAt == this.linkedAt &&
+          other.lastSyncedAt == this.lastSyncedAt);
+}
+
+class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
+  final Value<int> id;
+  final Value<int> habitId;
+  final Value<String> groupId;
+  final Value<String> groupHabitId;
+  final Value<DateTime> linkedAt;
+  final Value<DateTime?> lastSyncedAt;
+  const HabitGroupLinksCompanion({
+    this.id = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.groupId = const Value.absent(),
+    this.groupHabitId = const Value.absent(),
+    this.linkedAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  });
+  HabitGroupLinksCompanion.insert({
+    this.id = const Value.absent(),
+    required int habitId,
+    required String groupId,
+    required String groupHabitId,
+    this.linkedAt = const Value.absent(),
+    this.lastSyncedAt = const Value.absent(),
+  }) : habitId = Value(habitId),
+       groupId = Value(groupId),
+       groupHabitId = Value(groupHabitId);
+  static Insertable<HabitGroupLink> custom({
+    Expression<int>? id,
+    Expression<int>? habitId,
+    Expression<String>? groupId,
+    Expression<String>? groupHabitId,
+    Expression<DateTime>? linkedAt,
+    Expression<DateTime>? lastSyncedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (habitId != null) 'habit_id': habitId,
+      if (groupId != null) 'group_id': groupId,
+      if (groupHabitId != null) 'group_habit_id': groupHabitId,
+      if (linkedAt != null) 'linked_at': linkedAt,
+      if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+    });
+  }
+
+  HabitGroupLinksCompanion copyWith({
+    Value<int>? id,
+    Value<int>? habitId,
+    Value<String>? groupId,
+    Value<String>? groupHabitId,
+    Value<DateTime>? linkedAt,
+    Value<DateTime?>? lastSyncedAt,
+  }) {
+    return HabitGroupLinksCompanion(
+      id: id ?? this.id,
+      habitId: habitId ?? this.habitId,
+      groupId: groupId ?? this.groupId,
+      groupHabitId: groupHabitId ?? this.groupHabitId,
+      linkedAt: linkedAt ?? this.linkedAt,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<int>(habitId.value);
+    }
+    if (groupId.present) {
+      map['group_id'] = Variable<String>(groupId.value);
+    }
+    if (groupHabitId.present) {
+      map['group_habit_id'] = Variable<String>(groupHabitId.value);
+    }
+    if (linkedAt.present) {
+      map['linked_at'] = Variable<DateTime>(linkedAt.value);
+    }
+    if (lastSyncedAt.present) {
+      map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitGroupLinksCompanion(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('groupId: $groupId, ')
+          ..write('groupHabitId: $groupHabitId, ')
+          ..write('linkedAt: $linkedAt, ')
+          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2518,6 +2934,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $UserProfileTable userProfile = $UserProfileTable(this);
   late final $OnboardingResponsesTable onboardingResponses =
       $OnboardingResponsesTable(this);
+  late final $HabitGroupLinksTable habitGroupLinks = $HabitGroupLinksTable(
+    this,
+  );
   late final Index idxHabitLogsDate = Index(
     'idx_habit_logs_date',
     'CREATE INDEX idx_habit_logs_date ON habit_logs (date)',
@@ -2526,10 +2945,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_habit_logs_habit_id',
     'CREATE INDEX idx_habit_logs_habit_id ON habit_logs (habit_id)',
   );
+  late final Index idxHabitGroupLinksHabitId = Index(
+    'idx_habit_group_links_habit_id',
+    'CREATE INDEX idx_habit_group_links_habit_id ON habit_group_links (habit_id)',
+  );
   late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
   late final HabitDao habitDao = HabitDao(this as AppDatabase);
   late final HabitLogDao habitLogDao = HabitLogDao(this as AppDatabase);
   late final ProfileDao profileDao = ProfileDao(this as AppDatabase);
+  late final HabitGroupLinkDao habitGroupLinkDao = HabitGroupLinkDao(
+    this as AppDatabase,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2540,8 +2966,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     habitLogs,
     userProfile,
     onboardingResponses,
+    habitGroupLinks,
     idxHabitLogsDate,
     idxHabitLogsHabitId,
+    idxHabitGroupLinksHabitId,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2551,6 +2979,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('habit_logs', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'habits',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('habit_group_links', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -2970,6 +3405,26 @@ final class $$HabitsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$HabitGroupLinksTable, List<HabitGroupLink>>
+  _habitGroupLinksRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.habitGroupLinks,
+    aliasName: $_aliasNameGenerator(db.habits.id, db.habitGroupLinks.habitId),
+  );
+
+  $$HabitGroupLinksTableProcessedTableManager get habitGroupLinksRefs {
+    final manager = $$HabitGroupLinksTableTableManager(
+      $_db,
+      $_db.habitGroupLinks,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _habitGroupLinksRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$HabitsTableFilterComposer
@@ -3105,6 +3560,31 @@ class $$HabitsTableFilterComposer
           }) => $$HabitLogsTableFilterComposer(
             $db: $db,
             $table: $db.habitLogs,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> habitGroupLinksRefs(
+    Expression<bool> Function($$HabitGroupLinksTableFilterComposer f) f,
+  ) {
+    final $$HabitGroupLinksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.habitGroupLinks,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitGroupLinksTableFilterComposer(
+            $db: $db,
+            $table: $db.habitGroupLinks,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -3350,6 +3830,31 @@ class $$HabitsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> habitGroupLinksRefs<T extends Object>(
+    Expression<T> Function($$HabitGroupLinksTableAnnotationComposer a) f,
+  ) {
+    final $$HabitGroupLinksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.habitGroupLinks,
+      getReferencedColumn: (t) => t.habitId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitGroupLinksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habitGroupLinks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$HabitsTableTableManager
@@ -3365,7 +3870,11 @@ class $$HabitsTableTableManager
           $$HabitsTableUpdateCompanionBuilder,
           (Habit, $$HabitsTableReferences),
           Habit,
-          PrefetchHooks Function({bool categoryId, bool habitLogsRefs})
+          PrefetchHooks Function({
+            bool categoryId,
+            bool habitLogsRefs,
+            bool habitGroupLinksRefs,
+          })
         > {
   $$HabitsTableTableManager(_$AppDatabase db, $HabitsTable table)
     : super(
@@ -3464,59 +3973,98 @@ class $$HabitsTableTableManager
                     (e.readTable(table), $$HabitsTableReferences(db, table, e)),
               )
               .toList(),
-          prefetchHooksCallback: ({categoryId = false, habitLogsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (habitLogsRefs) db.habitLogs],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (categoryId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.categoryId,
-                                referencedTable: $$HabitsTableReferences
-                                    ._categoryIdTable(db),
-                                referencedColumn: $$HabitsTableReferences
-                                    ._categoryIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                categoryId = false,
+                habitLogsRefs = false,
+                habitGroupLinksRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (habitLogsRefs) db.habitLogs,
+                    if (habitGroupLinksRefs) db.habitGroupLinks,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (categoryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.categoryId,
+                                    referencedTable: $$HabitsTableReferences
+                                        ._categoryIdTable(db),
+                                    referencedColumn: $$HabitsTableReferences
+                                        ._categoryIdTable(db)
+                                        .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (habitLogsRefs)
+                        await $_getPrefetchedData<
+                          Habit,
+                          $HabitsTable,
+                          HabitLog
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitsTableReferences
+                              ._habitLogsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).habitLogsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (habitGroupLinksRefs)
+                        await $_getPrefetchedData<
+                          Habit,
+                          $HabitsTable,
+                          HabitGroupLink
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitsTableReferences
+                              ._habitGroupLinksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).habitGroupLinksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (habitLogsRefs)
-                    await $_getPrefetchedData<Habit, $HabitsTable, HabitLog>(
-                      currentTable: table,
-                      referencedTable: $$HabitsTableReferences
-                          ._habitLogsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$HabitsTableReferences(db, table, p0).habitLogsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.habitId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -3533,7 +4081,11 @@ typedef $$HabitsTableProcessedTableManager =
       $$HabitsTableUpdateCompanionBuilder,
       (Habit, $$HabitsTableReferences),
       Habit,
-      PrefetchHooks Function({bool categoryId, bool habitLogsRefs})
+      PrefetchHooks Function({
+        bool categoryId,
+        bool habitLogsRefs,
+        bool habitGroupLinksRefs,
+      })
     >;
 typedef $$HabitLogsTableCreateCompanionBuilder =
     HabitLogsCompanion Function({
@@ -4257,6 +4809,350 @@ typedef $$OnboardingResponsesTableProcessedTableManager =
       OnboardingResponse,
       PrefetchHooks Function()
     >;
+typedef $$HabitGroupLinksTableCreateCompanionBuilder =
+    HabitGroupLinksCompanion Function({
+      Value<int> id,
+      required int habitId,
+      required String groupId,
+      required String groupHabitId,
+      Value<DateTime> linkedAt,
+      Value<DateTime?> lastSyncedAt,
+    });
+typedef $$HabitGroupLinksTableUpdateCompanionBuilder =
+    HabitGroupLinksCompanion Function({
+      Value<int> id,
+      Value<int> habitId,
+      Value<String> groupId,
+      Value<String> groupHabitId,
+      Value<DateTime> linkedAt,
+      Value<DateTime?> lastSyncedAt,
+    });
+
+final class $$HabitGroupLinksTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $HabitGroupLinksTable, HabitGroupLink> {
+  $$HabitGroupLinksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitsTable _habitIdTable(_$AppDatabase db) => db.habits.createAlias(
+    $_aliasNameGenerator(db.habitGroupLinks.habitId, db.habits.id),
+  );
+
+  $$HabitsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<int>('habit_id')!;
+
+    final manager = $$HabitsTableTableManager(
+      $_db,
+      $_db.habits,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$HabitGroupLinksTableFilterComposer
+    extends Composer<_$AppDatabase, $HabitGroupLinksTable> {
+  $$HabitGroupLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get groupHabitId => $composableBuilder(
+    column: $table.groupHabitId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get linkedAt => $composableBuilder(
+    column: $table.linkedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitsTableFilterComposer get habitId {
+    final $$HabitsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableFilterComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitGroupLinksTableOrderingComposer
+    extends Composer<_$AppDatabase, $HabitGroupLinksTable> {
+  $$HabitGroupLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupId => $composableBuilder(
+    column: $table.groupId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get groupHabitId => $composableBuilder(
+    column: $table.groupHabitId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get linkedAt => $composableBuilder(
+    column: $table.linkedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitsTableOrderingComposer get habitId {
+    final $$HabitsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitGroupLinksTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HabitGroupLinksTable> {
+  $$HabitGroupLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get groupId =>
+      $composableBuilder(column: $table.groupId, builder: (column) => column);
+
+  GeneratedColumn<String> get groupHabitId => $composableBuilder(
+    column: $table.groupHabitId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get linkedAt =>
+      $composableBuilder(column: $table.linkedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSyncedAt => $composableBuilder(
+    column: $table.lastSyncedAt,
+    builder: (column) => column,
+  );
+
+  $$HabitsTableAnnotationComposer get habitId {
+    final $$HabitsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitGroupLinksTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HabitGroupLinksTable,
+          HabitGroupLink,
+          $$HabitGroupLinksTableFilterComposer,
+          $$HabitGroupLinksTableOrderingComposer,
+          $$HabitGroupLinksTableAnnotationComposer,
+          $$HabitGroupLinksTableCreateCompanionBuilder,
+          $$HabitGroupLinksTableUpdateCompanionBuilder,
+          (HabitGroupLink, $$HabitGroupLinksTableReferences),
+          HabitGroupLink,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$HabitGroupLinksTableTableManager(
+    _$AppDatabase db,
+    $HabitGroupLinksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitGroupLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HabitGroupLinksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HabitGroupLinksTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> habitId = const Value.absent(),
+                Value<String> groupId = const Value.absent(),
+                Value<String> groupHabitId = const Value.absent(),
+                Value<DateTime> linkedAt = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
+              }) => HabitGroupLinksCompanion(
+                id: id,
+                habitId: habitId,
+                groupId: groupId,
+                groupHabitId: groupHabitId,
+                linkedAt: linkedAt,
+                lastSyncedAt: lastSyncedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int habitId,
+                required String groupId,
+                required String groupHabitId,
+                Value<DateTime> linkedAt = const Value.absent(),
+                Value<DateTime?> lastSyncedAt = const Value.absent(),
+              }) => HabitGroupLinksCompanion.insert(
+                id: id,
+                habitId: habitId,
+                groupId: groupId,
+                groupHabitId: groupHabitId,
+                linkedAt: linkedAt,
+                lastSyncedAt: lastSyncedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HabitGroupLinksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable:
+                                    $$HabitGroupLinksTableReferences
+                                        ._habitIdTable(db),
+                                referencedColumn:
+                                    $$HabitGroupLinksTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$HabitGroupLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HabitGroupLinksTable,
+      HabitGroupLink,
+      $$HabitGroupLinksTableFilterComposer,
+      $$HabitGroupLinksTableOrderingComposer,
+      $$HabitGroupLinksTableAnnotationComposer,
+      $$HabitGroupLinksTableCreateCompanionBuilder,
+      $$HabitGroupLinksTableUpdateCompanionBuilder,
+      (HabitGroupLink, $$HabitGroupLinksTableReferences),
+      HabitGroupLink,
+      PrefetchHooks Function({bool habitId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4271,4 +5167,6 @@ class $AppDatabaseManager {
       $$UserProfileTableTableManager(_db, _db.userProfile);
   $$OnboardingResponsesTableTableManager get onboardingResponses =>
       $$OnboardingResponsesTableTableManager(_db, _db.onboardingResponses);
+  $$HabitGroupLinksTableTableManager get habitGroupLinks =>
+      $$HabitGroupLinksTableTableManager(_db, _db.habitGroupLinks);
 }

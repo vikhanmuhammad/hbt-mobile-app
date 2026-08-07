@@ -91,3 +91,23 @@ class HabitLogs extends Table {
         {habitId, date},
       ];
 }
+
+/// Relasi habit lokal ke Group Habit di Firestore (fitur Community, Pro-only)
+/// — `groupId`/`groupHabitId` adalah document ID Firestore (text), bukan FK
+/// lokal. Lihat update_v2.md §8.
+@TableIndex(name: 'idx_habit_group_links_habit_id', columns: {#habitId})
+class HabitGroupLinks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get habitId =>
+      integer().references(Habits, #id, onDelete: KeyAction.cascade)();
+  TextColumn get groupId => text()();
+  TextColumn get groupHabitId => text()();
+  DateTimeColumn get linkedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get lastSyncedAt => dateTime().nullable()();
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+        {habitId, groupHabitId},
+      ];
+}
