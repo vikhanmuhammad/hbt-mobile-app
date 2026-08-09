@@ -1,72 +1,72 @@
 {
   "categories": [
     {
-      "key": "kesehatan",
-      "rawLabel": "Kesehatan",
-      "defaultGoalPhrase": "Jadi Sehat",
+      "key": "health",
+      "rawLabel": "Health",
+      "defaultGoalPhrase": "Be Healthy",
       "icon": "heart-pulse",
       "color": "#6B9B5E",
       "habits": [
-        { "name": "Minum air putih", "icon": "glass-water", "goalPeriod": "daily", "goalValue": 8, "goalUnit": "gelas", "timeRange": "anytime" },
-        { "name": "Jalan kaki", "icon": "person-walking", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
-        { "name": "Makan sayur & buah", "icon": "carrot", "goalPeriod": "daily", "goalValue": 3, "goalUnit": "porsi", "timeRange": "anytime" },
-        { "name": "Tidur cukup (7-8 jam)", "icon": "bed", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
+        { "name": "Drink water", "icon": "glass-water", "goalPeriod": "daily", "goalValue": 8, "goalUnit": "glass", "timeRange": "anytime" },
+        { "name": "Walk", "icon": "person-walking", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Eat vegetables & fruit", "icon": "carrot", "goalPeriod": "daily", "goalValue": 3, "goalUnit": "serving", "timeRange": "anytime" },
+        { "name": "Get enough sleep (7-8 hours)", "icon": "bed", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
       ]
     },
     {
-      "key": "olahraga",
-      "rawLabel": "Olahraga",
-      "defaultGoalPhrase": "Jadi Aktif",
+      "key": "exercise",
+      "rawLabel": "Exercise",
+      "defaultGoalPhrase": "Be Active",
       "icon": "person-running",
       "color": "#E08A3C",
       "habits": [
-        { "name": "Lari", "icon": "person-running", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "morning" },
-        { "name": "Olahraga ringan (exercise)", "icon": "dumbbell", "goalPeriod": "weekly", "goalValue": 5, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Run", "icon": "person-running", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Light exercise", "icon": "dumbbell", "goalPeriod": "weekly", "goalValue": 5, "goalUnit": "x", "timeRange": "anytime" },
         { "name": "Yoga/Stretching", "icon": "spa", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
-      "key": "produktivitas",
-      "rawLabel": "Produktivitas",
-      "defaultGoalPhrase": "Jadi Produktif",
+      "key": "productivity",
+      "rawLabel": "Productivity",
+      "defaultGoalPhrase": "Be Productive",
       "icon": "list-check",
       "color": "#4A8C82",
       "habits": [
-        { "name": "Baca buku", "icon": "book", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "menit", "timeRange": "anytime" },
-        { "name": "Belajar skill baru", "icon": "graduation-cap", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Read a book", "icon": "book", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Learn a new skill", "icon": "graduation-cap", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
       "key": "mindfulness",
       "rawLabel": "Mental & Mindfulness",
-      "defaultGoalPhrase": "Jadi Tenang",
+      "defaultGoalPhrase": "Be Calm",
       "icon": "spa",
       "color": "#8B6FB3",
       "habits": [
-        { "name": "Meditasi", "icon": "spa", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "menit", "timeRange": "morning" },
+        { "name": "Meditate", "icon": "spa", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "morning" },
         { "name": "Journaling/Gratitude", "icon": "pen", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
       ]
     },
     {
-      "key": "keuangan",
-      "rawLabel": "Keuangan",
-      "defaultGoalPhrase": "Jadi Hemat",
+      "key": "finance",
+      "rawLabel": "Finance",
+      "defaultGoalPhrase": "Save Money",
       "icon": "piggy-bank",
       "color": "#4A82B0",
       "habits": [
-        { "name": "Catat pengeluaran harian", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
-        { "name": "Batasi jajan harian", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
-        { "name": "Nabung", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Log daily expenses", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Limit daily spending", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
+        { "name": "Save money", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
-      "key": "sosial",
-      "rawLabel": "Sosial & Relasi",
-      "defaultGoalPhrase": "Jadi Sosial",
+      "key": "social",
+      "rawLabel": "Social & Relationships",
+      "defaultGoalPhrase": "Be Social",
       "icon": "people-group",
       "color": "#C97B7B",
       "habits": [
-        { "name": "Hubungi keluarga/teman", "icon": "phone", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Contact family/friends", "icon": "phone", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     }
   ]

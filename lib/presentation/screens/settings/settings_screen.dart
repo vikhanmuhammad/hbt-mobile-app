@@ -12,10 +12,10 @@ import 'personalize_screen.dart';
 import 'profile_screen.dart';
 import 'usage_tips_screen.dart';
 
-/// Tampilan, profil, personalize, reminder default, data, usage tips, FAQ,
-/// dan tentang filosofi tracker. CLAUDE.md v3 §8 — tidak ada lagi menu
-/// "Kelola Kategori" terpisah; goal phrase dikelola implisit lewat alur
-/// Tambah/Edit Habit.
+/// Display, profile, personalize, default reminder, data, usage tips, FAQ,
+/// and about the tracker's philosophy. CLAUDE.md v3 §8 — no more separate
+/// "Manage Categories" menu; goal phrases are managed implicitly through
+/// the Add/Edit Habit flow.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -24,9 +24,9 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final themeMode = ref.watch(appThemeModeProvider);
-    // Saat belum pernah diset manual, themeMode == ThemeMode.system — app
-    // sudah render gelap kalau perangkat gelap, tapi switch harus tetap
-    // menampilkan status efektif itu, bukan cuma cek == ThemeMode.dark.
+    // When never manually set, themeMode == ThemeMode.system — the app
+    // already renders dark if the device is dark, but the switch still
+    // needs to show that effective status, not just check == ThemeMode.dark.
     final isDarkEffective = themeMode == ThemeMode.dark ||
         (themeMode == ThemeMode.system &&
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
@@ -39,9 +39,9 @@ class SettingsScreen extends ConsumerWidget {
           child: ListView(
             padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 40),
             children: [
-              Text('Pengaturan', style: theme.textTheme.titleLarge),
+              Text('Settings', style: theme.textTheme.titleLarge),
               const SizedBox(height: 24),
-              _SectionLabel('Tampilan'),
+              _SectionLabel('Display'),
               const SizedBox(height: 10),
               Card(
                 child: Padding(
@@ -49,7 +49,7 @@ class SettingsScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Mode gelap', style: theme.textTheme.bodyMedium),
+                      Text('Dark mode', style: theme.textTheme.bodyMedium),
                       ToggleSwitch(
                         value: isDarkEffective,
                         onChanged: (v) => ref.read(appThemeModeProvider.notifier).toggleDark(v),
@@ -59,11 +59,11 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Akun'),
+              _SectionLabel('Account'),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.person_outline_rounded,
-                label: 'Profil',
+                label: 'Profile',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 ),
@@ -83,7 +83,7 @@ class SettingsScreen extends ConsumerWidget {
                 const _DebugProToggleTile(),
               ],
               const SizedBox(height: 24),
-              _SectionLabel('Reminder Default'),
+              _SectionLabel('Default Reminder'),
               const SizedBox(height: 10),
               const _DefaultReminderTile(),
               const SizedBox(height: 24),
@@ -107,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Bantuan'),
+              _SectionLabel('Help'),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.lightbulb_outline_rounded,
@@ -125,17 +125,17 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Tentang'),
+              _SectionLabel('About'),
               const SizedBox(height: 10),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Text(
-                    'Dibangun berdasar riset Phillippa Lally dkk. (UCL): kebiasaan baru '
-                    'rata-rata butuh 66 hari pengulangan agar terasa otomatis. Fokus pada '
-                    'konsistensi, bukan kesempurnaan.\n\n'
-                    'Sepenuhnya offline. Semua rekomendasi berasal dari data statis di app, '
-                    'tidak ada akun atau sinkronisasi cloud.',
+                    'Built on research by Phillippa Lally et al. (UCL): a new habit '
+                    'takes on average 66 days of repetition to become automatic. Focus on '
+                    'consistency, not perfection.\n\n'
+                    'Fully offline. All recommendations come from static data in the app, '
+                    'no account or cloud sync.',
                     style: theme.textTheme.bodySmall?.copyWith(height: 1.6),
                   ),
                 ),
@@ -146,7 +146,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: TextButton(
                   onPressed: () => _confirmResetDemo(context, ref),
                   child: const Text(
-                    'Lihat ulang alur onboarding (demo)',
+                    'Replay the onboarding flow (demo)',
                     style: TextStyle(decoration: TextDecoration.underline, fontSize: 13),
                   ),
                 ),
@@ -160,7 +160,7 @@ class SettingsScreen extends ConsumerWidget {
 
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature belum tersedia di versi ini')),
+      SnackBar(content: Text('$feature is not available in this version yet')),
     );
   }
 
@@ -168,19 +168,19 @@ class SettingsScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus semua data?'),
+        title: const Text('Delete all data?'),
         content: const Text(
-          'Semua kategori, habit, dan riwayat progress akan dihapus permanen, lalu '
-          'app kembali ke alur onboarding dari awal. Tindakan ini tidak bisa dibatalkan.',
+          'All categories, habits, and progress history will be permanently deleted, then '
+          'the app returns to the onboarding flow from the start. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Batal'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Hapus Semua'),
+            child: const Text('Delete All'),
           ),
         ],
       ),
@@ -195,7 +195,7 @@ class SettingsScreen extends ConsumerWidget {
       try {
         await notif.cancelForHabit(h.id);
       } catch (_) {
-        // Platform notifikasi tidak tersedia — lanjutkan penghapusan data.
+        // Notification platform not available — proceed with data deletion.
       }
     }
 
@@ -260,9 +260,9 @@ class _NavTile extends StatelessWidget {
   }
 }
 
-/// Toggle status Pro lewat `MockEntitlementService` — cuma tampil di debug
-/// build. Menggantikan integrasi Play Billing/StoreKit yang ditunda ke
-/// mendekati rilis (update_v2.md §1.1).
+/// Toggle Pro status via `MockEntitlementService` — only shown in debug
+/// builds. Stands in for the Play Billing/StoreKit integration, deferred
+/// until closer to release (update_v2.md §1.1).
 class _DebugProToggleTile extends ConsumerWidget {
   const _DebugProToggleTile();
 
@@ -277,7 +277,7 @@ class _DebugProToggleTile extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text('Mode Pro (Debug)', style: theme.textTheme.bodyMedium),
+              child: Text('Pro Mode (Debug)', style: theme.textTheme.bodyMedium),
             ),
             ToggleSwitch(
               value: isPro,
@@ -325,7 +325,7 @@ class _DefaultReminderTile extends ConsumerWidget {
               Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodySmall?.color),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Jam pengingat default: $current', style: theme.textTheme.bodyMedium),
+                child: Text('Default reminder time: $current', style: theme.textTheme.bodyMedium),
               ),
               Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
             ],

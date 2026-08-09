@@ -24,10 +24,10 @@ class GroupDetailScreen extends ConsumerWidget {
 
     return groupAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, st) => Scaffold(body: Center(child: Text('Gagal memuat grup: $e'))),
+      error: (e, st) => Scaffold(body: Center(child: Text('Failed to load group: $e'))),
       data: (group) {
         if (group == null) {
-          return const Scaffold(body: Center(child: Text('Grup tidak ditemukan')));
+          return const Scaffold(body: Center(child: Text('Group not found')));
         }
         return _GroupDetailContent(group: group);
       },
@@ -62,7 +62,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
   void _copyInviteCode() {
     Clipboard.setData(ClipboardData(text: widget.group.inviteCode));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Kode invite "${widget.group.inviteCode}" disalin')),
+      SnackBar(content: Text('Invite code "${widget.group.inviteCode}" copied')),
     );
   }
 
@@ -74,7 +74,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
         title: Text(group.name),
         actions: [
           IconButton(
-            tooltip: 'Salin kode invite',
+            tooltip: 'Copy invite code',
             icon: const Icon(Icons.ios_share_rounded),
             onPressed: _copyInviteCode,
           ),
@@ -86,7 +86,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
             Tab(text: 'Habits'),
             Tab(text: 'Leaderboard'),
             Tab(text: 'Chat'),
-            Tab(text: 'Anggota'),
+            Tab(text: 'Members'),
           ],
         ),
       ),
@@ -119,10 +119,10 @@ class _HabitsTab extends ConsumerWidget {
     return Scaffold(
       body: habitsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Gagal memuat: $e')),
+        error: (e, st) => Center(child: Text('Failed to load: $e')),
         data: (habits) {
           if (habits.isEmpty) {
-            return const Center(child: Text('Belum ada Group Habit. Buat tantangan pertama!'));
+            return const Center(child: Text('No Group Habits yet. Create the first challenge!'));
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -190,10 +190,10 @@ class _LeaderboardTabState extends ConsumerState<_LeaderboardTab> {
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Gagal memuat: $e')),
+      error: (e, st) => Center(child: Text('Failed to load: $e')),
       data: (habits) {
         if (habits.isEmpty) {
-          return const Center(child: Text('Buat Group Habit dulu untuk lihat leaderboard.'));
+          return const Center(child: Text('Create a Group Habit first to see the leaderboard.'));
         }
         final selected = habits.firstWhere(
           (h) => h.id == _selectedHabitId,
@@ -262,10 +262,10 @@ class _LeaderboardList extends ConsumerWidget {
 
     return entriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Gagal memuat leaderboard: $e')),
+      error: (e, st) => Center(child: Text('Failed to load leaderboard: $e')),
       data: (entries) {
         if (entries.isEmpty) {
-          return const Center(child: Text('Belum ada progress tercatat.'));
+          return const Center(child: Text('No progress recorded yet.'));
         }
         final sorted = [...entries]
           ..sort((a, b) =>
@@ -304,12 +304,12 @@ class _LeaderboardTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final value = byProgress ? '${entry.progressValue} $unit' : '${entry.streak} hari';
+    final value = byProgress ? '${entry.progressValue} $unit' : '${entry.streak} days';
     return Card(
       color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
       child: ListTile(
         leading: CircleAvatar(radius: 16, child: Text('$rank')),
-        title: Text(entry.displayName + (isMe ? ' (Kamu)' : '')),
+        title: Text(entry.displayName + (isMe ? ' (You)' : '')),
         trailing: Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700)),
       ),
     );
@@ -358,7 +358,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
           );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal kirim pesan: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -375,10 +375,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
         Expanded(
           child: messagesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Gagal memuat chat: $e')),
+            error: (e, st) => Center(child: Text('Failed to load chat: $e')),
             data: (messages) {
               if (messages.isEmpty) {
-                return const Center(child: Text('Belum ada pesan. Mulai obrolan!'));
+                return const Center(child: Text('No messages yet. Start the conversation!'));
               }
               return ListView.builder(
                 reverse: true,
@@ -398,7 +398,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    decoration: const InputDecoration(hintText: 'Tulis pesan...', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(hintText: 'Write a message...', border: OutlineInputBorder()),
                     onSubmitted: (_) => _send(),
                   ),
                 ),
@@ -508,10 +508,10 @@ class _MemberTile extends ConsumerWidget {
                 },
                 itemBuilder: (context) => [
                   if (member.role == GroupRole.member)
-                    const PopupMenuItem(value: 'promote', child: Text('Jadikan Admin')),
+                    const PopupMenuItem(value: 'promote', child: Text('Make Admin')),
                   if (member.role == GroupRole.admin)
-                    const PopupMenuItem(value: 'demote', child: Text('Copot Admin')),
-                  const PopupMenuItem(value: 'kick', child: Text('Keluarkan')),
+                    const PopupMenuItem(value: 'demote', child: Text('Remove Admin')),
+                  const PopupMenuItem(value: 'kick', child: Text('Remove')),
                 ],
               )
             : null,

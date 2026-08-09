@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/navigation_shell.dart';
 
-/// Alur user lama (CLAUDE.md v3 §4.2): "Selamat Datang Kembali, [Nama]" —
-/// tampil singkat lalu auto-lanjut ke Beranda, atau bisa ditap langsung.
+/// Returning user flow (CLAUDE.md v3 §4.2): "Welcome Back, [Name]" —
+/// shown briefly then auto-continues to Home, or can be tapped directly.
 class ReturningWelcomeScreen extends StatefulWidget {
   const ReturningWelcomeScreen({super.key, required this.name});
 
@@ -56,7 +56,7 @@ class _ReturningWelcomeScreenState extends State<ReturningWelcomeScreen> {
                   const AppLogo(size: 72),
                   const SizedBox(height: 20),
                   Text(
-                    'Selamat Datang Kembali,\n${widget.name}',
+                    'Welcome Back,\n${widget.name}',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineMedium,
                   ),

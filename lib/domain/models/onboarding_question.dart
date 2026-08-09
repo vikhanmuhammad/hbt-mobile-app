@@ -1,4 +1,4 @@
-/// Pertanyaan kuesioner gaya hidup onboarding (CLAUDE.md v3 §4.1 langkah 3).
+/// Onboarding lifestyle questionnaire questions (CLAUDE.md v3 §4.1 step 3).
 class OnboardingQuestion {
   const OnboardingQuestion({
     required this.key,
@@ -6,7 +6,7 @@ class OnboardingQuestion {
     required this.options,
   });
 
-  /// Cocok dengan `OnboardingResponses.questionKey`.
+  /// Matches `OnboardingResponses.questionKey`.
   final String key;
   final String prompt;
   final List<String> options;
@@ -15,34 +15,34 @@ class OnboardingQuestion {
 const List<OnboardingQuestion> lifestyleQuestions = [
   OnboardingQuestion(
     key: 'lifestyle_challenge',
-    prompt: 'Apa yang sering kamu alami?',
+    prompt: 'What do you often experience?',
     options: [
-      'Tidak punya tujuan yang jelas',
-      'Suka menunda sebelum memulai tugas',
-      'Sering merasa stres atau cemas',
-      'Susah konsisten dengan rencana',
-      'Susah menyelesaikan tugas tepat waktu',
+      'No clear goals',
+      'Tend to procrastinate before starting tasks',
+      'Often feel stressed or anxious',
+      'Struggle to stay consistent with plans',
+      'Struggle to finish tasks on time',
     ],
   ),
   OnboardingQuestion(
     key: 'action_timing',
-    prompt: 'Kapan biasanya kamu bertindak setelah menetapkan tujuan?',
+    prompt: 'When do you usually take action after setting a goal?',
     options: [
-      'Langsung',
-      'Nanti (1–3 hari)',
-      'Menunggu waktu yang tepat',
-      'Butuh pengingat',
-      'Di menit-menit terakhir',
+      'Right away',
+      'Later (1–3 days)',
+      'Waiting for the right time',
+      'Need a reminder',
+      'At the last minute',
     ],
   ),
   OnboardingQuestion(
     key: 'motivation',
-    prompt: 'Apa yang mendorongmu membangun kebiasaan baik?',
+    prompt: 'What drives you to build good habits?',
     options: [
-      'Mencapai tujuan',
-      'Merasa lebih baik',
-      'Meningkatkan kesehatan',
-      'Menjadi versi diri yang diinginkan',
+      'Achieving goals',
+      'Feeling better',
+      'Improving health',
+      'Becoming the person I want to be',
     ],
   ),
 ];

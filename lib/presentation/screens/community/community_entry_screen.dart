@@ -9,8 +9,8 @@ import 'create_group_screen.dart';
 import 'group_detail_screen.dart';
 import 'join_group_screen.dart';
 
-/// Tab Community di navigasi utama — cuma muncul kontennya kalau `isPro`.
-/// Free tier lihat teaser upgrade (update_v2.md §3, §11).
+/// Community tab in main navigation — content only shows if `isPro`.
+/// Free tier sees an upgrade teaser (update_v2.md §3, §11).
 class CommunityEntryScreen extends ConsumerWidget {
   const CommunityEntryScreen({super.key});
 
@@ -34,9 +34,9 @@ class _ProTeaser extends StatelessWidget {
   Widget build(BuildContext context) {
     return const ProFeatureTeaser(
       icon: Icons.groups_rounded,
-      title: 'Community — Fitur Pro',
-      description: 'Buat/gabung grup habit bareng teman, saingan lewat leaderboard, dan chat '
-          'real-time. Upgrade ke Pro untuk membuka fitur ini.',
+      title: 'Community — Pro Feature',
+      description: 'Create/join habit groups with friends, compete via leaderboards, and chat '
+          'in real-time. Upgrade to Pro to unlock this feature.',
     );
   }
 }
@@ -58,7 +58,7 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal masuk: $e')),
+          SnackBar(content: Text('Failed to sign in: $e')),
         );
       }
     } finally {
@@ -78,10 +78,10 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
             children: [
               Icon(Icons.groups_rounded, size: 64, color: theme.colorScheme.primary),
               const SizedBox(height: 20),
-              Text('Masuk untuk Lanjut', style: theme.textTheme.titleLarge),
+              Text('Sign In to Continue', style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               Text(
-                'Community perlu akun supaya progress kamu bisa dibagikan ke grup.',
+                'Community requires an account so your progress can be shared to a group.',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
@@ -91,7 +91,7 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
                   : FilledButton.icon(
                       onPressed: _signIn,
                       icon: const Icon(Icons.login_rounded),
-                      label: const Text('Masuk dengan Google'),
+                      label: const Text('Sign in with Google'),
                     ),
             ],
           ),
@@ -126,7 +126,7 @@ class _GroupListView extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: PrimaryPillButton(
-                        label: '+ Buat Grup',
+                        label: '+ Create Group',
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
                         ),
@@ -138,7 +138,7 @@ class _GroupListView extends ConsumerWidget {
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const JoinGroupScreen()),
                         ),
-                        child: const Text('Join via Kode'),
+                        child: const Text('Join via Code'),
                       ),
                     ),
                   ],
@@ -147,12 +147,12 @@ class _GroupListView extends ConsumerWidget {
                 Expanded(
                   child: groupsAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, st) => Center(child: Text('Gagal memuat grup: $e')),
+                    error: (e, st) => Center(child: Text('Failed to load groups: $e')),
                     data: (groups) {
                       if (groups.isEmpty) {
                         return Center(
                           child: Text(
-                            'Belum ada grup. Buat grup baru atau join lewat kode invite dari teman.',
+                            'No groups yet. Create a new group or join with an invite code from a friend.',
                             style: theme.textTheme.bodyMedium,
                             textAlign: TextAlign.center,
                           ),
@@ -205,7 +205,7 @@ class _GroupTile extends StatelessWidget {
                   children: [
                     Text(group.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
-                    Text('${group.members.length} anggota', style: theme.textTheme.bodySmall),
+                    Text('${group.members.length} members', style: theme.textTheme.bodySmall),
                   ],
                 ),
               ),

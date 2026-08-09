@@ -6,8 +6,8 @@ import '../domain/models/enums.dart';
 import '../domain/models/habit.dart';
 import '../domain/models/task_days.dart';
 
-/// Notifikasi lokal biasa (bukan exact alarm) untuk reminder habit, dijadwalkan
-/// ulang tiap kali habit dibuat/diubah/dihapus. Lihat CLAUDE.md §7.
+/// Plain local notifications (not exact alarms) for habit reminders,
+/// rescheduled every time a habit is created/edited/deleted. See CLAUDE.md §7.
 class NotificationService {
   NotificationService._();
 
@@ -43,8 +43,8 @@ class NotificationService {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  /// Jadwalkan ulang reminder untuk 1 habit: batalkan yang lama, lalu buat
-  /// notifikasi baru mengikuti reminderTime + taskDays kalau reminder aktif.
+  /// Reschedule the reminder for 1 habit: cancel the old one, then create a
+  /// new notification following reminderTime + taskDays if the reminder is enabled.
   Future<void> rescheduleForHabit(Habit habit) async {
     await cancelForHabit(habit.id);
     if (!habit.reminderEnabled ||
@@ -63,8 +63,8 @@ class NotificationService {
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'habit_reminders',
-        'Pengingat Habit',
-        channelDescription: 'Pengingat harian untuk habit yang aktif',
+        'Habit Reminders',
+        channelDescription: 'Daily reminders for active habits',
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
       ),
@@ -113,8 +113,8 @@ class NotificationService {
   }) async {
     await _plugin.zonedSchedule(
       id: id,
-      title: 'Waktunya: $title',
-      body: 'Jangan lupa catat progress hari ini.',
+      title: 'Time for: $title',
+      body: 'Don\'t forget to log your progress today.',
       scheduledDate: _nextInstance(hour, minute),
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -132,8 +132,8 @@ class NotificationService {
   }) async {
     await _plugin.zonedSchedule(
       id: id,
-      title: 'Waktunya: $title',
-      body: 'Jangan lupa catat progress hari ini.',
+      title: 'Time for: $title',
+      body: 'Don\'t forget to log your progress today.',
       scheduledDate: _nextInstance(hour, minute, isoWeekday: isoWeekday),
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

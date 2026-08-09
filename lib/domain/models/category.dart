@@ -18,12 +18,12 @@ class Category {
   final DateTime createdAt;
 }
 
-/// Goal phrase kategori Keuangan bawaan (`defaultGoalPhrase` untuk
-/// `key: "keuangan"` di habit_templates.json) — satu-satunya cara
-/// identifikasi kategori ini karena [Category] tidak punya field key/tipe
-/// (lihat CategoryRepository.seedDefaultCategories). Kategori custom tidak
-/// pernah dianggap kategori Keuangan.
-const financeCategoryGoalPhrase = 'Jadi Hemat';
+/// Default goal phrase for the Finance category (`defaultGoalPhrase` for
+/// `key: "keuangan"` in habit_templates.json) — the only way to identify
+/// this category since [Category] has no key/type field (see
+/// CategoryRepository.seedDefaultCategories). Custom categories are never
+/// treated as the Finance category.
+const financeCategoryGoalPhrase = 'Save Money';
 
 bool isFinanceCategory(Category category) =>
     category.isDefault && category.name == financeCategoryGoalPhrase;

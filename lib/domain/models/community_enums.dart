@@ -9,12 +9,12 @@ enum GroupRole {
 
   String get label => switch (this) {
         GroupRole.admin => 'Admin',
-        GroupRole.member => 'Anggota',
+        GroupRole.member => 'Member',
       };
 }
 
-/// Metode ranking leaderboard, dipilih per Group Habit (bukan per Group) —
-/// lihat update_v2.md §5.
+/// Leaderboard ranking method, chosen per Group Habit (not per Group) —
+/// see update_v2.md §5.
 enum LeaderboardMode {
   streak,
   progress,

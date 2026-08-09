@@ -12,13 +12,13 @@ import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 
 const _monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/// Rangkuman Keuangan: total pengeluaran, jumlah dihemat, dan setoran
-/// tabungan dari semua habit bersatuan rupiah (lintas kategori), per bulan
-/// kalender — plus tren pengeluaran harian dan breakdown per habit.
+/// Finance Summary: total expenses, amount saved, and savings deposits
+/// from all rupiah-unit habits (across categories), per calendar month —
+/// plus daily spending trend and a per-habit breakdown.
 class FinanceSummaryScreen extends ConsumerWidget {
   const FinanceSummaryScreen({super.key});
 
@@ -28,9 +28,9 @@ class FinanceSummaryScreen extends ConsumerWidget {
     if (!isPro) {
       return const ProFeatureTeaser(
         icon: Icons.account_balance_wallet_rounded,
-        title: 'Keuangan — Fitur Pro',
-        description: 'Lacak pengeluaran, tabungan, dan habit hemat dalam satu ringkasan bulanan. '
-            'Upgrade ke Pro untuk membuka fitur ini.',
+        title: 'Finance — Pro Feature',
+        description: 'Track spending, savings, and saving habits in one monthly summary. '
+            'Upgrade to Pro to unlock this feature.',
       );
     }
 
@@ -54,7 +54,7 @@ class FinanceSummaryScreen extends ConsumerWidget {
             ),
             error: (e, st) => Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('Gagal memuat rangkuman keuangan: $e'),
+              child: Text('Failed to load finance summary: $e'),
             ),
             data: (summary) {
               if (!summary.hasData) return const _EmptyFinance();
@@ -140,10 +140,10 @@ class _EmptyFinance extends StatelessWidget {
             children: [
               Icon(Icons.account_balance_wallet_outlined, size: 48, color: Theme.of(context).disabledColor),
               const SizedBox(height: 16),
-              const Text('Belum ada habit keuangan'),
+              const Text('No finance habits yet'),
               const SizedBox(height: 8),
               const Text(
-                'Tambah habit bersatuan Rupiah (mis. batas pengeluaran harian di "Jadi Hemat") untuk mulai melihat rangkuman di sini.',
+                'Add a Rupiah-unit habit (e.g. a daily spending cap in "Save Money") to start seeing a summary here.',
                 textAlign: TextAlign.center,
               ),
             ],
@@ -175,7 +175,7 @@ class _TotalsSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Total Pengeluaran', style: theme.textTheme.bodyMedium),
+                Text('Total Spending', style: theme.textTheme.bodyMedium),
                 const SizedBox(height: 6),
                 Text(formatRupiah(summary.totalExpense), style: theme.textTheme.headlineMedium),
                 if (hasBudget) ...[
@@ -194,7 +194,7 @@ class _TotalsSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('dari budget ${formatRupiah(summary.totalBudget)}', style: theme.textTheme.bodySmall),
+                  Text('of ${formatRupiah(summary.totalBudget)} budget', style: theme.textTheme.bodySmall),
                 ],
               ],
             ),
@@ -205,7 +205,7 @@ class _TotalsSection extends StatelessWidget {
           children: [
             Expanded(
               child: _StatChip(
-                label: isOverBudget ? 'Kelebihan Budget' : 'Total Dihemat',
+                label: isOverBudget ? 'Over Budget' : 'Total Saved',
                 value: formatRupiah(saved.abs()),
                 color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
                 icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
@@ -214,7 +214,7 @@ class _TotalsSection extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _StatChip(
-                label: 'Total Ditabung',
+                label: 'Total Deposited',
                 value: formatRupiah(summary.totalSavingsDeposit),
                 color: theme.colorScheme.primary,
                 icon: Icons.account_balance_wallet_rounded,
@@ -283,12 +283,12 @@ class _SpendingTrendCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tren Pengeluaran Harian', style: theme.textTheme.titleMedium),
+            Text('Daily Spending Trend', style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
               height: 140,
               child: maxValue == 0
-                  ? Center(child: Text('Belum ada data', style: theme.textTheme.bodySmall))
+                  ? Center(child: Text('No data yet', style: theme.textTheme.bodySmall))
                   : SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -349,7 +349,7 @@ class _HabitBreakdownCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Per Habit', style: theme.textTheme.titleMedium),
+            Text('By Habit', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.habitStats)
               Padding(

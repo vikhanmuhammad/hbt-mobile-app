@@ -9,15 +9,15 @@ enum GoalPeriod {
       );
 
   String get label => switch (this) {
-        GoalPeriod.daily => 'Harian',
-        GoalPeriod.weekly => 'Mingguan',
-        GoalPeriod.monthly => 'Bulanan',
+        GoalPeriod.daily => 'Daily',
+        GoalPeriod.weekly => 'Weekly',
+        GoalPeriod.monthly => 'Monthly',
       };
 
   String get unitLabel => switch (this) {
-        GoalPeriod.daily => 'hari',
-        GoalPeriod.weekly => 'minggu',
-        GoalPeriod.monthly => 'bulan',
+        GoalPeriod.daily => 'day',
+        GoalPeriod.weekly => 'week',
+        GoalPeriod.monthly => 'month',
       };
 }
 
@@ -34,19 +34,19 @@ enum TimeRange {
       );
 
   String get label => switch (this) {
-        TimeRange.anytime => 'Kapan saja',
-        TimeRange.morning => 'Pagi',
-        TimeRange.afternoon => 'Siang',
-        TimeRange.evening => 'Sore',
-        TimeRange.night => 'Malam',
+        TimeRange.anytime => 'Anytime',
+        TimeRange.morning => 'Morning',
+        TimeRange.afternoon => 'Afternoon',
+        TimeRange.evening => 'Evening',
+        TimeRange.night => 'Night',
       };
 }
 
-/// Arah pencapaian target habit. `atLeast` (default, standar) = tercapai
-/// kalau progress >= goalValue. `atMost` = tercapai kalau progress <=
-/// goalValue — cocok untuk habit dengan target "batas maksimal", misalnya
-/// batas pengeluaran harian ("hemat pengeluaran"), bukan habit menabung
-/// (yang tetap pakai `atLeast` — makin banyak makin baik).
+/// Direction for achieving a habit's goal. `atLeast` (default, standard) =
+/// achieved when progress >= goalValue. `atMost` = achieved when progress
+/// <= goalValue — suited for habits with a "maximum limit" target, e.g. a
+/// daily spending cap ("save on spending"), not a saving habit (which still
+/// uses `atLeast` — more is better).
 enum GoalDirection {
   atLeast,
   atMost;
@@ -57,18 +57,18 @@ enum GoalDirection {
       );
 
   String get label => switch (this) {
-        GoalDirection.atLeast => 'Minimal (≥)',
-        GoalDirection.atMost => 'Maksimal (≤)',
+        GoalDirection.atLeast => 'At least (≥)',
+        GoalDirection.atMost => 'At most (≤)',
       };
 
   String get helperText => switch (this) {
-        GoalDirection.atLeast => 'Tercapai kalau hasil mencapai atau melebihi target — standar untuk kebanyakan habit.',
+        GoalDirection.atLeast => 'Achieved when the result reaches or exceeds the target — the standard for most habits.',
         GoalDirection.atMost =>
-          'Tercapai kalau hasil di bawah atau sama dengan target — cocok untuk batas maksimal, misalnya batas pengeluaran harian.',
+          'Achieved when the result is at or below the target — suited for a maximum limit, such as a daily spending cap.',
       };
 }
 
-/// Kunci hari Senin..Minggu, selaras dengan `DateTime.weekday` (1 = Senin).
+/// Weekday keys Monday..Sunday, aligned with `DateTime.weekday` (1 = Monday).
 const List<String> weekdayKeys = [
   'mon',
   'tue',
@@ -80,13 +80,13 @@ const List<String> weekdayKeys = [
 ];
 
 const Map<String, String> weekdayLabels = {
-  'mon': 'Sen',
-  'tue': 'Sel',
-  'wed': 'Rab',
-  'thu': 'Kam',
-  'fri': 'Jum',
-  'sat': 'Sab',
-  'sun': 'Min',
+  'mon': 'Mon',
+  'tue': 'Tue',
+  'wed': 'Wed',
+  'thu': 'Thu',
+  'fri': 'Fri',
+  'sat': 'Sat',
+  'sun': 'Sun',
 };
 
 const String allDaysKey = 'all';

@@ -44,7 +44,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal membuat grup: $e')),
+          SnackBar(content: Text('Failed to create group: $e')),
         );
       }
     } finally {
@@ -55,19 +55,19 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Buat Grup')),
+      appBar: AppBar(title: const Text('Create Group')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nama Grup', style: Theme.of(context).textTheme.labelMedium),
+            Text('Group Name', style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
               autofocus: true,
               decoration: const InputDecoration(
-                hintText: 'Mis. Squad Lari Pagi',
+                hintText: 'e.g. Morning Run Squad',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -82,7 +82,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Buat Grup'),
+                    : const Text('Create Group'),
               ),
             ),
           ],

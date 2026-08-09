@@ -9,9 +9,9 @@ import '../../widgets/habit_icon.dart';
 import '../../widgets/pill_button.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
-/// Link habit lokal (existing atau baru) ke Group Habit — habit tetap 1
-/// skema biasa di sistem lokal, cuma "disumbangkan" progressnya lewat relasi
-/// `HabitGroupLinks` (update_v2.md §4).
+/// Link a local habit (existing or new) to a Group Habit — the habit
+/// remains a regular local-system habit, only its progress gets
+/// "contributed" via the `HabitGroupLinks` relation (update_v2.md §4).
 class LinkHabitScreen extends ConsumerWidget {
   const LinkHabitScreen({super.key, required this.groupHabit});
 
@@ -30,13 +30,13 @@ class LinkHabitScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Pilih salah satu habit kamu yang sudah ada, atau buat habit baru khusus '
-              'untuk tantangan ini.',
+              'Pick one of your existing habits, or create a new habit specifically '
+              'for this challenge.',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),
             PrimaryPillButton(
-              label: '+ Buat Habit Baru',
+              label: '+ Create New Habit',
               onPressed: () async {
                 await openAddHabitFlow(context);
                 ref.invalidate(allActiveHabitsProvider);
@@ -46,10 +46,10 @@ class LinkHabitScreen extends ConsumerWidget {
             Expanded(
               child: habitsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, st) => Center(child: Text('Gagal memuat habit: $e')),
+                error: (e, st) => Center(child: Text('Failed to load habits: $e')),
                 data: (habits) {
                   if (habits.isEmpty) {
-                    return const Center(child: Text('Belum ada habit. Buat dulu lewat tombol di atas.'));
+                    return const Center(child: Text('No habits yet. Create one with the button above.'));
                   }
                   return ListView.separated(
                     itemCount: habits.length,
@@ -90,7 +90,7 @@ class _HabitLinkTileState extends ConsumerState<_HabitLinkTile> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal link: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link: $e')));
       }
     } finally {
       if (mounted) setState(() => _linking = false);

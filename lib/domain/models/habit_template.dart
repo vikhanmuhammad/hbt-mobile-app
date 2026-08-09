@@ -81,13 +81,13 @@ class CategoryTemplate {
 
   final String key;
 
-  /// Nama mentah internal (mis. "Kesehatan") — cuma sub-label kecil saat
-  /// browsing rekomendasi, tidak pernah ditampilkan sebagai kategori utama.
+  /// Internal raw name (e.g. "Health") — just a small sub-label while
+  /// browsing recommendations, never shown as the main category.
   final String rawLabel;
 
-  /// Goal phrase default (mis. "Jadi Sehat") — inilah yang disimpan sebagai
-  /// `Categories.name` saat seeding & dipakai untuk mencocokkan kategori user
-  /// dengan grup template ini.
+  /// Default goal phrase (e.g. "Be Healthy") — this is what's stored as
+  /// `Categories.name` during seeding & used to match a user's category
+  /// with this template group.
   final String defaultGoalPhrase;
   final String icon;
   final String colorHex;

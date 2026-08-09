@@ -6,15 +6,15 @@ bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 const List<String> weekdayFullNames = [
-  'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu',
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
 ];
 
 const List<String> monthFullNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/// Mis. "Kamis, 30 Juli 2026" — persis `dateLabelFmt` di prototipe
-/// (Intl.DateTimeFormat id-ID weekday/day/month/year long).
+/// E.g. "Thursday, 30 July 2026" — matches `dateLabelFmt` in the prototype
+/// (Intl.DateTimeFormat en-US weekday/day/month/year long).
 String formatFullDate(DateTime date) =>
     '${weekdayFullNames[date.weekday - 1]}, ${date.day} ${monthFullNames[date.month - 1]} ${date.year}';

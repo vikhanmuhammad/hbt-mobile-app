@@ -45,16 +45,16 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
     } on InviteCodeNotFound {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Kode invite tidak ditemukan')));
+            .showSnackBar(const SnackBar(content: Text('Invite code not found')));
       }
     } on AlreadyGroupMember {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Kamu sudah jadi anggota grup ini')));
+            .showSnackBar(const SnackBar(content: Text('You\'re already a member of this group')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal join: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to join: $e')));
       }
     } finally {
       if (mounted) setState(() => _joining = false);
@@ -64,26 +64,26 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Grup')),
+      appBar: AppBar(title: const Text('Join Group')),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Kode Invite', style: Theme.of(context).textTheme.labelMedium),
+            Text('Invite Code', style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 8),
             TextField(
               controller: _codeController,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(
-                hintText: 'Mis. A1B2C3D4',
+                hintText: 'e.g. A1B2C3D4',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Minta kode invite dari anggota grup yang sudah ada.',
+              'Ask an existing group member for the invite code.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 24),
@@ -97,7 +97,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Join Grup'),
+                    : const Text('Join Group'),
               ),
             ),
           ],

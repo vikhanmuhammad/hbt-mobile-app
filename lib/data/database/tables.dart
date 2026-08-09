@@ -28,12 +28,12 @@ class OnboardingResponses extends Table {
       dateTime().withDefault(currentDateAndTime)();
 }
 
-/// goalPeriod disimpan sebagai text: daily / weekly / monthly.
+/// goalPeriod is stored as text: daily / weekly / monthly.
 ///
-/// Catatan penting: `name` sekarang berisi GOAL PHRASE ("Jadi Sehat"), bukan
-/// nama kategori mentah ("Kesehatan") — goal phrase inilah yang ditampilkan
-/// di semua tempat di UI. Nama mentah cuma hidup di `habit_templates.json`
-/// (field `rawLabel`), dipakai untuk pengelompokan saat browsing rekomendasi.
+/// Important note: `name` now holds the GOAL PHRASE ("Be Healthy"), not the
+/// raw category name ("Health") — the goal phrase is what's shown
+/// everywhere in the UI. The raw name only lives in `habit_templates.json`
+/// (the `rawLabel` field), used for grouping while browsing recommendations.
 class Categories extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();

@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
 
-/// Bottom sheet input progress cepat untuk habit dengan goalValue > 1 atau
-/// bersatuan — stepper +/- plus input angka langsung. Untuk habit bersatuan
-/// waktu (menit/jam) ditambah timer supaya bisa dijalankan langsung dari app
-/// — tapi input manual tetap tersedia untuk aktivitas yang dilakukan di luar
+/// Quick progress input bottom sheet for habits with goalValue > 1 or a
+/// unit — +/- stepper plus direct number input. For time-unit habits
+/// (minute/hour) a timer is added so it can be run directly from the app —
+/// but manual input is still available for activities done outside the
 /// app. CLAUDE.md v3 §6.2.
 Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item) {
   return showModalBottomSheet<int>(
@@ -41,9 +41,9 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
     return 1;
   }
 
-  bool get _isTimeUnit => const {'menit', 'jam'}.contains(widget.item.habit.goalUnit);
+  bool get _isTimeUnit => const {'minute', 'hour'}.contains(widget.item.habit.goalUnit);
 
-  int get _secondsPerUnit => widget.item.habit.goalUnit == 'jam' ? 3600 : 60;
+  int get _secondsPerUnit => widget.item.habit.goalUnit == 'hour' ? 3600 : 60;
 
   @override
   void dispose() {
@@ -52,9 +52,9 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
     super.dispose();
   }
 
-  /// Dipakai oleh stepper/"Tandai Tercapai" — sinkronkan `_value` dan teks
-  /// field sekaligus. Input manual dari user ditangani terpisah lewat
-  /// `TextField.onChanged` supaya kursor tidak lompat saat mengetik.
+  /// Used by the stepper/"Mark Achieved" — syncs `_value` and the field
+  /// text at once. Manual input from the user is handled separately via
+  /// `TextField.onChanged` so the cursor doesn't jump while typing.
   void _setValue(int newValue) {
     final clamped = newValue.clamp(0, 1 << 30);
     setState(() => _value = clamped);
@@ -77,8 +77,8 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
     }
   }
 
-  /// Tambahkan durasi yang sudah berjalan ke progress (dibulatkan ke satuan
-  /// terdekat, minimal 1 kalau ada waktu yang berjalan) lalu reset timer.
+  /// Add the elapsed duration to progress (rounded to the nearest unit,
+  /// minimum 1 if any time has elapsed) then reset the timer.
   void _commitTimer() {
     final elapsedSeconds = _stopwatch.elapsed.inSeconds;
     if (elapsedSeconds > 0) {
@@ -131,7 +131,7 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Text(
-                    'atau input manual',
+                    'or enter manually',
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
@@ -189,14 +189,14 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => _setValue(habit.goalValue),
-                  child: const Text('Tandai Tercapai'),
+                  child: const Text('Mark Achieved'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(_value),
-                  child: const Text('Simpan'),
+                  child: const Text('Save'),
                 ),
               ),
             ],
@@ -256,13 +256,13 @@ class _TimerCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onToggle,
                 icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 18),
-                label: Text(running ? 'Jeda' : (hasElapsed ? 'Lanjut' : 'Mulai')),
+                label: Text(running ? 'Pause' : (hasElapsed ? 'Resume' : 'Start')),
               ),
               if (hasElapsed) ...[
                 const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: onCommit,
-                  child: const Text('Tambahkan'),
+                  child: const Text('Add'),
                 ),
               ],
             ],

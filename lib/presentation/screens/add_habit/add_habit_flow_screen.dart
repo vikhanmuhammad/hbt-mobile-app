@@ -21,39 +21,38 @@ import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
 
-/// Batas habit aktif untuk user Free — lebih dari ini harus upgrade Pro.
+/// Active habit limit for Free users — beyond this requires a Pro upgrade.
 const _freeActiveHabitLimit = 5;
 
-/// Buka alur Tambah Habit dari FAB Beranda — mulai dari step 1 (pilih goal
-/// phrase). Beranda flat-list otomatis menampilkan habit baru begitu
-/// tersimpan, jadi cukup pop kembali setelah selesai. CLAUDE.md v3 §3.4.
+/// Open the Add Habit flow from the Home FAB — starts at step 1 (pick goal
+/// phrase). The Home flat-list automatically shows the new habit once
+/// saved, so it's enough to just pop back when done. CLAUDE.md v3 §3.4.
 Future<void> openAddHabitFlow(BuildContext context) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const AddHabitFlowScreen()),
   );
 }
 
-/// Buka alur langsung di form edit untuk habit yang sudah ada (dari Edit
-/// Mode Beranda atau Settings) — setelah selesai cukup pop kembali ke layar
-/// pemanggil.
+/// Open the flow directly at the edit form for an existing habit (from Home
+/// Edit Mode or Settings) — after finishing, just pop back to the caller's screen.
 Future<void> openEditHabitFlow(BuildContext context, Habit habit) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => AddHabitFlowScreen(editingHabit: habit)),
   );
 }
 
-/// Buka alur langsung di step "Buat Kategori Baru" (dari Settings/onboarding),
-/// lalu kembali ke pemanggil setelah kategori dibuat (tidak lanjut ke
-/// rekomendasi).
+/// Open the flow directly at the "Create New Category" step (from
+/// Settings/onboarding), then return to the caller once the category is
+/// created (does not continue to recommendations).
 Future<void> openCreateCategoryFlow(BuildContext context) {
   return Navigator.of(context).push(
     MaterialPageRoute(builder: (_) => const AddHabitFlowScreen(startAtNewCategory: true)),
   );
 }
 
-/// Alur Tambah Habit sebagai satu layar penuh dengan 4 step internal,
-/// persis prototipe (`afStepIs1..4` di docs/Habit Tracker.html) — bukan
-/// kombinasi push-route + bottom sheet terpisah.
+/// The Add Habit flow as a single full-screen with 4 internal steps,
+/// matching the prototype exactly (`afStepIs1..4` in docs/Habit Tracker.html) —
+/// not a combination of a push-route + separate bottom sheet.
 class AddHabitFlowScreen extends ConsumerStatefulWidget {
   const AddHabitFlowScreen({
     super.key,
@@ -123,28 +122,28 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     super.dispose();
   }
 
-  /// Preset satuan progress (CLAUDE.md v3 §8) — 'x' berarti tanpa satuan
-  /// (habit sederhana on/off). Selain ini dianggap satuan custom.
+  /// Progress unit presets (CLAUDE.md v3 §8) — 'x' means no unit
+  /// (simple on/off habit). Anything else is treated as a custom unit.
   static const List<String> unitPresetValues = [
     'x',
-    'menit',
-    'jam',
-    'langkah',
-    'gelas',
-    'halaman',
-    'kali',
+    'minute',
+    'hour',
+    'step',
+    'glass',
+    'page',
+    'time',
     'kilometer',
     'rupiah',
   ];
 
   static const Map<String, String> unitPresetLabels = {
-    'x': 'Tanpa satuan',
-    'menit': 'Menit',
-    'jam': 'Jam',
-    'langkah': 'Langkah',
-    'gelas': 'Gelas',
-    'halaman': 'Halaman',
-    'kali': 'Kali',
+    'x': 'No unit',
+    'minute': 'Minute',
+    'hour': 'Hour',
+    'step': 'Step',
+    'glass': 'Glass',
+    'page': 'Page',
+    'time': 'Time',
     'kilometer': 'Kilometer',
     'rupiah': 'Rupiah',
     'custom': 'Custom...',
@@ -157,8 +156,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   bool get _isRupiahUnit => _goalUnitController.text.trim() == 'rupiah';
 
-  /// Step lebih besar untuk satuan rupiah supaya tidak perlu menekan +/-
-  /// ratusan kali untuk mencapai nominal yang wajar.
+  /// Larger step for the rupiah unit so users don't have to press +/-
+  /// hundreds of times to reach a reasonable amount.
   int get _goalValueStep {
     if (!_isRupiahUnit) return 1;
     if (_goalValue >= 100000) return 5000;
@@ -217,9 +216,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   String _formatTime(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-  /// True kalau [categoryId] adalah kategori Keuangan bawaan — dicek lewat
-  /// cache `categoriesProvider` yang sudah di-watch di build(), jadi aman
-  /// dipanggil dari handler async tanpa nunggu load ulang.
+  /// True if [categoryId] is the built-in Finance category — checked via
+  /// the `categoriesProvider` cache already watched in build(), so it's
+  /// safe to call from an async handler without waiting for a reload.
   bool _categoryIdIsFinance(int? categoryId) {
     final categories = ref.read(categoriesProvider).value ?? const <Category>[];
     for (final c in categories) {
@@ -228,21 +227,21 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return false;
   }
 
-  /// Kategori Keuangan (Jadi Hemat) khusus Pro — dicek di titik pilih
-  /// kategori (step 1) DAN di titik submit (step 3 punya dropdown goal
-  /// phrase sendiri yang bisa mengubah _categoryId tanpa lewat step 1 lagi).
+  /// Finance category (Save Money) is Pro-only — checked at the category
+  /// pick point (step 1) AND at the submit point (step 3 has its own goal
+  /// phrase dropdown that can change _categoryId without going through step 1 again).
   Future<bool> _blockedByFinanceGate() async {
     if (!_categoryIdIsFinance(_categoryId) || ref.read(isProProvider)) return false;
     await showProRequiredDialog(
       context,
-      message: 'Kategori Keuangan (Jadi Hemat) khusus pengguna Pro. Upgrade ke Pro '
-          'untuk mengelola habit keuangan & lihat ringkasan tabungan.',
+      message: 'The Finance category (Save Money) is Pro-only. Upgrade to Pro '
+          'to manage finance habits & see your savings summary.',
     );
     return true;
   }
 
-  /// User Free maksimal 5 habit aktif — cuma relevan saat membuat habit
-  /// baru, bukan saat mengedit habit yang sudah ada.
+  /// Free users are capped at 5 active habits — only relevant when creating
+  /// a new habit, not when editing an existing one.
   Future<bool> _blockedByFreeHabitLimit() async {
     if (ref.read(isProProvider)) return false;
     final activeHabits = await ref.read(habitRepositoryProvider).getAllActive();
@@ -250,8 +249,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     if (mounted) {
       await showProRequiredDialog(
         context,
-        message: 'Kamu sudah mencapai batas $_freeActiveHabitLimit habit aktif untuk '
-            'pengguna Free. Upgrade ke Pro untuk menambah habit tanpa batas.',
+        message: 'You\'ve reached the $_freeActiveHabitLimit active habit limit for '
+            'Free users. Upgrade to Pro to add unlimited habits.',
       );
     }
     return true;
@@ -270,13 +269,13 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   String get _title {
     switch (_step) {
       case 1:
-        return 'Pilih Goal Phrase';
+        return 'Pick Goal Phrase';
       case 2:
-        return 'Tambah Habit';
+        return 'Add Habit';
       case 3:
-        return _isEditing ? 'Edit Habit' : 'Form Habit';
+        return _isEditing ? 'Edit Habit' : 'Habit Form';
       case 4:
-        return 'Goal Baru';
+        return 'New Goal';
       default:
         return '';
     }
@@ -332,7 +331,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     );
   }
 
-  // ---------------- Step 1: pilih kategori ----------------
+  // ---------------- Step 1: pick category ----------------
 
   Widget _buildStep1() {
     final theme = Theme.of(context);
@@ -340,11 +339,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Pilih goal phrase untuk habit baru.', style: theme.textTheme.bodyMedium),
+        Text('Pick a goal phrase for the new habit.', style: theme.textTheme.bodyMedium),
         const SizedBox(height: 20),
         categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Text('Gagal memuat kategori: $e'),
+          error: (e, st) => Text('Failed to load categories: $e'),
           data: (categories) {
             final columns = categoryGridColumns(MediaQuery.sizeOf(context).width);
             return GridView.builder(
@@ -371,9 +370,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              // Bukan surfaceContainerHighest — itu tone M3
-                              // auto-generate dari seed emas yang meleset dari
-                              // palet netral app (sama seperti kasus dividerColor).
+                              // Not surfaceContainerHighest — that's an M3
+                              // tone auto-generated from the gold seed that's
+                              // off from the app's neutral palette (same as the dividerColor case).
                               color: theme.brightness == Brightness.light
                                   ? AppColors.lightSurfaceAlt
                                   : AppColors.darkSurfaceAlt,
@@ -383,7 +382,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Buat Goal Baru',
+                            'Create New Goal',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontFamily: 'Poppins',
@@ -406,8 +405,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       showProRequiredDialog(
                         context,
                         message:
-                            'Kategori Keuangan (Jadi Hemat) khusus pengguna Pro. Upgrade ke '
-                            'Pro untuk mengelola habit keuangan & lihat ringkasan tabungan.',
+                            'The Finance category (Save Money) is Pro-only. Upgrade to '
+                            'Pro to manage finance habits & see your savings summary.',
                       );
                       return;
                     }
@@ -423,7 +422,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     );
   }
 
-  // ---------------- Step 2: rekomendasi / custom ----------------
+  // ---------------- Step 2: recommendations / custom ----------------
 
   Widget _buildStep2() {
     final theme = Theme.of(context);
@@ -469,7 +468,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 if (templates.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text('Belum ada rekomendasi untuk kategori ini.', style: theme.textTheme.bodySmall),
+                    child: Text('No recommendations for this category yet.', style: theme.textTheme.bodySmall),
                   ),
                 for (final t in templates)
                   Card(
@@ -493,7 +492,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                           ),
                           const SizedBox(width: 14),
                           PrimaryPillButton(
-                            label: 'Tambah',
+                            label: 'Add',
                             onPressed: _saving ? null : () => _quickAddTemplate(t),
                           ),
                         ],
@@ -506,7 +505,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   onTap: () => _openCustomForm(),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Text('+ Tambah Habit Kustom', style: theme.textTheme.titleSmall),
+                    child: Text('+ Add Custom Habit', style: theme.textTheme.titleSmall),
                   ),
                 ),
               ],
@@ -562,11 +561,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       if (created != null) {
         await _tryScheduleNotification(created);
       }
-      await _finishAndReturn(toastMessage: 'Habit ditambahkan');
+      await _finishAndReturn(toastMessage: 'Habit added');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menambah habit: $e')));
+            .showSnackBar(SnackBar(content: Text('Failed to add habit: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -577,12 +576,12 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     try {
       await ref.read(notificationServiceProvider).rescheduleForHabit(habit);
     } catch (_) {
-      // Notifikasi gagal dijadwalkan (mis. platform tidak mendukung) —
-      // jangan gagalkan penyimpanan habit karena ini.
+      // Notification scheduling failed (e.g. platform not supported) —
+      // don't fail the habit save because of this.
     }
   }
 
-  // ---------------- Step 3: form habit ----------------
+  // ---------------- Step 3: habit form ----------------
 
   Widget _buildStep3() {
     final theme = Theme.of(context);
@@ -591,9 +590,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel('Nama Habit'),
+        _FieldLabel('Habit Name'),
         const SizedBox(height: 6),
-        TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Nama habit')),
+        TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Habit name')),
         const SizedBox(height: 16),
         _FieldLabel('Icon'),
         const SizedBox(height: 10),
@@ -612,7 +611,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 child: Center(child: HabitIcon(icon: _habitIcon, size: 16, color: Colors.white)),
               ),
               const SizedBox(width: 12),
-              Text('Ganti icon', style: theme.textTheme.bodyMedium?.copyWith(
+              Text('Change icon', style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w700,
                   )),
@@ -694,7 +693,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Satuan'),
+                  _FieldLabel('Unit'),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: _unitDropdownValue,
@@ -708,8 +707,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       setState(() {
                         _unitDropdownValue = v;
                         if (v != 'custom') _goalUnitController.text = v;
-                        // Nominal awal yang wajar untuk rupiah — lebih masuk
-                        // akal daripada mulai dari 1 lalu step 500-an.
+                        // Reasonable starting amount for rupiah — more
+                        // sensible than starting at 1 and stepping by 500s.
                         if (v == 'rupiah' && _goalValue < 1000) _goalValue = 50000;
                       });
                     },
@@ -718,7 +717,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: _goalUnitController,
-                      decoration: const InputDecoration(hintText: 'mis. halaman buku'),
+                      decoration: const InputDecoration(hintText: 'e.g. book pages'),
                     ),
                   ],
                 ],
@@ -727,7 +726,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _FieldLabel('Arah Target'),
+        _FieldLabel('Target Direction'),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -754,7 +753,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             InkWell(
               onTap: () => setState(() => _taskDays = {allDaysKey}),
               child: Text(
-                'Setiap hari',
+                'Every day',
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w700,
@@ -858,7 +857,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       InkWell(
                         onTap: () => setState(() => _endDate = _endDate == null ? today() : null),
                         child: Text(
-                          _endDate == null ? 'Set tanggal' : 'Tanpa batas',
+                          _endDate == null ? 'Set date' : 'No limit',
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w700,
@@ -884,7 +883,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   else
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text('Tanpa batas waktu', style: theme.textTheme.bodySmall),
+                      child: Text('No time limit', style: theme.textTheme.bodySmall),
                     ),
                 ],
               ),
@@ -894,7 +893,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitHabitForm,
-          child: Text(_isEditing ? 'Simpan Perubahan' : 'Simpan Habit'),
+          child: Text(_isEditing ? 'Save Changes' : 'Save Habit'),
         ),
       ],
     );
@@ -903,15 +902,15 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   Future<void> _submitHabitForm() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama habit wajib diisi')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Habit name is required')));
       return;
     }
     if (_categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih goal phrase dulu')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a goal phrase first')));
       return;
     }
     if (_taskDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih minimal 1 hari aktif')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick at least 1 active day')));
       return;
     }
     if (await _blockedByFinanceGate()) return;
@@ -970,32 +969,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       }
 
       await _finishAndReturn(
-        toastMessage: _isEditing ? 'Habit diperbarui' : 'Habit ditambahkan',
+        toastMessage: _isEditing ? 'Habit updated' : 'Habit added',
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menyimpan habit: $e')));
+            .showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  // ---------------- Step 4: kategori baru ----------------
+  // ---------------- Step 4: new category ----------------
 
   Widget _buildStep4() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel('Nama Goal Phrase'),
+        _FieldLabel('Goal Phrase Name'),
         const SizedBox(height: 6),
         TextField(
           controller: _newCatNameController,
-          decoration: const InputDecoration(hintText: 'mis. Hobi'),
+          decoration: const InputDecoration(hintText: 'e.g. Hobby'),
         ),
         const SizedBox(height: 20),
-        _FieldLabel('Warna'),
+        _FieldLabel('Color'),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -1010,7 +1009,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 20),
-        _FieldLabel('Ikon'),
+        _FieldLabel('Icon'),
         const SizedBox(height: 10),
         InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -1031,7 +1030,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Ganti icon',
+                'Change icon',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w700,
@@ -1043,7 +1042,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitNewCategory,
-          child: const Text('Buat Goal'),
+          child: const Text('Create Goal'),
         ),
       ],
     );
@@ -1052,7 +1051,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   Future<void> _submitNewCategory() async {
     final name = _newCatNameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama goal phrase wajib diisi')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Goal phrase name is required')));
       return;
     }
     setState(() => _saving = true);
@@ -1076,16 +1075,16 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal membuat kategori: $e')));
+            .showSnackBar(SnackBar(content: Text('Failed to create category: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  /// Beranda flat-list (CLAUDE.md v3 §6.1) menampilkan habit baru secara
-  /// reaktif begitu tersimpan — tidak perlu navigasi ke layar kategori
-  /// manapun lagi, cukup invalidate ringkasan lalu pop kembali.
+  /// The Home flat-list (CLAUDE.md v3 §6.1) reactively shows the new habit
+  /// once saved — no need to navigate to any category screen anymore, just
+  /// invalidate the summaries then pop back.
   Future<void> _finishAndReturn({required String toastMessage}) async {
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);

@@ -6,10 +6,10 @@ import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/app_logo.dart';
 
-/// Edit nama & usia profil user. Foto profil (CLAUDE.md v3 §8) belum
-/// diimplementasi — ditandai "belum tersedia" mengikuti pola Export/Import
-/// di Settings, supaya tidak menambah dependency native picker di luar
-/// scope iterasi ini.
+/// Edit the user's name & age profile. Profile photo (CLAUDE.md v3 §8) is
+/// not yet implemented — marked "not available yet" following the
+/// Export/Import pattern in Settings, to avoid adding a native picker
+/// dependency outside this iteration's scope.
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -40,7 +40,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _save(UserProfile current) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama tidak boleh kosong')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
       return;
     }
     setState(() => _saving = true);
@@ -56,7 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profil disimpan')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -69,7 +69,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileAsync = ref.watch(userProfileStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(title: const Text('Profile')),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('$e')),
@@ -89,29 +89,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 10),
                         TextButton(
                           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Foto profil belum tersedia di versi ini')),
+                            const SnackBar(content: Text('Profile photo is not available in this version yet')),
                           ),
-                          child: const Text('Ganti foto'),
+                          child: const Text('Change photo'),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text('Nama', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text('Name', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
-                  TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Nama kamu')),
+                  TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Your name')),
                   const SizedBox(height: 16),
-                  Text('Usia', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text('Age', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(hintText: 'mis. 25'),
+                    decoration: const InputDecoration(hintText: 'e.g. 25'),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _saving ? null : () => _save(profile),
-                    child: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                    child: Text(_saving ? 'Saving...' : 'Save'),
                   ),
                 ],
               ),

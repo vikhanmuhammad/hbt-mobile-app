@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 
-/// Pertanyaan umum seputar prinsip offline & keamanan data. CLAUDE.md v3 §8.
+/// Frequently asked questions about the offline principle & data security. CLAUDE.md v3 §8.
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
 
   static const _faqs = [
     (
-      q: 'Kenapa app ini sepenuhnya offline?',
-      a: 'Supaya data kebiasaan harianmu tetap privat dan bisa dipakai kapan saja tanpa '
-          'perlu koneksi internet. Tidak ada akun, tidak ada server, tidak ada tracking.',
+      q: 'Why is this app fully offline?',
+      a: 'So your daily habit data stays private and can be used anytime without '
+          'needing an internet connection. No account, no server, no tracking.',
     ),
     (
-      q: 'Bagaimana data saya tersimpan dan apakah aman?',
-      a: 'Semua data (kategori, habit, riwayat progress, profil) disimpan di database lokal '
-          'di perangkatmu sendiri — tidak pernah dikirim ke mana pun.',
+      q: 'How is my data stored and is it safe?',
+      a: 'All data (categories, habits, progress history, profile) is stored in a local '
+          'database on your own device — never sent anywhere.',
     ),
     (
-      q: 'Bagaimana kalau saya ganti HP? Apakah data ikut pindah?',
-      a: 'Karena tidak ada sinkronisasi cloud, data tidak otomatis berpindah. Pakai fitur '
-          'Export Data di Pengaturan (segera hadir) untuk membuat cadangan manual sebelum '
-          'ganti perangkat, lalu Import Data di HP baru.',
+      q: 'What if I switch phones? Does my data move too?',
+      a: 'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the '
+          'Export Data feature in Settings (coming soon) to make a manual backup before '
+          'switching devices, then Import Data on the new phone.',
     ),
     (
-      q: 'Apakah saya perlu login atau mendaftar akun?',
-      a: 'Tidak. App ini tidak punya sistem akun sama sekali — buka dan langsung pakai.',
+      q: 'Do I need to log in or sign up for an account?',
+      a: 'No. This app has no account system at all — open it and start using it right away.',
     ),
   ];
 

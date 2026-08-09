@@ -19,8 +19,8 @@ import '../../widgets/date_strip.dart';
 import '../../widgets/quick_progress_sheet.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
-/// Beranda: flat list semua habit aktif hari itu (tanpa grouping goal
-/// phrase), date strip + month selector di atas. CLAUDE.md v3 §6.
+/// Home: flat list of all habits active that day (no goal-phrase
+/// grouping), date strip + month selector on top. CLAUDE.md v3 §6.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -66,12 +66,12 @@ class HomeScreen extends ConsumerWidget {
                 if (isEditMode)
                   TextButton(
                     onPressed: () => ref.read(homeEditModeProvider.notifier).state = false,
-                    child: const Text('Selesai'),
+                    child: const Text('Done'),
                   )
                 else
                   TextButton(
                     onPressed: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
-                    child: const Text('Hari ini'),
+                    child: const Text('Today'),
                   ),
               ],
             ),
@@ -225,7 +225,7 @@ class _HabitList extends ConsumerWidget {
       unawaited(syncCommunityHabit(ref, habit.id));
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal menyimpan progress: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save progress: $e')));
       }
     }
   }
@@ -234,14 +234,14 @@ class _HabitList extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Nonaktifkan habit ini?'),
+        title: const Text('Deactivate this habit?'),
         content: Text(
-          '"${item.habit.name}" akan disembunyikan dari Beranda. Riwayat progress tetap tersimpan — '
-          'kamu bisa aktifkan lagi lewat form edit.',
+          '"${item.habit.name}" will be hidden from Home. Progress history stays saved — '
+          'you can reactivate it anytime via the edit form.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Batal')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Nonaktifkan')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Deactivate')),
         ],
       ),
     );
@@ -283,10 +283,10 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.checklist_rounded, size: 48, color: Theme.of(context).disabledColor),
             const SizedBox(height: 16),
-            Text('Belum ada habit terjadwal', style: Theme.of(context).textTheme.titleMedium),
+            Text('No habits scheduled yet', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             const Text(
-              'Tap tombol Tambah Habit di kiri bawah untuk menambah habit pertamamu di hari ini.',
+              'Tap the Add Habit button at the bottom left to add your first habit for today.',
               textAlign: TextAlign.center,
             ),
           ],

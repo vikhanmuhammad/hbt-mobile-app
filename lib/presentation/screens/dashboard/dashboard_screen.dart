@@ -18,12 +18,13 @@ import '../../widgets/daily_progress_ring.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/monthly_calendar_grid.dart';
 
-/// Dashboard gabungan: kalender bulanan (dulu tab Riwayat terpisah) + filter
-/// icon habit + ringkasan keberhasilan (ring, breakdown per kategori/habit,
-/// tren bulanan). Tap tanggal di kalender membuka bottom sheet detail hari
-/// itu (backfill progress). Filter habit di atas kalender mempersempit data
-/// ring kalender & ringkasan cuma ke habit yang dipilih. Tanpa AppBar/judul
-/// halaman, persis prototipe. Lihat DESIGN.md §4.3/§4.4.
+/// Combined dashboard: monthly calendar (formerly a separate History tab) +
+/// habit icon filter + success summary (ring, per-category/habit breakdown,
+/// monthly trend). Tapping a date on the calendar opens a bottom sheet with
+/// that day's detail (progress backfill). The habit filter above the
+/// calendar narrows the calendar ring & summary data to just the selected
+/// habits. No AppBar/page title, matching the prototype exactly. See
+/// DESIGN.md §4.3/§4.4.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -46,7 +47,7 @@ class DashboardScreen extends ConsumerWidget {
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, st) => Text('Gagal memuat kalender: $e'),
+          error: (e, st) => Text('Failed to load calendar: $e'),
           data: (summaries) => MonthlyCalendarGrid(
             month: month,
             summaries: summaries,
@@ -69,7 +70,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
       error: (e, st) => Padding(
         padding: const EdgeInsets.all(24),
-        child: Text('Gagal memuat dashboard: $e'),
+        child: Text('Failed to load dashboard: $e'),
       ),
       data: (summary) {
         if (summary.totalLogs == 0) return const _EmptyDashboard();
@@ -171,9 +172,9 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Baris icon habit yang bisa discroll horizontal untuk memfilter kalender +
-/// ringkasan dashboard. "All" (default) = tanpa filter. Multi-select: tiap
-/// icon habit toggle independen.
+/// Horizontally scrollable row of habit icons to filter the calendar +
+/// dashboard summary. "All" (default) = no filter. Multi-select: each
+/// habit icon toggles independently.
 class _HabitFilterRow extends ConsumerStatefulWidget {
   const _HabitFilterRow();
 
@@ -264,7 +265,7 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
                   Icon(Icons.swipe_rounded, size: 16, color: hintColor),
                   const SizedBox(width: 4),
                   Text(
-                    'Geser untuk lihat lainnya',
+                    'Swipe to see more',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: hintColor,
                       fontWeight: FontWeight.w600,
@@ -459,10 +460,10 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-/// Bottom sheet detail 1 hari (checklist habit + toggle progress) — dibuka
-/// dengan tap tanggal di kalender. Selalu menampilkan semua habit terjadwal
-/// hari itu, tidak ikut filter icon habit (dipakai sebagai alat backfill,
-/// bukan bagian dari ringkasan yang difilter).
+/// Single-day detail bottom sheet (habit checklist + progress toggle) —
+/// opened by tapping a date on the calendar. Always shows all habits
+/// scheduled that day, ignoring the habit icon filter (used as a backfill
+/// tool, not part of the filtered summary).
 class _DayDetailSheet extends ConsumerWidget {
   const _DayDetailSheet({required this.date});
 
@@ -532,7 +533,7 @@ class _DayDetailSheet extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Text(
-                  'Tidak ada habit terjadwal hari ini.',
+                  'No habits scheduled today.',
                   style: theme.textTheme.bodySmall,
                 ),
               )
@@ -598,7 +599,7 @@ class _DayDetailSheet extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memperbarui progress: $e')),
+          SnackBar(content: Text('Failed to update progress: $e')),
         );
       }
     }
@@ -607,7 +608,7 @@ class _DayDetailSheet extends ConsumerWidget {
   String _formatDate(DateTime date) {
     final isToday = isSameDay(date, today());
     final label = formatFullDate(date);
-    return isToday ? '$label (Hari ini)' : label;
+    return isToday ? '$label (Today)' : label;
   }
 }
 
@@ -656,10 +657,10 @@ class _EmptyDashboard extends StatelessWidget {
               color: Theme.of(context).disabledColor,
             ),
             const SizedBox(height: 16),
-            const Text('Belum ada data untuk ditampilkan'),
+            const Text('No data to show yet'),
             const SizedBox(height: 8),
             const Text(
-              'Mulai centang habit hari ini supaya dashboard mulai terisi.',
+              'Start checking off habits today to get the dashboard filled in.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -695,12 +696,12 @@ class _SummaryHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${summary.totalDaysTracked} hari tercatat',
+                    '${summary.totalDaysTracked} days tracked',
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rata-rata keberhasilan keseluruhan',
+                    'Overall average success rate',
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -732,7 +733,7 @@ class _CategoryBreakdown extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Per Kategori', style: theme.textTheme.titleMedium),
+            Text('By Category', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.categoryStats)
               Padding(
@@ -768,7 +769,7 @@ class _HabitBreakdown extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Per Habit', style: theme.textTheme.titleMedium),
+            Text('By Habit', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.habitStats)
               Padding(
@@ -796,14 +797,14 @@ class _MonthlyTrend extends StatelessWidget {
     'Feb',
     'Mar',
     'Apr',
-    'Mei',
+    'May',
     'Jun',
     'Jul',
-    'Agu',
+    'Aug',
     'Sep',
-    'Okt',
+    'Oct',
     'Nov',
-    'Des',
+    'Dec',
   ];
 
   @override
@@ -819,7 +820,7 @@ class _MonthlyTrend extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Tren Bulanan', style: theme.textTheme.titleMedium),
+            Text('Monthly Trend', style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
               height: 160,

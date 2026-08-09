@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/settings_providers.dart';
 import '../../theme/app_palettes.dart';
 
-/// Pilih tema warna app — 5 palet dengan swatch preview. CLAUDE.md v3 §8.
+/// Pick the app's color theme — 5 palettes with swatch previews. CLAUDE.md v3 §8.
 class PersonalizeScreen extends ConsumerWidget {
   const PersonalizeScreen({super.key});
 
@@ -22,8 +22,8 @@ class PersonalizeScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             children: [
               Text(
-                'Pilih tema warna yang paling kamu suka. Warna ini dipakai untuk tombol, '
-                'ring progress, dan aksen di seluruh app.',
+                'Pick the color theme you like best. This color is used for buttons, '
+                'progress rings, and accents throughout the app.',
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),

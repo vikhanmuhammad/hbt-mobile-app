@@ -6,9 +6,9 @@ import '../../../providers/community_providers.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
 
-/// Form buat Group Habit baru — nama, unit, icon, metode leaderboard
-/// (update_v2.md §11 poin 5). Member biasa (non-admin) tetap boleh bikin
-/// Group Habit (kolaboratif, §6).
+/// Form to create a new Group Habit — name, unit, icon, leaderboard method
+/// (update_v2.md §11 point 5). Regular (non-admin) members can still create
+/// a Group Habit (collaborative, §6).
 class CreateGroupHabitScreen extends ConsumerStatefulWidget {
   const CreateGroupHabitScreen({super.key, required this.groupId});
 
@@ -56,7 +56,7 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal membuat: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to create: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -67,22 +67,22 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Buat Group Habit')),
+      appBar: AppBar(title: const Text('Create Group Habit')),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text('Nama Tantangan', style: theme.textTheme.labelMedium),
+          Text('Challenge Name', style: theme.textTheme.labelMedium),
           const SizedBox(height: 8),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(hintText: 'Mis. Lari 5K', border: OutlineInputBorder()),
+            decoration: const InputDecoration(hintText: 'e.g. 5K Run', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 20),
-          Text('Satuan Progress', style: theme.textTheme.labelMedium),
+          Text('Progress Unit', style: theme.textTheme.labelMedium),
           const SizedBox(height: 8),
           TextField(
             controller: _unitController,
-            decoration: const InputDecoration(hintText: 'Mis. km, menit, x', border: OutlineInputBorder()),
+            decoration: const InputDecoration(hintText: 'e.g. km, minute, x', border: OutlineInputBorder()),
           ),
           const SizedBox(height: 20),
           Text('Icon', style: theme.textTheme.labelMedium),
@@ -90,10 +90,10 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
           OutlinedButton.icon(
             onPressed: _pickIcon,
             icon: HabitIcon(icon: _icon, size: 18),
-            label: Text(_icon ?? 'Pilih icon'),
+            label: Text(_icon ?? 'Choose icon'),
           ),
           const SizedBox(height: 20),
-          Text('Metode Leaderboard', style: theme.textTheme.labelMedium),
+          Text('Leaderboard Method', style: theme.textTheme.labelMedium),
           const SizedBox(height: 8),
           SegmentedButton<LeaderboardMode>(
             segments: const [
@@ -110,7 +110,7 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
             child: _saving
                 ? const SizedBox(
                     width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Buat Group Habit'),
+                : const Text('Create Group Habit'),
           ),
         ],
       ),

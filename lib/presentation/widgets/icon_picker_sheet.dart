@@ -3,9 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'habit_icon.dart';
 
-/// Bottom sheet pemilih icon kurasi — dikelompokkan per konteks + search bar
-/// filter by keyword. CLAUDE.md v3 §9. Dipakai untuk icon goal
-/// phrase/kategori maupun icon habit individual.
+/// Curated icon picker bottom sheet — grouped by context + a search bar
+/// filtering by keyword. CLAUDE.md v3 §9. Used for both goal
+/// phrase/category icons and individual habit icons.
 Future<String?> showIconPickerSheet(BuildContext context, {String? currentIcon}) {
   return showModalBottomSheet<String>(
     context: context,
@@ -57,13 +57,13 @@ class _IconPickerSheetState extends State<_IconPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Pilih Icon', style: theme.textTheme.titleLarge),
+            Text('Choose Icon', style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
             TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _query = v),
               decoration: const InputDecoration(
-                hintText: 'Cari icon...',
+                hintText: 'Search icons...',
                 prefixIcon: Icon(Icons.search_rounded, size: 20),
               ),
             ),
@@ -71,7 +71,7 @@ class _IconPickerSheetState extends State<_IconPickerSheet> {
             Expanded(
               child: grouped.isEmpty
                   ? Center(
-                      child: Text('Icon tidak ditemukan', style: theme.textTheme.bodySmall),
+                      child: Text('No icons found', style: theme.textTheme.bodySmall),
                     )
                   : ListView(
                       children: [

@@ -1,35 +1,35 @@
 import 'package:flutter/material.dart';
 
-/// Tips singkat pemakaian app — reminder, backfill progress, ganti tema,
-/// pakai Edit Mode. CLAUDE.md v3 §8.
+/// Quick tips for using the app — reminders, backfilling progress, changing
+/// the theme, using Edit Mode. CLAUDE.md v3 §8.
 class UsageTipsScreen extends StatelessWidget {
   const UsageTipsScreen({super.key});
 
   static const _tips = [
     (
       icon: Icons.notifications_active_rounded,
-      title: 'Pakai Reminder',
-      body: 'Saat menambah atau mengedit habit, aktifkan toggle Reminder dan atur jamnya. '
-          'App akan mengirim notifikasi lokal di jam itu pada hari-hari aktif habit tersebut.',
+      title: 'Use Reminders',
+      body: 'When adding or editing a habit, turn on the Reminder toggle and set a time. '
+          'The app will send a local notification at that time on the habit\'s active days.',
     ),
     (
       icon: Icons.edit_calendar_rounded,
       title: 'Backfill Progress',
-      body: 'Lewat tab Dashboard, tap tanggal yang sudah lewat di kalender untuk melihat detail habit hari itu. '
-          'Kamu bisa tetap menandai/mengubah progress hari-hari sebelumnya dari sana.',
+      body: 'From the Dashboard tab, tap a past date on the calendar to see that day\'s habit detail. '
+          'You can still mark/change progress for previous days from there.',
     ),
     (
       icon: Icons.palette_rounded,
-      title: 'Ganti Tema',
-      body: 'Buka Pengaturan > Personalize untuk memilih salah satu dari 5 palet warna. '
-          'Perubahan berlaku langsung di seluruh app.',
+      title: 'Change Theme',
+      body: 'Open Settings > Personalize to pick one of 5 color palettes. '
+          'The change applies instantly throughout the app.',
     ),
     (
       icon: Icons.edit_rounded,
-      title: 'Pakai Edit Mode',
-      body: 'Tap tombol pensil di kanan bawah Beranda untuk masuk Edit Mode — dari sini kamu '
-          'bisa mengurutkan ulang (drag), mengedit, atau menonaktifkan habit. Tap tombol '
-          'centang atau "Selesai" untuk keluar.',
+      title: 'Use Edit Mode',
+      body: 'Tap the pencil button at the bottom right of Home to enter Edit Mode — from there you '
+          'can reorder (drag), edit, or deactivate habits. Tap the '
+          'check button or "Done" to exit.',
     ),
   ];
 

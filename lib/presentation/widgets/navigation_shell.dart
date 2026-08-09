@@ -9,9 +9,9 @@ import '../screens/finance/finance_summary_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/settings/settings_screen.dart';
 
-/// Switch otomatis BottomNavigationBar (< 900dp) <-> NavigationRail (>= 900dp).
-/// Tab Beranda punya 2 FAB: kiri = Tambah Habit, kanan = toggle Edit Mode
-/// (CLAUDE.md v3 §6.1/§6.3). Lihat DESIGN.md §3 & §4.2.
+/// Automatic switch between BottomNavigationBar (< 900dp) <-> NavigationRail
+/// (>= 900dp). The Home tab has 2 FABs: left = Add Habit, right = toggle
+/// Edit Mode (CLAUDE.md v3 §6.1/§6.3). See DESIGN.md §3 & §4.2.
 class NavigationShell extends ConsumerStatefulWidget {
   const NavigationShell({super.key});
 
@@ -23,11 +23,11 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
   int _index = 0;
 
   static const _destinations = [
-    (icon: Icons.home_rounded, label: 'Beranda'),
+    (icon: Icons.home_rounded, label: 'Home'),
     (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
     (icon: Icons.groups_rounded, label: 'Community'),
-    (icon: Icons.account_balance_wallet_rounded, label: 'Keuangan'),
-    (icon: Icons.settings_rounded, label: 'Pengaturan'),
+    (icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
+    (icon: Icons.settings_rounded, label: 'Settings'),
   ];
 
   static final _screens = [
@@ -74,9 +74,9 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
     }
 
     return Scaffold(
-      // Status bar/notch bawaan perangkat: body Scaffold render edge-to-edge
-      // secara default, tanpa ini konten atas (mis. header "Hari ini")
-      // tertutup status bar.
+      // Device's built-in status bar/notch: the Scaffold body renders
+      // edge-to-edge by default, without this the top content (e.g. the
+      // "Today" header) would be covered by the status bar.
       body: SafeArea(bottom: false, child: body),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -92,8 +92,8 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
   }
 }
 
-/// Row penuh lebar berisi 2 FAB (kiri Tambah Habit, kanan Edit Mode) —
-/// trik standar Flutter untuk >1 FAB dalam 1 slot `floatingActionButton`.
+/// Full-width row containing 2 FABs (left Add Habit, right Edit Mode) —
+/// the standard Flutter trick for >1 FAB in a single `floatingActionButton` slot.
 class _HomeFabRow extends ConsumerWidget {
   const _HomeFabRow();
 

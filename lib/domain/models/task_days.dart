@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'enums.dart';
 
-/// Encode/decode kolom `taskDays` (JSON array text di Drift) menjadi
-/// `List<String>` berisi kunci hari (`mon`..`sun`) atau `["all"]`.
+/// Encode/decode the `taskDays` column (JSON array text in Drift) into a
+/// `List<String>` of weekday keys (`mon`..`sun`) or `["all"]`.
 class TaskDays {
   TaskDays._();
 
@@ -32,7 +32,7 @@ class TaskDays {
   }
 
   static String summaryLabel(List<String> days) {
-    if (isEveryDay(days)) return 'Setiap hari';
+    if (isEveryDay(days)) return 'Every day';
     final ordered = weekdayKeys.where(days.contains).toList();
     return ordered.map((d) => weekdayLabels[d]).join(', ');
   }

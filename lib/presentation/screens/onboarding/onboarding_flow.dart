@@ -20,9 +20,9 @@ import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
-/// Onboarding user baru (CLAUDE.md v3 §4.1): Kuesioner Data Diri -> 3x
-/// Kuesioner Gaya Hidup -> Edukasi -> Pilih Goal Phrase -> Rekomendasi
-/// Habit -> Ringkasan. Kolom sempit terpusat (max-width 640/880).
+/// New user onboarding (CLAUDE.md v3 §4.1): Personal Info Questionnaire ->
+/// 3x Lifestyle Questionnaire -> Education -> Pick Goal Phrase ->
+/// Habit Recommendations -> Summary. Narrow centered column (max-width 640/880).
 class OnboardingFlow extends ConsumerStatefulWidget {
   const OnboardingFlow({super.key});
 
@@ -38,11 +38,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final Set<int> _selectedCategoryIds = {};
   final Map<int, Set<HabitTemplate>> _selectedTemplates = {};
 
-  /// Template yang sudah benar-benar tersimpan ke DB (template -> id habit)
-  /// — dipakai `_RecommendationStep` untuk reconcile create/delete tiap kali
-  /// "Lanjut" ditekan (idempotent, aman dipanggil berkali-kali walau user
-  /// bolak-balik ke halaman ini) dan oleh `_SummaryStep` untuk sinkronisasi
-  /// balik saat user menghapus habit dari Ringkasan.
+  /// Templates that have actually been saved to the DB (template -> habit
+  /// id) — used by `_RecommendationStep` to reconcile create/delete each
+  /// time "Next" is pressed (idempotent, safe to call repeatedly even if
+  /// the user navigates back and forth to this page) and by `_SummaryStep`
+  /// to sync back when the user removes a habit from the Summary.
   final Map<HabitTemplate, int> _createdHabitIds = {};
 
   void _goTo(int step) {
@@ -156,17 +156,17 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     }
   }
 
-  /// Batalkan habit dari halaman Ringkasan (§4.1 langkah 7) — habit yang
-  /// asalnya dari checkbox Rekomendasi juga di-uncheck & dilepas dari
-  /// `_createdHabitIds` supaya konsisten kalau user balik ke halaman
-  /// Rekomendasi. Habit yang ditambah lewat jalan pintas Tambah Habit
-  /// (tidak tercatat di `_createdHabitIds`) cukup dihapus dari DB.
+  /// Cancel a habit from the Summary page (§4.1 step 7) — a habit that
+  /// originated from a Recommendations checkbox is also unchecked & released
+  /// from `_createdHabitIds` to stay consistent if the user goes back to the
+  /// Recommendations page. A habit added via the Add Habit shortcut (not
+  /// tracked in `_createdHabitIds`) just needs to be deleted from the DB.
   Future<void> _removeHabit(int habitId) async {
     try {
       await ref.read(notificationServiceProvider).cancelForHabit(habitId);
     } catch (_) {
-      // Notifikasi gagal dibatalkan (mis. platform tidak mendukung) —
-      // jangan gagalkan penghapusan habit karena ini.
+      // Notification cancellation failed (e.g. platform not supported) —
+      // don't fail the habit deletion because of this.
     }
     await ref.read(habitRepositoryProvider).deleteHabit(habitId);
 
@@ -212,8 +212,8 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-/// Step 1 (tanpa progress bar): nama (wajib) + usia (opsional). CLAUDE.md v3
-/// §4.1 langkah 2.
+/// Step 1 (no progress bar): name (required) + age (optional). CLAUDE.md v3
+/// §4.1 step 2.
 class _PersonalInfoStep extends StatelessWidget {
   const _PersonalInfoStep({
     required this.nameController,
@@ -232,28 +232,28 @@ class _PersonalInfoStep extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('Siapa nama kamu?', style: theme.textTheme.headlineSmall),
+          Text('What\'s your name?', style: theme.textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
-            'Biar kami bisa menyapamu dengan lebih personal.',
+            'So we can greet you more personally.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          Text('Nama', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text('Name', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
             controller: nameController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Nama kamu'),
+            decoration: const InputDecoration(hintText: 'Your name'),
           ),
           const SizedBox(height: 16),
-          Text('Usia (opsional)',
+          Text('Age (optional)',
               style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
             controller: ageController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'mis. 25'),
+            decoration: const InputDecoration(hintText: 'e.g. 25'),
           ),
         ],
       ),
@@ -261,15 +261,15 @@ class _PersonalInfoStep extends StatelessWidget {
         animation: nameController,
         builder: (context, _) => ElevatedButton(
           onPressed: nameController.text.trim().isEmpty ? null : onNext,
-          child: const Text('Lanjut'),
+          child: const Text('Next'),
         ),
       ),
     );
   }
 }
 
-/// Step 2-4: 1 pertanyaan gaya hidup single-select per halaman, progress bar
-/// bertahap + tombol Lewati. CLAUDE.md v3 §4.1 langkah 3.
+/// Step 2-4: 1 single-select lifestyle question per page, incremental
+/// progress bar + Skip button. CLAUDE.md v3 §4.1 step 3.
 class _LifestyleQuestionStep extends StatelessWidget {
   const _LifestyleQuestionStep({
     required this.question,
@@ -309,7 +309,7 @@ class _LifestyleQuestionStep extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          TextButton(onPressed: onSkip, child: const Text('Lewati')),
+          TextButton(onPressed: onSkip, child: const Text('Skip')),
         ],
       ),
       child: ListView(
@@ -330,13 +330,13 @@ class _LifestyleQuestionStep extends StatelessWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Kembali'))),
+          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: selectedAnswer == null ? null : onNext,
-              child: const Text('Lanjut'),
+              child: const Text('Next'),
             ),
           ),
         ],
@@ -395,8 +395,8 @@ class _OptionTile extends StatelessWidget {
   }
 }
 
-/// Step 5: grafik kurva pembentukan kebiasaan + statement motivasi. CLAUDE.md
-/// v3 §4.1 langkah 4.
+/// Step 5: habit-formation curve chart + motivational statement. CLAUDE.md
+/// v3 §4.1 step 4.
 class _EducationStep extends StatelessWidget {
   const _EducationStep({required this.onBack, required this.onNext});
 
@@ -410,11 +410,11 @@ class _EducationStep extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('Konsistensi Membentuk Kebiasaan', style: theme.textTheme.headlineSmall),
+          Text('Consistency Builds Habits', style: theme.textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
-            'Berdasarkan riset Lally dkk. (UCL), kebiasaan baru butuh sekitar 66 hari '
-            'pengulangan sampai terasa otomatis — bukan sekadar niat sesaat.',
+            'According to research by Lally et al. (UCL), a new habit takes about 66 days '
+            'of repetition to become automatic — not just a fleeting intention.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
@@ -432,7 +432,7 @@ class _EducationStep extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
             ),
             child: const Text(
-              'Membangun kebiasaan baik meningkatkan kebahagiaan!',
+              'Building good habits increases happiness!',
               style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700, height: 1.5),
             ),
           ),
@@ -440,17 +440,17 @@ class _EducationStep extends StatelessWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Kembali'))),
+          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
           const SizedBox(width: 12),
-          Expanded(flex: 2, child: ElevatedButton(onPressed: onNext, child: const Text('Lanjut'))),
+          Expanded(flex: 2, child: ElevatedButton(onPressed: onNext, child: const Text('Next'))),
         ],
       ),
     );
   }
 }
 
-/// Step 6: pilih goal phrase (multi-select) + kartu buat goal baru. CLAUDE.md
-/// v3 §4.1 langkah 5.
+/// Step 6: pick goal phrase (multi-select) + create-new-goal card. CLAUDE.md
+/// v3 §4.1 step 5.
 class _GoalPhrasePickStep extends ConsumerWidget {
   const _GoalPhrasePickStep({
     required this.selected,
@@ -478,9 +478,9 @@ class _GoalPhrasePickStep extends ConsumerWidget {
         data: (categories) => ListView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           children: [
-            Text('Pilih Habits yang Sesuai dengan Goals Kamu', style: theme.textTheme.titleLarge),
+            Text('Choose Habits That Match Your Goals', style: theme.textTheme.titleLarge),
             const SizedBox(height: 6),
-            Text('Pilih satu atau lebih goal yang ingin kamu capai.', style: theme.textTheme.bodySmall),
+            Text('Pick one or more goals you want to achieve.', style: theme.textTheme.bodySmall),
             const SizedBox(height: 20),
             GridView.builder(
               shrinkWrap: true,
@@ -522,7 +522,7 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            '+ Buat Goal Baru',
+                            '+ Create New Goal',
                             textAlign: TextAlign.center,
                             style: theme.textTheme.titleSmall,
                           ),
@@ -547,13 +547,13 @@ class _GoalPhrasePickStep extends ConsumerWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Kembali'))),
+          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: selected.isEmpty ? null : onNext,
-              child: const Text('Lanjut'),
+              child: const Text('Next'),
             ),
           ),
         ],
@@ -579,8 +579,8 @@ class _CategoryPickTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      // Base blend dari cardColor tema (bukan Colors.white hardcoded) supaya
-      // di dark mode tile terpilih tidak jadi terang dan menelan teks gelap.
+      // Blend from the theme's cardColor (not a hardcoded Colors.white) so
+      // that in dark mode the selected tile doesn't turn light and swallow dark text.
       color: selected ? Color.lerp(theme.cardColor, color, 0.14) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -616,9 +616,9 @@ class _CategoryPickTile extends StatelessWidget {
   }
 }
 
-/// Step 7: rekomendasi habit per goal phrase terpilih + jalan pintas ke alur
-/// Tambah Habit penuh (browse kategori mentah lain / custom) tanpa keluar
-/// dari onboarding. CLAUDE.md v3 §4.1 langkah 6.
+/// Step 7: habit recommendations per selected goal phrase + a shortcut into
+/// the full Add Habit flow (browse other raw/custom categories) without
+/// leaving onboarding. CLAUDE.md v3 §4.1 step 6.
 class _RecommendationStep extends ConsumerStatefulWidget {
   const _RecommendationStep({
     required this.selectedCategoryIds,
@@ -667,10 +667,10 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
               children: [
-                Text('Rekomendasi Habit', style: theme.textTheme.titleLarge),
+                Text('Habit Recommendations', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 6),
                 Text(
-                  'Centang habit yang ingin kamu mulai. Bisa lewati sisanya.',
+                  'Check the habits you want to start. You can skip the rest.',
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 20),
@@ -697,16 +697,16 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                     if (templates.isEmpty) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Text('Belum ada rekomendasi untuk kategori ini.',
+                        child: Text('No recommendations for this category yet.',
                             style: theme.textTheme.bodySmall),
                       );
                     }
                     final selectedSet = widget.selectedTemplates[category.id] ?? {};
-                    // Kategori Keuangan (Jadi Hemat) khusus Pro — tetap
-                    // ditampilkan di sini (bukan disembunyikan) supaya user
-                    // tahu fiturnya ada, tapi digrayscale + badge PRO dan tap
-                    // membuka paywall, bukan toggle. Alur Tambah Habit lewat
-                    // Beranda sudah punya gate yang sama (lihat
+                    // Finance category (Save Money) is Pro-only — still
+                    // shown here (not hidden) so the user knows the feature
+                    // exists, but grayscaled + a PRO badge and tapping opens
+                    // the paywall instead of toggling. The Add Habit flow
+                    // from Home already has the same gate (see
                     // add_habit_flow_screen.dart).
                     final locked = isFinanceCategory(category) && !ref.watch(isProProvider);
                     return Column(
@@ -722,9 +722,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                   onTap: locked
                                       ? () => showProRequiredDialog(
                                             context,
-                                            message: 'Habit keuangan (menabung/menghemat dengan '
-                                                'nominal) khusus pengguna Pro. Upgrade ke Pro untuk '
-                                                'mulai melacaknya.',
+                                            message: 'Finance habits (saving/spending with an '
+                                                'amount) are Pro-only. Upgrade to Pro to '
+                                                'start tracking them.',
                                           )
                                       : () => widget.onToggleTemplate(category.id, t),
                                   child: Padding(
@@ -790,7 +790,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Text(
-                      '+ Jelajahi Kategori Lain / Tambah Habit Kustom',
+                      '+ Explore Other Categories / Add Custom Habit',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.titleSmall,
                     ),
@@ -804,14 +804,14 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
       bottomButton: Row(
         children: [
           Expanded(
-            child: OutlinedButton(onPressed: _saving ? null : widget.onBack, child: const Text('Kembali')),
+            child: OutlinedButton(onPressed: _saving ? null : widget.onBack, child: const Text('Back')),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: _saving ? null : _saveSelections,
-              child: Text(_saving ? 'Menyimpan...' : 'Lanjut'),
+              child: Text(_saving ? 'Saving...' : 'Next'),
             ),
           ),
         ],
@@ -819,12 +819,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     );
   }
 
-  /// Reconcile, bukan create-selalu — supaya idempotent walau dipanggil
-  /// berkali-kali (user bolak-balik Rekomendasi <-> Ringkasan): template yang
-  /// dicentang tapi belum ada di `createdHabitIds` baru dibuat, template yang
-  /// sebelumnya sudah dibuat tapi sekarang di-uncheck akan dihapus lagi. Ini
-  /// yang mencegah habit ganda pada bug sebelumnya (checkbox kelihatan
-  /// kosong padahal sudah tersimpan, lalu user centang ulang & lanjut lagi).
+  /// Reconcile, not always-create — so it's idempotent even when called
+  /// repeatedly (user navigating back and forth between Recommendations <->
+  /// Summary): templates that are checked but not yet in `createdHabitIds`
+  /// get created, templates that were previously created but are now
+  /// unchecked get deleted again. This is what prevents duplicate habits
+  /// from a previous bug (checkbox appeared empty even though it was
+  /// already saved, then the user re-checked it & continued again).
   Future<void> _saveSelections() async {
     setState(() => _saving = true);
     try {
@@ -843,7 +844,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
         try {
           await notif.cancelForHabit(id);
         } catch (_) {
-          // Notifikasi gagal dibatalkan — jangan gagalkan penghapusan habit.
+          // Notification cancellation failed — don't fail the habit deletion.
         }
         await repo.deleteHabit(id);
         widget.onHabitRemoved(template);
@@ -871,8 +872,8 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
             try {
               await notif.rescheduleForHabit(created);
             } catch (_) {
-              // Notifikasi gagal dijadwalkan (mis. platform tidak
-              // mendukung) — jangan gagalkan penyimpanan habit karena ini.
+              // Notification scheduling failed (e.g. platform not
+              // supported) — don't fail the habit save because of this.
             }
           }
         }
@@ -882,7 +883,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal menyimpan habit: $e')));
+            .showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -914,9 +915,9 @@ class _SquareCheckbox extends StatelessWidget {
   }
 }
 
-/// Step 8: ringkasan habit yang berhasil dibuat selama onboarding (dibaca
-/// live dari DB, bukan snapshot lokal, supaya habit yang ditambah lewat
-/// jalan pintas Tambah Habit ikut tampil). CLAUDE.md v3 §4.1 langkah 7.
+/// Step 8: summary of habits successfully created during onboarding (read
+/// live from the DB, not a local snapshot, so habits added via the Add
+/// Habit shortcut show up too). CLAUDE.md v3 §4.1 step 7.
 class _SummaryStep extends ConsumerWidget {
   const _SummaryStep({
     required this.onBack,
@@ -937,16 +938,16 @@ class _SummaryStep extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('Ringkasan', style: theme.textTheme.titleLarge),
+          Text('Summary', style: theme.textTheme.titleLarge),
           const SizedBox(height: 6),
           habitsAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (e, st) => Text('$e', style: theme.textTheme.bodySmall),
             data: (habits) => Text(
               habits.isEmpty
-                  ? 'Belum ada habit ditambahkan. Kamu bisa menambah kapan saja lewat '
-                      'tombol Tambah Habit di Beranda.'
-                  : '${habits.length} habit berhasil ditambahkan',
+                  ? 'No habits added yet. You can add one anytime via the '
+                      'Add Habit button on Home.'
+                  : '${habits.length} habit(s) added successfully',
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -968,7 +969,7 @@ class _SummaryStep extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(child: Text(habit.name, style: theme.textTheme.titleSmall)),
                           IconButton(
-                            tooltip: 'Batalkan habit ini',
+                            tooltip: 'Cancel this habit',
                             icon: const Icon(Icons.close_rounded, size: 18),
                             onPressed: () => onRemoveHabit(habit.id),
                           ),
@@ -983,13 +984,13 @@ class _SummaryStep extends ConsumerWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Kembali'))),
+          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: () => onFinish(),
-              child: const Text('Mulai Tracking'),
+              child: const Text('Start Tracking'),
             ),
           ),
         ],
