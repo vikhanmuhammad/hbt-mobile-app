@@ -149,19 +149,38 @@ class _GroupListView extends ConsumerWidget {
                     loading: () => const Center(child: CircularProgressIndicator()),
                     error: (e, st) => Center(child: Text('Failed to load groups: $e')),
                     data: (groups) {
-                      if (groups.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No groups yet. Create a new group or join with an invite code from a friend.',
-                            style: theme.textTheme.bodyMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      }
-                      return ListView.separated(
-                        itemCount: groups.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, i) => _GroupTile(group: groups[i]),
+                      return RefreshIndicator(
+                        onRefresh: () async {
+                          try {
+                            final refreshed = ref.refresh(myGroupsProvider.future);
+                            await refreshed;
+                          } catch (_) {
+                            // Errors surface via the AsyncValue `error` branch above.
+                          }
+                        },
+                        child: groups.isEmpty
+                            ? ListView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                children: [
+                                  SizedBox(
+                                    height: MediaQuery.sizeOf(context).height * 0.5,
+                                    child: Center(
+                                      child: Text(
+                                        'No groups yet. Create a new group or join with an invite code '
+                                        'from a friend.',
+                                        style: theme.textTheme.bodyMedium,
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                itemCount: groups.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                itemBuilder: (context, i) => _GroupTile(group: groups[i]),
+                              ),
                       );
                     },
                   ),

@@ -121,14 +121,34 @@ class _HabitsTab extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Failed to load: $e')),
         data: (habits) {
-          if (habits.isEmpty) {
-            return const Center(child: Text('No Group Habits yet. Create the first challenge!'));
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: habits.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, i) => _GroupHabitTile(habit: habits[i]),
+          return RefreshIndicator(
+            onRefresh: () async {
+              try {
+                final refreshed = ref.refresh(groupHabitsProvider(groupId).future);
+                await refreshed;
+              } catch (_) {
+                // Errors surface via the AsyncValue `error` branch above.
+              }
+            },
+            child: habits.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.sizeOf(context).height * 0.5,
+                        child: const Center(
+                          child: Text('No Group Habits yet. Create the first challenge!'),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: habits.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, i) => _GroupHabitTile(habit: habits[i]),
+                  ),
           );
         },
       ),
@@ -264,22 +284,42 @@ class _LeaderboardList extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, st) => Center(child: Text('Failed to load leaderboard: $e')),
       data: (entries) {
-        if (entries.isEmpty) {
-          return const Center(child: Text('No progress recorded yet.'));
-        }
         final sorted = [...entries]
           ..sort((a, b) =>
               byProgress ? b.progressValue.compareTo(a.progressValue) : b.streak.compareTo(a.streak));
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: sorted.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 6),
-          itemBuilder: (context, i) {
-            final entry = sorted[i];
-            final isMe = entry.uid == myUid;
-            return _LeaderboardTile(rank: i + 1, entry: entry, unit: unit, byProgress: byProgress, isMe: isMe);
+        return RefreshIndicator(
+          onRefresh: () async {
+            try {
+              final refreshed =
+                  ref.refresh(groupHabitLeaderboardProvider(groupId, groupHabitId).future);
+              await refreshed;
+            } catch (_) {
+              // Errors surface via the AsyncValue `error` branch above.
+            }
           },
+          child: sorted.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.sizeOf(context).height * 0.4,
+                      child: const Center(child: Text('No progress recorded yet.')),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: sorted.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 6),
+                  itemBuilder: (context, i) {
+                    final entry = sorted[i];
+                    final isMe = entry.uid == myUid;
+                    return _LeaderboardTile(
+                        rank: i + 1, entry: entry, unit: unit, byProgress: byProgress, isMe: isMe);
+                  },
+                ),
         );
       },
     );
@@ -377,14 +417,33 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, st) => Center(child: Text('Failed to load chat: $e')),
             data: (messages) {
-              if (messages.isEmpty) {
-                return const Center(child: Text('No messages yet. Start the conversation!'));
-              }
-              return ListView.builder(
-                reverse: true,
-                padding: const EdgeInsets.all(16),
-                itemCount: messages.length,
-                itemBuilder: (context, i) => _ChatBubble(message: messages[i], isMe: messages[i].senderUid == myUid),
+              return RefreshIndicator(
+                onRefresh: () async {
+                  try {
+                    final refreshed = ref.refresh(groupMessagesProvider(widget.groupId).future);
+                    await refreshed;
+                  } catch (_) {
+                    // Errors surface via the AsyncValue `error` branch above.
+                  }
+                },
+                child: messages.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(
+                            height: 300,
+                            child: Center(child: Text('No messages yet. Start the conversation!')),
+                          ),
+                        ],
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        reverse: true,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length,
+                        itemBuilder: (context, i) =>
+                            _ChatBubble(message: messages[i], isMe: messages[i].senderUid == myUid),
+                      ),
               );
             },
           ),
@@ -463,18 +522,29 @@ class _MembersTab extends ConsumerWidget {
     final myUid = ref.watch(currentUidProvider);
     final iAmAdmin = myUid != null && group.isAdmin(myUid);
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: group.members.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final member = group.members[i];
-        return _MemberTile(
-          groupId: group.id,
-          member: member,
-          canManage: iAmAdmin && member.uid != myUid,
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        try {
+          final refreshed = ref.refresh(groupDetailProvider(group.id).future);
+          await refreshed;
+        } catch (_) {
+          // Errors surface via the AsyncValue `error` branch on GroupDetailScreen.
+        }
       },
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: group.members.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, i) {
+          final member = group.members[i];
+          return _MemberTile(
+            groupId: group.id,
+            member: member,
+            canManage: iAmAdmin && member.uid != myUid,
+          );
+        },
+      ),
     );
   }
 }
