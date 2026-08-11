@@ -10,6 +10,7 @@ import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
+import '../../../providers/finance_providers.dart';
 import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
@@ -267,6 +268,7 @@ class _HabitList extends ConsumerWidget {
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
+    ref.invalidate(financeSummaryProvider);
   }
 }
 

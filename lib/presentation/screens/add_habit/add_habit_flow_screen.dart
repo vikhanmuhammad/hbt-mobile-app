@@ -10,6 +10,7 @@ import '../../../domain/models/habit_template.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
+import '../../../providers/finance_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
@@ -1089,6 +1090,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.invalidate(dashboardSummaryProvider);
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
+    ref.invalidate(financeSummaryProvider);
 
     if (!mounted) return;
     final navigator = Navigator.of(context);

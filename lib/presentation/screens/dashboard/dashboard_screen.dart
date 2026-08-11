@@ -9,6 +9,7 @@ import '../../../domain/models/habit_with_progress.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
+import '../../../providers/finance_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
@@ -595,6 +596,7 @@ class _DayDetailSheet extends ConsumerWidget {
       ref.invalidate(dashboardSummaryProvider);
       ref.invalidate(monthSummariesProvider);
       ref.invalidate(daySummaryProvider);
+      ref.invalidate(financeSummaryProvider);
       unawaited(syncCommunityHabit(ref, item.habit.id));
     } catch (e) {
       if (context.mounted) {
