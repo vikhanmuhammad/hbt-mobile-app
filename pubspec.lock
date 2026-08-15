@@ -455,7 +455,7 @@ packages:
     source: hosted
     version: "3.3.1"
   flutter_svg:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: flutter_svg
       sha256: "35882981abcbfb8c15b286f0cd690ff25bac12d95eff3e25ee207f37d4c42e7f"
@@ -467,6 +467,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_undraw:
+    dependency: "direct main"
+    description:
+      name: flutter_undraw
+      sha256: a38083350fac9e0d44ddde0e53a39f00730498ed4a110f967a38c6fb1a161755
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   flutter_web_plugins:
     dependency: transitive
     description: flutter

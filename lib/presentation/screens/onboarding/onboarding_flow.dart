@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_undraw/flutter_undraw.dart';
 
 import '../../../domain/date_utils.dart';
 import '../../../domain/models/category.dart';
@@ -360,17 +360,23 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
   }
 }
 
-/// Static undraw.co-style flat vector illustration (a person planting a
-/// goal flag) shown below the goal dropdown on the name/age step — fills
-/// the otherwise-empty space at the bottom. A still image, not an animation.
+/// Static undraw.co illustration ("Shared goals" — depicts more than one
+/// person, so it doesn't read as gender-specific) shown below the goal
+/// dropdown on the name/age step — fills the otherwise-empty space at the
+/// bottom. A still image, not an animation. Real undraw.co artwork via the
+/// `flutter_undraw` package (bundled SVG asset, no network fetch at runtime).
 class _GoalsIllustration extends StatelessWidget {
   const _GoalsIllustration();
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 190,
-      child: SvgPicture.asset('assets/illustrations/goal_setting.svg'),
+      height: 260,
+      width: double.infinity,
+      child: Undraw(
+        illustration: UndrawIllustration.sharedGoals,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 }
