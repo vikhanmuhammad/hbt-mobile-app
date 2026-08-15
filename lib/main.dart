@@ -67,6 +67,12 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   }
 
   Future<void> _init() async {
+    // Seeding + notification init are usually near-instant, which used to
+    // make the splash screen (and its motivational quote) flash by too
+    // fast to notice. Enforce a minimum long enough to comfortably read a
+    // couple of the rotating quotes below.
+    final minDuration = Future.delayed(const Duration(milliseconds: 4200));
+
     try {
       final notificationService = ref.read(notificationServiceProvider);
       await notificationService.init();
@@ -78,6 +84,7 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
+    await minDuration;
   }
 
   @override
@@ -104,12 +111,18 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 }
 
 const _splashQuotes = [
-  'Small steps, repeated daily, become big changes.',
-  'Consistency beats intensity.',
-  'You don\'t have to be perfect — just show up.',
-  'Every habit starts with a single decision.',
-  'Progress, not perfection.',
-  'Discipline today, freedom tomorrow.',
+  'Small steps, repeated daily, quietly compound into changes big enough to '
+      'transform how your life actually looks a year from now.',
+  'Consistency beats intensity every time — showing up in a small way today '
+      'matters more than one perfect burst of effort you can\'t repeat tomorrow.',
+  'You don\'t have to be perfect. Missing a single day doesn\'t erase your '
+      'progress — what matters most is getting back on track quickly.',
+  'Every lasting habit starts with one small, deliberate decision, repeated '
+      'on purpose until it stops feeling like a decision at all.',
+  'Progress, not perfection, is what actually builds a habit that lasts — '
+      'give yourself credit for showing up, even imperfectly.',
+  'A little discipline today quietly buys you a lot more freedom tomorrow, '
+      'even when the payoff isn\'t obvious yet.',
 ];
 
 class _SplashScreen extends StatefulWidget {
@@ -127,7 +140,7 @@ class _SplashScreenState extends State<_SplashScreen> {
   void initState() {
     super.initState();
     _quoteIndex = Random().nextInt(_splashQuotes.length);
-    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (!mounted) return;
       setState(() => _quoteIndex = (_quoteIndex + 1) % _splashQuotes.length);
     });

@@ -15,6 +15,7 @@ import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_progress_card.dart';
 import '../../widgets/date_strip.dart';
 import '../../widgets/quick_progress_sheet.dart';
@@ -229,23 +230,30 @@ class _HabitList extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Deactivate this habit?'),
+        title: const Text('Delete this habit?'),
         content: Text(
-          '"${item.habit.name}" will be hidden from Home. Progress history stays saved — '
-          'you can reactivate it anytime via the edit form.',
+          '"${item.habit.name}" and all of its progress history will be permanently deleted '
+          'and will no longer count toward your Dashboard stats. This cannot be undone.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Deactivate')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
         ],
       ),
     );
     if (confirmed != true) return;
-    await ref.read(habitRepositoryProvider).setActive(item.habit.id, false);
-    // dashboardSummaryProvider/monthSummariesProvider/daySummaryProvider are
-    // Future-backed (not reactive DB streams like allActiveHabitsProvider),
-    // so without this the Dashboard keeps showing the deactivated habit's
-    // stats from stale cached data even though Home already updated.
+    try {
+      await ref.read(notificationServiceProvider).cancelForHabit(item.habit.id);
+    } catch (_) {
+      // Notification cancellation failed (e.g. platform not supported) —
+      // don't fail the habit deletion because of this.
+    }
+    // deleteHabit also removes the habit's logs (see HabitRepository), so its
+    // progress is fully gone rather than just hidden — matches
+    // dashboardSummaryProvider/monthSummariesProvider/daySummaryProvider
+    // being Future-backed (not reactive DB streams), which is why they also
+    // need an explicit invalidate below.
+    await ref.read(habitRepositoryProvider).deleteHabit(item.habit.id);
     _invalidateSummaries(ref);
   }
 
@@ -282,7 +290,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _EmptyHabitsIllustration(),
+            const EmptyStateIllustration(),
             const SizedBox(height: 16),
             Text('No habits scheduled yet', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
@@ -297,105 +305,3 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Looping animated illustration (a floating clipboard with a checkmark
-/// popping in) shown above the "No habits scheduled yet" message — replaces
-/// the old flat static icon.
-class _EmptyHabitsIllustration extends StatefulWidget {
-  const _EmptyHabitsIllustration();
-
-  @override
-  State<_EmptyHabitsIllustration> createState() => _EmptyHabitsIllustrationState();
-}
-
-class _EmptyHabitsIllustrationState extends State<_EmptyHabitsIllustration>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return SizedBox(
-      height: 140,
-      width: 140,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final float = Curves.easeInOut.transform(_controller.value);
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                ),
-              ),
-              Transform.translate(
-                offset: Offset(0, -6 + float * 6),
-                child: Container(
-                  width: 76,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: theme.dividerColor, width: 1.5),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < 3; i++)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: theme.dividerColor, width: 1.5),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Container(height: 6, color: theme.dividerColor),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 14 - float * 8,
-                right: 18,
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
-                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 20),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}

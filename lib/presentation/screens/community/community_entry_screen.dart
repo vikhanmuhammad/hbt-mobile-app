@@ -32,16 +32,85 @@ class _ProTeaser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ProFeatureTeaser(
+    return ProFeatureTeaser(
       icon: Icons.groups_rounded,
       title: 'Community — Pro Feature',
       description: 'Create/join habit groups with friends, compete via leaderboards, and chat '
           'in real-time. Upgrade to Pro to unlock this feature.',
-      benefits: [
+      benefits: const [
         'Create or join unlimited habit groups with friends and family',
         'Compete on real-time leaderboards to stay motivated together',
         'Group chat to cheer each other on and stay accountable',
       ],
+      previewBuilder: (context) => const _CommunityPreviewMock(),
+    );
+  }
+}
+
+/// Mock preview of the real group-list screen, rendered blurred behind the
+/// Pro teaser card so free users see roughly what they'd unlock.
+class _CommunityPreviewMock extends StatelessWidget {
+  const _CommunityPreviewMock();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Community', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: FilledButton(onPressed: null, child: const Text('+ Create Group'))),
+                  const SizedBox(width: 12),
+                  Expanded(child: OutlinedButton(onPressed: null, child: const Text('Join via Code'))),
+                ],
+              ),
+              const SizedBox(height: 20),
+              for (final entry in const [
+                ('Morning Runners', 12),
+                ('Book Club', 5),
+                ('Water Challenge', 8),
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.15),
+                            child: Icon(Icons.groups_rounded, color: theme.colorScheme.primary),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(entry.$1,
+                                    style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 2),
+                                Text('${entry.$2} members', style: theme.textTheme.bodySmall),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

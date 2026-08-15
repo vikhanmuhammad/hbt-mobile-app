@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../domain/date_utils.dart';
 import '../../../domain/models/category.dart';
@@ -78,16 +79,32 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
               child: AnimatedBuilder(
                 animation: _pageController,
                 builder: (context, _) {
+                  final theme = Theme.of(context);
                   final page = _pageController.hasClients ? (_pageController.page ?? 0) : 0.0;
                   final progress = ((page + 1) / _totalSteps).clamp(0.0, 1.0);
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 6,
-                      backgroundColor: Theme.of(context).dividerColor,
-                      valueColor: AlwaysStoppedAnimation(Theme.of(context).colorScheme.primary),
-                    ),
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            minHeight: 6,
+                            backgroundColor: theme.dividerColor,
+                            valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        width: 36,
+                        child: Text(
+                          '${(progress * 100).round()}%',
+                          textAlign: TextAlign.right,
+                          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -343,80 +360,17 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
   }
 }
 
-/// Small looping animated illustration (target + a bouncing arrow "pointing"
-/// toward it) shown below the goal dropdown on the name/age step — fills the
-/// otherwise-empty space at the bottom and visually reinforces "pick a
-/// goal, then aim for it".
-class _GoalsIllustration extends StatefulWidget {
+/// Static undraw.co-style flat vector illustration (a person planting a
+/// goal flag) shown below the goal dropdown on the name/age step — fills
+/// the otherwise-empty space at the bottom. A still image, not an animation.
+class _GoalsIllustration extends StatelessWidget {
   const _GoalsIllustration();
 
   @override
-  State<_GoalsIllustration> createState() => _GoalsIllustrationState();
-}
-
-class _GoalsIllustrationState extends State<_GoalsIllustration>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return SizedBox(
-      height: 150,
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (context, _) {
-          final bounce = Curves.easeInOut.transform(_controller.value);
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
-                ),
-              ),
-              Container(
-                width: 92,
-                height: 92,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.22),
-                ),
-              ),
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
-                child: const Icon(Icons.flag_rounded, color: Colors.white, size: 24),
-              ),
-              Positioned(
-                left: 24 + bounce * 14,
-                top: 30 - bounce * 10,
-                child: Transform.rotate(
-                  angle: -0.6,
-                  child: Icon(Icons.north_east_rounded, size: 30, color: theme.colorScheme.primary),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      height: 190,
+      child: SvgPicture.asset('assets/illustrations/goal_setting.svg'),
     );
   }
 }
@@ -655,7 +609,7 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                 crossAxisCount: categoryGridColumns(MediaQuery.sizeOf(context).width),
                 mainAxisSpacing: 14,
                 crossAxisSpacing: 14,
-                childAspectRatio: 0.95,
+                childAspectRatio: 0.76,
               ),
               itemCount: categories.length + 1,
               itemBuilder: (context, index) {
@@ -774,6 +728,14 @@ class _CategoryPickTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleSmall,
               ),
+              const SizedBox(height: 4),
+              Text(
+                goalPhraseDescriptionFor(category),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+              ),
             ],
           ),
         ),
@@ -844,19 +806,29 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   Row(
                     children: [
                       Container(
-                        width: 10,
-                        height: 10,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.categoryColorFromHex(
                               category.colorHex, categories.indexOf(category)),
                           shape: BoxShape.circle,
                         ),
+                        child: Center(
+                          child: HabitIcon(
+                            icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
+                            size: 17,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      Text(category.name, style: theme.textTheme.titleSmall),
+                      const SizedBox(width: 12),
+                      Text(
+                        category.name,
+                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
                   Builder(builder: (context) {
                     final match = allTemplates.where((t) => t.defaultGoalPhrase == category.name);
                     final templates = match.isEmpty ? <HabitTemplate>[] : match.first.habits;

@@ -169,8 +169,13 @@ class _DayCell extends StatelessWidget {
                 size: 34,
                 strokeWidth: 3,
                 centerLabel: '$day',
+                centerLabelStyle:
+                    theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800, fontSize: 12),
               )
-            : Text('$day', style: theme.textTheme.bodySmall),
+            : Text(
+                '$day',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
       ),
     );
   }

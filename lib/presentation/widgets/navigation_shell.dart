@@ -22,19 +22,21 @@ class NavigationShell extends ConsumerStatefulWidget {
 class _NavigationShellState extends ConsumerState<NavigationShell> {
   int _index = 0;
 
+  // Community sits in the middle slot (index 2 of 5) so it's the centered
+  // destination in the bottom nav bar.
   static const _destinations = [
     (icon: Icons.home_rounded, label: 'Home'),
     (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
-    (icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
     (icon: Icons.groups_rounded, label: 'Community'),
+    (icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
     (icon: Icons.settings_rounded, label: 'Settings'),
   ];
 
   static final _screens = [
     const HomeScreen(),
     const DashboardScreen(),
-    const FinanceSummaryScreen(),
     const CommunityEntryScreen(),
+    const FinanceSummaryScreen(),
     const SettingsScreen(),
   ];
 

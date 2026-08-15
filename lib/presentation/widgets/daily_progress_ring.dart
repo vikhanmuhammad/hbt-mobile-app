@@ -12,6 +12,7 @@ class DailyProgressRing extends StatelessWidget {
     this.color,
     this.centerLabel,
     this.centerSubLabel,
+    this.centerLabelStyle,
   });
 
   final int done;
@@ -21,6 +22,7 @@ class DailyProgressRing extends StatelessWidget {
   final Color? color;
   final String? centerLabel;
   final String? centerSubLabel;
+  final TextStyle? centerLabelStyle;
 
   double get _ratio => total == 0 ? 0 : (done / total).clamp(0, 1);
 
@@ -61,7 +63,7 @@ class DailyProgressRing extends StatelessWidget {
             children: [
               Text(
                 centerLabel ?? '$done/$total',
-                style: theme.textTheme.titleMedium,
+                style: centerLabelStyle ?? theme.textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               if (centerSubLabel != null)

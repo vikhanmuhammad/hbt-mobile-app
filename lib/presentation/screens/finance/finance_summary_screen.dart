@@ -8,6 +8,7 @@ import '../../../providers/community_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 
@@ -26,16 +27,17 @@ class FinanceSummaryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isPro = ref.watch(isProProvider);
     if (!isPro) {
-      return const ProFeatureTeaser(
+      return ProFeatureTeaser(
         icon: Icons.account_balance_wallet_rounded,
         title: 'Finance — Pro Feature',
         description: 'Track spending, savings, and saving habits in one monthly summary. '
             'Upgrade to Pro to unlock this feature.',
-        benefits: [
+        benefits: const [
           'Monthly spending & savings totals across all your finance habits',
           'Daily spending trend chart so you can spot patterns early',
           'Per-habit breakdown to see exactly where your money goes',
         ],
+        previewBuilder: (context) => const _FinancePreviewMock(),
       );
     }
 
@@ -78,6 +80,92 @@ class FinanceSummaryScreen extends ConsumerWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Mock preview of the real Finance summary screen, rendered blurred behind
+/// the Pro teaser card so free users see roughly what they'd unlock.
+class _FinancePreviewMock extends StatelessWidget {
+  const _FinancePreviewMock();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+          children: [
+            Text('Finance', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 20),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Total Spending', style: theme.textTheme.bodyMedium),
+                    const SizedBox(height: 6),
+                    Text('Rp 850.000', style: theme.textTheme.headlineMedium),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: 0.6,
+                        minHeight: 8,
+                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.savings_rounded, size: 20, color: theme.colorScheme.primary),
+                          const SizedBox(height: 10),
+                          Text('Total Saved', style: theme.textTheme.labelSmall),
+                          const SizedBox(height: 4),
+                          Text('Rp 1.200.000',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.account_balance_wallet_rounded, size: 20, color: theme.colorScheme.primary),
+                          const SizedBox(height: 10),
+                          Text('Total Deposited', style: theme.textTheme.labelSmall),
+                          const SizedBox(height: 4),
+                          Text('Rp 2.000.000',
+                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -143,7 +231,7 @@ class _EmptyFinance extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.account_balance_wallet_outlined, size: 48, color: Theme.of(context).disabledColor),
+              const EmptyStateIllustration(variant: EmptyStateVariant.wallet),
               const SizedBox(height: 16),
               const Text('No finance habits yet'),
               const SizedBox(height: 8),
