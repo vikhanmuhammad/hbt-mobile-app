@@ -7,6 +7,7 @@ class SettingsRepository {
 
   static const _defaultReminderTimeKey = 'default_reminder_time';
   static const _darkModeKey = 'dark_mode_enabled';
+  static const _onboardingGoalKey = 'onboarding_goal';
 
   String? get defaultReminderTime => _prefs.getString(_defaultReminderTimeKey);
 
@@ -19,4 +20,12 @@ class SettingsRepository {
 
   Future<void> setDarkModeEnabled(bool enabled) =>
       _prefs.setBool(_darkModeKey, enabled);
+
+  /// Goal chosen on the "What's your name?" onboarding step (e.g. "Kesehatan
+  /// & Olahraga") — UI-only signal for now, not yet wired into
+  /// recommendation logic.
+  String? get onboardingGoal => _prefs.getString(_onboardingGoalKey);
+
+  Future<void> setOnboardingGoal(String goal) =>
+      _prefs.setString(_onboardingGoalKey, goal);
 }

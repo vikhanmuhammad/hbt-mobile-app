@@ -43,8 +43,46 @@ class AppPalettes {
     accent: Color(0xFFE3A94B),
   );
 
+  // Palet tambahan — `sunnyGold` (#F2BD00) jadi default baru (lihat `byKey`).
+  static const skyBlue = AppPalette(
+    key: 'sky_blue',
+    label: 'Sky Blue',
+    accent: Color(0xFF93D9F9),
+  );
+  static const sunnyGold = AppPalette(
+    key: 'sunny_gold',
+    label: 'Sunny Gold',
+    accent: Color(0xFFF2BD00),
+  );
+  static const blushPink = AppPalette(
+    key: 'blush_pink',
+    label: 'Blush Pink',
+    accent: Color(0xFFFFA0A0),
+  );
+  static const tangerine = AppPalette(
+    key: 'tangerine',
+    label: 'Tangerine',
+    accent: Color(0xFFFFB34E),
+  );
+  static const freshLime = AppPalette(
+    key: 'fresh_lime',
+    label: 'Fresh Lime',
+    accent: Color(0xFFC1EC9A),
+  );
+  static const orchidPurple = AppPalette(
+    key: 'orchid_purple',
+    label: 'Orchid Purple',
+    accent: Color(0xFFF0A6FF),
+  );
+
   static const List<AppPalette> all = [
+    sunnyGold,
     tealSage,
+    skyBlue,
+    blushPink,
+    tangerine,
+    freshLime,
+    orchidPurple,
     sunsetCoral,
     oceanBlue,
     lavenderCalm,
@@ -52,5 +90,5 @@ class AppPalettes {
   ];
 
   static AppPalette byKey(String? key) =>
-      all.firstWhere((p) => p.key == key, orElse: () => tealSage);
+      all.firstWhere((p) => p.key == key, orElse: () => sunnyGold);
 }

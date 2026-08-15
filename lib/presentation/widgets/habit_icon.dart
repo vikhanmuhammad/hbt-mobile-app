@@ -32,6 +32,7 @@ const List<CuratedIcon> curatedHabitIcons = [
   CuratedIcon(key: 'receipt', icon: FontAwesomeIcons.receipt, group: 'Keuangan'),
   CuratedIcon(key: 'wallet', icon: FontAwesomeIcons.wallet, group: 'Keuangan'),
   CuratedIcon(key: 'coins', icon: FontAwesomeIcons.coins, group: 'Keuangan'),
+  CuratedIcon(key: 'credit-card', icon: FontAwesomeIcons.creditCard, group: 'Keuangan'),
   // Mindfulness
   CuratedIcon(key: 'spa', icon: FontAwesomeIcons.spa, group: 'Mindfulness'),
   CuratedIcon(key: 'pen', icon: FontAwesomeIcons.pen, group: 'Mindfulness'),

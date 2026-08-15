@@ -291,7 +291,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      // Step 1 (Pick Goal Phrase) gets a grayer backdrop than the app default
+      // so the white goal-phrase cards stand out against it.
+      backgroundColor: _step == 1
+          ? (theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt)
+          : theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -354,7 +358,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 crossAxisCount: columns,
                 mainAxisSpacing: 14,
                 crossAxisSpacing: 14,
-                childAspectRatio: 0.95,
+                childAspectRatio: 0.74,
               ),
               itemCount: categories.length + 1,
               itemBuilder: (context, index) {
@@ -399,7 +403,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 final color = AppColors.categoryColorFromHex(category.colorHex, index);
                 return _CategoryGridTile(
                   name: category.name,
-                  icon: category.icon,
+                  description: goalPhraseDescriptionFor(category),
+                  icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
                   color: color,
                   onTap: () {
                     if (isFinanceCategory(category) && !ref.read(isProProvider)) {
@@ -451,21 +456,30 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 : allTemplates.where((t) => t.defaultGoalPhrase == category!.name).toList();
             final templates = match.isEmpty ? const <HabitTemplate>[] : match.first.habits;
 
+            final displayIcon =
+                category != null && isFinanceCategory(category) ? 'credit-card' : category?.icon;
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
+                      width: 52,
+                      height: 52,
                       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                      child: Center(child: HabitIcon(icon: displayIcon, size: 22, color: Colors.white)),
                     ),
-                    const SizedBox(width: 8),
-                    Text(category?.name ?? '', style: theme.textTheme.bodyMedium),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        category?.name ?? '',
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 if (templates.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -1105,24 +1119,27 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 class _CategoryGridTile extends StatelessWidget {
   const _CategoryGridTile({
     required this.name,
+    required this.description,
     required this.icon,
     required this.color,
     required this.onTap,
   });
 
   final String name;
+  final String description;
   final String? icon;
   final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 14),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -1138,7 +1155,15 @@ class _CategoryGridTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
               ),
             ],
           ),

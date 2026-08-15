@@ -37,6 +37,11 @@ class _ProTeaser extends StatelessWidget {
       title: 'Community — Pro Feature',
       description: 'Create/join habit groups with friends, compete via leaderboards, and chat '
           'in real-time. Upgrade to Pro to unlock this feature.',
+      benefits: [
+        'Create or join unlimited habit groups with friends and family',
+        'Compete on real-time leaderboards to stay motivated together',
+        'Group chat to cheer each other on and stay accountable',
+      ],
     );
   }
 }
@@ -120,7 +125,17 @@ class _GroupListView extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Community', style: theme.textTheme.titleLarge),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Community', style: theme.textTheme.titleLarge),
+                    IconButton(
+                      tooltip: 'Log out',
+                      onPressed: () => _confirmLogout(context, ref),
+                      icon: const Icon(Icons.logout_rounded),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -191,6 +206,25 @@ class _GroupListView extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log out of Community?'),
+        content: const Text(
+          'You\'ll need to sign in again to see or sync your groups. Your local habit '
+          'data is not affected.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Log Out')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(authServiceProvider).signOut();
   }
 }
 

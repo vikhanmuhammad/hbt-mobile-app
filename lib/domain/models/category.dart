@@ -27,3 +27,18 @@ const financeCategoryGoalPhrase = 'Save Money';
 
 bool isFinanceCategory(Category category) =>
     category.isDefault && category.name == financeCategoryGoalPhrase;
+
+/// Short blurb shown under each goal phrase title on the "Pick Goal Phrase"
+/// step, keyed by `Category.name` (the goal phrase) — default categories
+/// only, since custom ones fall back to a generic description.
+const Map<String, String> goalPhraseDescriptions = {
+  'Be Healthy': 'Build daily habits for a healthier body.',
+  'Be Active': 'Move more and stay physically fit.',
+  'Be Productive': 'Get more done with focused daily routines.',
+  'Be Calm': 'Take care of your mind and reduce stress.',
+  'Save Money': 'Track spending and grow your savings.',
+  'Be Social': 'Stay connected with people who matter.',
+};
+
+String goalPhraseDescriptionFor(Category category) =>
+    goalPhraseDescriptions[category.name] ?? 'A custom goal you created.';

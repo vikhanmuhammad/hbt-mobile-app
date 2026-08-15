@@ -51,7 +51,7 @@
       "key": "finance",
       "rawLabel": "Finance",
       "defaultGoalPhrase": "Save Money",
-      "icon": "piggy-bank",
+      "icon": "credit-card",
       "color": "#4A82B0",
       "habits": [
         { "name": "Log daily expenses", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },

@@ -31,6 +31,11 @@ class FinanceSummaryScreen extends ConsumerWidget {
         title: 'Finance — Pro Feature',
         description: 'Track spending, savings, and saving habits in one monthly summary. '
             'Upgrade to Pro to unlock this feature.',
+        benefits: [
+          'Monthly spending & savings totals across all your finance habits',
+          'Daily spending trend chart so you can spot patterns early',
+          'Per-habit breakdown to see exactly where your money goes',
+        ],
       );
     }
 

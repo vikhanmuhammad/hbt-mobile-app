@@ -9,7 +9,9 @@ import '../../../domain/models/onboarding_response.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
+import '../../../providers/finance_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/dashed_border.dart';
@@ -61,14 +63,40 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     super.dispose();
   }
 
+  /// Total onboarding pages, matching the `PageView.children` list below
+  /// 1:1 — drives the overall progress bar shown above every step.
+  int get _totalSteps => 1 + lifestyleQuestions.length + 1 + 1 + 1 + 1;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
+        child: Column(
           children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+              child: AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, _) {
+                  final page = _pageController.hasClients ? (_pageController.page ?? 0) : 0.0;
+                  final progress = ((page + 1) / _totalSteps).clamp(0.0, 1.0);
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: Theme.of(context).dividerColor,
+                      valueColor: AlwaysStoppedAnimation(Theme.of(context).colorScheme.primary),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
             _PersonalInfoStep(
               nameController: _nameController,
               ageController: _ageController,
@@ -128,6 +156,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
               onFinish: _completeOnboarding,
               onRemoveHabit: _removeHabit,
             ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -169,6 +200,10 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       // don't fail the habit deletion because of this.
     }
     await ref.read(habitRepositoryProvider).deleteHabit(habitId);
+    ref.invalidate(dashboardSummaryProvider);
+    ref.invalidate(monthSummariesProvider);
+    ref.invalidate(daySummaryProvider);
+    ref.invalidate(financeSummaryProvider);
 
     HabitTemplate? matchedTemplate;
     _createdHabitIds.forEach((template, id) {
@@ -212,9 +247,17 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-/// Step 1 (no progress bar): name (required) + age (optional). CLAUDE.md v3
-/// §4.1 step 2.
-class _PersonalInfoStep extends StatelessWidget {
+const List<String> onboardingGoalOptions = [
+  'Kesehatan & Olahraga',
+  'Produktivitas',
+  'Belajar Hal Baru',
+  'Keuangan',
+  'Kesehatan Mental',
+];
+
+/// Step 1 (no progress bar): name (required) + age (optional) + goal
+/// dropdown. CLAUDE.md v3 §4.1 step 2.
+class _PersonalInfoStep extends ConsumerStatefulWidget {
   const _PersonalInfoStep({
     required this.nameController,
     required this.ageController,
@@ -224,6 +267,19 @@ class _PersonalInfoStep extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController ageController;
   final VoidCallback onNext;
+
+  @override
+  ConsumerState<_PersonalInfoStep> createState() => _PersonalInfoStepState();
+}
+
+class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
+  String? _selectedGoal;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedGoal = ref.read(settingsRepositoryProvider).onboardingGoal;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,7 +298,7 @@ class _PersonalInfoStep extends StatelessWidget {
           Text('Name', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
-            controller: nameController,
+            controller: widget.nameController,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(hintText: 'Your name'),
           ),
@@ -251,18 +307,115 @@ class _PersonalInfoStep extends StatelessWidget {
               style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           TextField(
-            controller: ageController,
+            controller: widget.ageController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(hintText: 'e.g. 25'),
           ),
+          const SizedBox(height: 16),
+          Text('Choose your goals',
+              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            initialValue: _selectedGoal,
+            hint: const Text('Select a goal'),
+            items: [
+              for (final goal in onboardingGoalOptions)
+                DropdownMenuItem(value: goal, child: Text(goal)),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _selectedGoal = value);
+              ref.read(settingsRepositoryProvider).setOnboardingGoal(value);
+            },
+          ),
+          const SizedBox(height: 28),
+          const _GoalsIllustration(),
         ],
       ),
       bottomButton: AnimatedBuilder(
-        animation: nameController,
+        animation: widget.nameController,
         builder: (context, _) => ElevatedButton(
-          onPressed: nameController.text.trim().isEmpty ? null : onNext,
+          onPressed: widget.nameController.text.trim().isEmpty ? null : widget.onNext,
           child: const Text('Next'),
         ),
+      ),
+    );
+  }
+}
+
+/// Small looping animated illustration (target + a bouncing arrow "pointing"
+/// toward it) shown below the goal dropdown on the name/age step — fills the
+/// otherwise-empty space at the bottom and visually reinforces "pick a
+/// goal, then aim for it".
+class _GoalsIllustration extends StatefulWidget {
+  const _GoalsIllustration();
+
+  @override
+  State<_GoalsIllustration> createState() => _GoalsIllustrationState();
+}
+
+class _GoalsIllustrationState extends State<_GoalsIllustration>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))
+      ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 150,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final bounce = Curves.easeInOut.transform(_controller.value);
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                ),
+              ),
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.colorScheme.primary.withValues(alpha: 0.22),
+                ),
+              ),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary),
+                child: const Icon(Icons.flag_rounded, color: Colors.white, size: 24),
+              ),
+              Positioned(
+                left: 24 + bounce * 14,
+                top: 30 - bounce * 10,
+                child: Transform.rotate(
+                  angle: -0.6,
+                  child: Icon(Icons.north_east_rounded, size: 30, color: theme.colorScheme.primary),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -295,22 +448,9 @@ class _LifestyleQuestionStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return _StepScaffold(
-      topBar: Row(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: stepIndex / totalSteps,
-                minHeight: 6,
-                backgroundColor: theme.dividerColor,
-                valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          TextButton(onPressed: onSkip, child: const Text('Skip')),
-        ],
+      topBar: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(onPressed: onSkip, child: const Text('Skip')),
       ),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
@@ -397,6 +537,19 @@ class _OptionTile extends StatelessWidget {
 
 /// Step 5: habit-formation curve chart + motivational statement. CLAUDE.md
 /// v3 §4.1 step 4.
+class _HabitTip {
+  const _HabitTip(this.icon, this.text);
+  final IconData icon;
+  final String text;
+}
+
+const _habitTips = [
+  _HabitTip(Icons.replay_rounded, 'Missing a day doesn\'t reset your progress — what matters is getting back on track quickly.'),
+  _HabitTip(Icons.flag_rounded, 'Start small. A tiny, doable habit beats an ambitious one you abandon after 3 days.'),
+  _HabitTip(Icons.link_rounded, 'Stack a new habit onto an existing routine (e.g. after brushing your teeth) to make it stick faster.'),
+  _HabitTip(Icons.insights_rounded, 'Tracking your streak visually makes you far more likely to keep it going.'),
+];
+
 class _EducationStep extends StatelessWidget {
   const _EducationStep({required this.onBack, required this.onNext});
 
@@ -425,17 +578,30 @@ class _EducationStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-            decoration: BoxDecoration(
+          Text(
+            'Building good habits increases happiness!',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
               color: theme.colorScheme.primary,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'Building good habits increases happiness!',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700, height: 1.5),
+              fontWeight: FontWeight.w800,
+              height: 1.4,
             ),
           ),
+          const SizedBox(height: 24),
+          Text('Good to know', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 12),
+          for (final tip in _habitTips)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(tip.icon, size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(tip.text, style: theme.textTheme.bodyMedium)),
+                ],
+              ),
+            ),
         ],
       ),
       bottomButton: Row(

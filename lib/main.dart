@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -100,25 +103,75 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   }
 }
 
-class _SplashScreen extends StatelessWidget {
+const _splashQuotes = [
+  'Small steps, repeated daily, become big changes.',
+  'Consistency beats intensity.',
+  'You don\'t have to be perfect — just show up.',
+  'Every habit starts with a single decision.',
+  'Progress, not perfection.',
+  'Discipline today, freedom tomorrow.',
+];
+
+class _SplashScreen extends StatefulWidget {
   const _SplashScreen();
 
   @override
+  State<_SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<_SplashScreen> {
+  late final Timer _timer;
+  int _quoteIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _quoteIndex = Random().nextInt(_splashQuotes.length);
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) return;
+      setState(() => _quoteIndex = (_quoteIndex + 1) % _splashQuotes.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const AppLogo(size: 72),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 120,
-              child: LinearProgressIndicator(
-                borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AppLogo(size: 72),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 120,
+                child: LinearProgressIndicator(
+                  borderRadius: BorderRadius.circular(999),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 28),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                child: Text(
+                  _splashQuotes[_quoteIndex],
+                  key: ValueKey(_quoteIndex),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontStyle: FontStyle.italic,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

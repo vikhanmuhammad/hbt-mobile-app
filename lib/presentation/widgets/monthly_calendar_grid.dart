@@ -10,7 +10,7 @@ const _monthNames = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
 
-const _weekdayHeaders = ['S', 'S', 'R', 'K', 'J', 'S', 'M'];
+const _weekdayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /// Kalender bulanan — tiap sel tanggal menampilkan ring progress kecil
 /// (mini donut chart) mewakili persentase capaian hari itu. CLAUDE.md v3 §7.
@@ -64,7 +64,10 @@ class MonthlyCalendarGrid extends StatelessWidget {
             for (final h in _weekdayHeaders)
               Expanded(
                 child: Center(
-                  child: Text(h, style: theme.textTheme.labelSmall),
+                  child: Text(
+                    h,
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
           ],
@@ -143,11 +146,12 @@ class _DayCell extends StatelessWidget {
     final ratio = summary?.ratio ?? 0;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(10),
+      customBorder: const CircleBorder(),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
+          shape: BoxShape.circle,
+          color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
           border: Border.all(
             color: isSelected
                 ? theme.colorScheme.primary
