@@ -15,6 +15,7 @@ import '../../../providers/habit_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_curve_chart.dart';
 import '../../widgets/habit_icon.dart';
@@ -72,111 +73,129 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: AnimatedBuilder(
-                animation: _pageController,
-                builder: (context, _) {
-                  final theme = Theme.of(context);
-                  final page = _pageController.hasClients ? (_pageController.page ?? 0) : 0.0;
-                  final progress = ((page + 1) / _totalSteps).clamp(0.0, 1.0);
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 6,
-                            backgroundColor: theme.dividerColor,
-                            valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+        child: FadeSlideIn(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: AnimatedBuilder(
+                  animation: _pageController,
+                  builder: (context, _) {
+                    final theme = Theme.of(context);
+                    final page = _pageController.hasClients
+                        ? (_pageController.page ?? 0)
+                        : 0.0;
+                    final progress = ((page + 1) / _totalSteps).clamp(0.0, 1.0);
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(999),
+                            child: LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 6,
+                              backgroundColor: theme.dividerColor,
+                              valueColor: AlwaysStoppedAnimation(
+                                theme.colorScheme.primary,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        width: 36,
-                        child: Text(
-                          '${(progress * 100).round()}%',
-                          textAlign: TextAlign.right,
-                          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                        const SizedBox(width: 10),
+                        SizedBox(
+                          width: 36,
+                          child: Text(
+                            '${(progress * 100).round()}%',
+                            textAlign: TextAlign.right,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _PersonalInfoStep(
+                      nameController: _nameController,
+                      ageController: _ageController,
+                      onNext: () => _goTo(1),
+                    ),
+                    for (var i = 0; i < lifestyleQuestions.length; i++)
+                      _LifestyleQuestionStep(
+                        question: lifestyleQuestions[i],
+                        stepIndex: i + 1,
+                        totalSteps: lifestyleQuestions.length,
+                        selectedAnswer:
+                            _lifestyleAnswers[lifestyleQuestions[i].key],
+                        onSelect: (answer) => setState(
+                          () => _lifestyleAnswers[lifestyleQuestions[i].key] =
+                              answer,
+                        ),
+                        onBack: () => _goTo(i),
+                        onNext: () => _goTo(i + 2),
+                        onSkip: () => _goTo(i + 2),
                       ),
-                    ],
-                  );
-                },
+                    _EducationStep(
+                      onBack: () => _goTo(3),
+                      onNext: () => _goTo(5),
+                    ),
+                    _GoalPhrasePickStep(
+                      selected: _selectedCategoryIds,
+                      onToggle: (id) => setState(() {
+                        if (_selectedCategoryIds.contains(id)) {
+                          _selectedCategoryIds.remove(id);
+                        } else {
+                          _selectedCategoryIds.add(id);
+                        }
+                      }),
+                      onCategoriesChanged: (ids) =>
+                          setState(() => _selectedCategoryIds.addAll(ids)),
+                      onBack: () => _goTo(4),
+                      onNext: () => _goTo(6),
+                    ),
+                    _RecommendationStep(
+                      selectedCategoryIds: _selectedCategoryIds,
+                      selectedTemplates: _selectedTemplates,
+                      createdHabitIds: _createdHabitIds,
+                      onToggleTemplate: (categoryId, template) => setState(() {
+                        final set = _selectedTemplates.putIfAbsent(
+                          categoryId,
+                          () => {},
+                        );
+                        if (set.contains(template)) {
+                          set.remove(template);
+                        } else {
+                          set.add(template);
+                        }
+                      }),
+                      onHabitCreated: (template, id) =>
+                          setState(() => _createdHabitIds[template] = id),
+                      onHabitRemoved: (template) => setState(() {
+                        _createdHabitIds.remove(template);
+                        for (final set in _selectedTemplates.values) {
+                          set.remove(template);
+                        }
+                      }),
+                      onBack: () => _goTo(5),
+                      onNext: () => _goTo(7),
+                    ),
+                    _SummaryStep(
+                      onBack: () => _goTo(6),
+                      onFinish: _completeOnboarding,
+                      onRemoveHabit: _removeHabit,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-            _PersonalInfoStep(
-              nameController: _nameController,
-              ageController: _ageController,
-              onNext: () => _goTo(1),
-            ),
-            for (var i = 0; i < lifestyleQuestions.length; i++)
-              _LifestyleQuestionStep(
-                question: lifestyleQuestions[i],
-                stepIndex: i + 1,
-                totalSteps: lifestyleQuestions.length,
-                selectedAnswer: _lifestyleAnswers[lifestyleQuestions[i].key],
-                onSelect: (answer) =>
-                    setState(() => _lifestyleAnswers[lifestyleQuestions[i].key] = answer),
-                onBack: () => _goTo(i),
-                onNext: () => _goTo(i + 2),
-                onSkip: () => _goTo(i + 2),
-              ),
-            _EducationStep(onBack: () => _goTo(3), onNext: () => _goTo(5)),
-            _GoalPhrasePickStep(
-              selected: _selectedCategoryIds,
-              onToggle: (id) => setState(() {
-                if (_selectedCategoryIds.contains(id)) {
-                  _selectedCategoryIds.remove(id);
-                } else {
-                  _selectedCategoryIds.add(id);
-                }
-              }),
-              onCategoriesChanged: (ids) => setState(() => _selectedCategoryIds.addAll(ids)),
-              onBack: () => _goTo(4),
-              onNext: () => _goTo(6),
-            ),
-            _RecommendationStep(
-              selectedCategoryIds: _selectedCategoryIds,
-              selectedTemplates: _selectedTemplates,
-              createdHabitIds: _createdHabitIds,
-              onToggleTemplate: (categoryId, template) => setState(() {
-                final set = _selectedTemplates.putIfAbsent(categoryId, () => {});
-                if (set.contains(template)) {
-                  set.remove(template);
-                } else {
-                  set.add(template);
-                }
-              }),
-              onHabitCreated: (template, id) =>
-                  setState(() => _createdHabitIds[template] = id),
-              onHabitRemoved: (template) => setState(() {
-                _createdHabitIds.remove(template);
-                for (final set in _selectedTemplates.values) {
-                  set.remove(template);
-                }
-              }),
-              onBack: () => _goTo(5),
-              onNext: () => _goTo(7),
-            ),
-            _SummaryStep(
-              onBack: () => _goTo(6),
-              onFinish: _completeOnboarding,
-              onRemoveHabit: _removeHabit,
-            ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -187,10 +206,15 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     final responses = [
       for (final q in lifestyleQuestions)
         if (_lifestyleAnswers[q.key] != null)
-          OnboardingResponse(questionKey: q.key, answerValue: _lifestyleAnswers[q.key]!),
+          OnboardingResponse(
+            questionKey: q.key,
+            answerValue: _lifestyleAnswers[q.key]!,
+          ),
     ];
 
-    await ref.read(profileRepositoryProvider).completeOnboarding(
+    await ref
+        .read(profileRepositoryProvider)
+        .completeOnboarding(
           name: _nameController.text.trim(),
           age: age,
           responses: responses,
@@ -237,7 +261,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 }
 
 class _StepScaffold extends StatelessWidget {
-  const _StepScaffold({required this.child, required this.bottomButton, this.topBar});
+  const _StepScaffold({
+    required this.child,
+    required this.bottomButton,
+    this.topBar,
+  });
 
   final Widget child;
   final Widget bottomButton;
@@ -251,7 +279,11 @@ class _StepScaffold extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
           children: [
-            if (topBar != null) Padding(padding: const EdgeInsets.fromLTRB(24, 16, 24, 0), child: topBar),
+            if (topBar != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: topBar,
+              ),
             Expanded(child: child),
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -265,11 +297,11 @@ class _StepScaffold extends StatelessWidget {
 }
 
 const List<String> onboardingGoalOptions = [
-  'Kesehatan & Olahraga',
-  'Produktivitas',
-  'Belajar Hal Baru',
-  'Keuangan',
-  'Kesehatan Mental',
+  'Health & Fitness',
+  'Productivity',
+  'Learning Something New',
+  'Finance',
+  'Mental Health',
 ];
 
 /// Step 1 (no progress bar): name (required) + age (optional) + goal
@@ -295,7 +327,11 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
   @override
   void initState() {
     super.initState();
-    _selectedGoal = ref.read(settingsRepositoryProvider).onboardingGoal;
+    final stored = ref.read(settingsRepositoryProvider).onboardingGoal;
+    // Guard against a value persisted under an older label set (e.g. before
+    // onboardingGoalOptions was translated to English) — DropdownButtonFormField
+    // asserts if initialValue doesn't match any item.
+    _selectedGoal = onboardingGoalOptions.contains(stored) ? stored : null;
   }
 
   @override
@@ -312,7 +348,12 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          Text('Name', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Name',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
           TextField(
             controller: widget.nameController,
@@ -320,8 +361,12 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
             decoration: const InputDecoration(hintText: 'Your name'),
           ),
           const SizedBox(height: 16),
-          Text('Age (optional)',
-              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Age (optional)',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
           TextField(
             controller: widget.ageController,
@@ -329,8 +374,12 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
             decoration: const InputDecoration(hintText: 'e.g. 25'),
           ),
           const SizedBox(height: 16),
-          Text('Choose your goals',
-              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Choose your goals',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
             initialValue: _selectedGoal,
@@ -352,7 +401,9 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
       bottomButton: AnimatedBuilder(
         animation: widget.nameController,
         builder: (context, _) => ElevatedButton(
-          onPressed: widget.nameController.text.trim().isEmpty ? null : widget.onNext,
+          onPressed: widget.nameController.text.trim().isEmpty
+              ? null
+              : widget.onNext,
           child: const Text('Next'),
         ),
       ),
@@ -430,7 +481,9 @@ class _LifestyleQuestionStep extends StatelessWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
+          Expanded(
+            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+          ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
@@ -446,7 +499,11 @@ class _LifestyleQuestionStep extends StatelessWidget {
 }
 
 class _OptionTile extends StatelessWidget {
-  const _OptionTile({required this.label, required this.selected, required this.onTap});
+  const _OptionTile({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -456,7 +513,9 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      color: selected ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14) : null,
+      color: selected
+          ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: selected
@@ -475,14 +534,22 @@ class _OptionTile extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: selected ? theme.colorScheme.primary : Colors.transparent,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : Colors.transparent,
                   border: Border.all(
-                    color: selected ? theme.colorScheme.primary : theme.dividerColor,
+                    color: selected
+                        ? theme.colorScheme.primary
+                        : theme.dividerColor,
                     width: 2,
                   ),
                 ),
                 child: selected
-                    ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      )
                     : null,
               ),
               const SizedBox(width: 14),
@@ -504,10 +571,22 @@ class _HabitTip {
 }
 
 const _habitTips = [
-  _HabitTip(Icons.replay_rounded, 'Missing a day doesn\'t reset your progress — what matters is getting back on track quickly.'),
-  _HabitTip(Icons.flag_rounded, 'Start small. A tiny, doable habit beats an ambitious one you abandon after 3 days.'),
-  _HabitTip(Icons.link_rounded, 'Stack a new habit onto an existing routine (e.g. after brushing your teeth) to make it stick faster.'),
-  _HabitTip(Icons.insights_rounded, 'Tracking your streak visually makes you far more likely to keep it going.'),
+  _HabitTip(
+    Icons.replay_rounded,
+    'Missing a day doesn\'t reset your progress — what matters is getting back on track quickly.',
+  ),
+  _HabitTip(
+    Icons.flag_rounded,
+    'Start small. A tiny, doable habit beats an ambitious one you abandon after 3 days.',
+  ),
+  _HabitTip(
+    Icons.link_rounded,
+    'Stack a new habit onto an existing routine (e.g. after brushing your teeth) to make it stick faster.',
+  ),
+  _HabitTip(
+    Icons.insights_rounded,
+    'Tracking your streak visually makes you far more likely to keep it going.',
+  ),
 ];
 
 class _EducationStep extends StatelessWidget {
@@ -523,7 +602,10 @@ class _EducationStep extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('Consistency Builds Habits', style: theme.textTheme.headlineSmall),
+          Text(
+            'Consistency Builds Habits',
+            style: theme.textTheme.headlineSmall,
+          ),
           const SizedBox(height: 8),
           Text(
             'According to research by Lally et al. (UCL), a new habit takes about 66 days '
@@ -558,7 +640,9 @@ class _EducationStep extends StatelessWidget {
                 children: [
                   Icon(tip.icon, size: 18, color: theme.colorScheme.primary),
                   const SizedBox(width: 12),
-                  Expanded(child: Text(tip.text, style: theme.textTheme.bodyMedium)),
+                  Expanded(
+                    child: Text(tip.text, style: theme.textTheme.bodyMedium),
+                  ),
                 ],
               ),
             ),
@@ -566,9 +650,14 @@ class _EducationStep extends StatelessWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
+          Expanded(
+            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+          ),
           const SizedBox(width: 12),
-          Expanded(flex: 2, child: ElevatedButton(onPressed: onNext, child: const Text('Next'))),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(onPressed: onNext, child: const Text('Next')),
+          ),
         ],
       ),
     );
@@ -604,15 +693,23 @@ class _GoalPhrasePickStep extends ConsumerWidget {
         data: (categories) => ListView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           children: [
-            Text('Choose Habits That Match Your Goals', style: theme.textTheme.titleLarge),
+            Text(
+              'Choose Habits That Match Your Goals',
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: 6),
-            Text('Pick one or more goals you want to achieve.', style: theme.textTheme.bodySmall),
+            Text(
+              'Pick one or more goals you want to achieve.',
+              style: theme.textTheme.bodySmall,
+            ),
             const SizedBox(height: 20),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: categoryGridColumns(MediaQuery.sizeOf(context).width),
+                crossAxisCount: categoryGridColumns(
+                  MediaQuery.sizeOf(context).width,
+                ),
                 mainAxisSpacing: 14,
                 crossAxisSpacing: 14,
                 childAspectRatio: 0.76,
@@ -625,13 +722,20 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                     onTap: () async {
                       final beforeIds = categories.map((c) => c.id).toSet();
                       await openCreateCategoryFlow(context);
-                      final afterList = ref.read(categoriesProvider).value ?? const <Category>[];
-                      final newIds =
-                          afterList.map((c) => c.id).toSet().difference(beforeIds);
+                      final afterList =
+                          ref.read(categoriesProvider).value ??
+                          const <Category>[];
+                      final newIds = afterList
+                          .map((c) => c.id)
+                          .toSet()
+                          .difference(beforeIds);
                       if (newIds.isNotEmpty) onCategoriesChanged(newIds);
                     },
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 16,
+                      ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -644,7 +748,10 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                                   : AppColors.darkSurfaceAlt,
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.add_rounded, color: theme.textTheme.bodySmall?.color),
+                            child: Icon(
+                              Icons.add_rounded,
+                              color: theme.textTheme.bodySmall?.color,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Text(
@@ -673,7 +780,9 @@ class _GoalPhrasePickStep extends ConsumerWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
+          Expanded(
+            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+          ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
@@ -724,7 +833,13 @@ class _CategoryPickTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(child: HabitIcon(icon: category.icon, size: 18, color: Colors.white)),
+                child: Center(
+                  child: HabitIcon(
+                    icon: category.icon,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -775,7 +890,8 @@ class _RecommendationStep extends ConsumerStatefulWidget {
   final VoidCallback onNext;
 
   @override
-  ConsumerState<_RecommendationStep> createState() => _RecommendationStepState();
+  ConsumerState<_RecommendationStep> createState() =>
+      _RecommendationStepState();
 }
 
 class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
@@ -795,13 +911,17 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, st) => Center(child: Text('$e')),
           data: (allTemplates) {
-            final selectedCategories =
-                categories.where((c) => widget.selectedCategoryIds.contains(c.id)).toList();
+            final selectedCategories = categories
+                .where((c) => widget.selectedCategoryIds.contains(c.id))
+                .toList();
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
               children: [
-                Text('Habit Recommendations', style: theme.textTheme.titleLarge),
+                Text(
+                  'Habit Recommendations',
+                  style: theme.textTheme.titleLarge,
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'Check the habits you want to start. You can skip the rest.',
@@ -816,12 +936,16 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                         height: 40,
                         decoration: BoxDecoration(
                           color: AppColors.categoryColorFromHex(
-                              category.colorHex, categories.indexOf(category)),
+                            category.colorHex,
+                            categories.indexOf(category),
+                          ),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: HabitIcon(
-                            icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
+                            icon: isFinanceCategory(category)
+                                ? 'credit-card'
+                                : category.icon,
                             size: 17,
                             color: Colors.white,
                           ),
@@ -830,96 +954,149 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       const SizedBox(width: 12),
                       Text(
                         category.name,
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Builder(builder: (context) {
-                    final match = allTemplates.where((t) => t.defaultGoalPhrase == category.name);
-                    final templates = match.isEmpty ? <HabitTemplate>[] : match.first.habits;
-                    if (templates.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Text('No recommendations for this category yet.',
-                            style: theme.textTheme.bodySmall),
+                  Builder(
+                    builder: (context) {
+                      final match = allTemplates.where(
+                        (t) => t.defaultGoalPhrase == category.name,
                       );
-                    }
-                    final selectedSet = widget.selectedTemplates[category.id] ?? {};
-                    // Finance category (Save Money) is Pro-only — still
-                    // shown here (not hidden) so the user knows the feature
-                    // exists, but grayscaled + a PRO badge and tapping opens
-                    // the paywall instead of toggling. The Add Habit flow
-                    // from Home already has the same gate (see
-                    // add_habit_flow_screen.dart).
-                    final locked = isFinanceCategory(category) && !ref.watch(isProProvider);
-                    return Column(
-                      children: [
-                        for (final t in templates)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Opacity(
-                              opacity: locked ? 0.5 : 1,
-                              child: Card(
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(14),
-                                  onTap: locked
-                                      ? () => showProRequiredDialog(
+                      final templates = match.isEmpty
+                          ? <HabitTemplate>[]
+                          : match.first.habits;
+                      if (templates.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Text(
+                            'No recommendations for this category yet.',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        );
+                      }
+                      final selectedSet =
+                          widget.selectedTemplates[category.id] ?? {};
+                      // Finance category (Save Money) is Pro-only — still
+                      // shown here (not hidden) so the user knows the feature
+                      // exists, but grayscaled + a PRO badge and tapping opens
+                      // the paywall instead of toggling. The Add Habit flow
+                      // from Home already has the same gate (see
+                      // add_habit_flow_screen.dart).
+                      final locked =
+                          isFinanceCategory(category) &&
+                          !ref.watch(isProProvider);
+                      return Column(
+                        children: [
+                          for (final t in templates)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Opacity(
+                                opacity: locked ? 0.5 : 1,
+                                child: Card(
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: locked
+                                        ? () => showProRequiredDialog(
                                             context,
-                                            message: 'Finance habits (saving/spending with an '
+                                            message:
+                                                'Finance habits (saving/spending with an '
                                                 'amount) are Pro-only. Upgrade to Pro to '
                                                 'start tracking them.',
                                           )
-                                      : () => widget.onToggleTemplate(category.id, t),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                    child: Row(
-                                      children: [
-                                        locked
-                                            ? Icon(Icons.lock_rounded,
-                                                size: 20, color: theme.textTheme.bodySmall?.color)
-                                            : _SquareCheckbox(checked: selectedSet.contains(t)),
-                                        const SizedBox(width: 14),
-                                        HabitIcon(icon: t.icon, size: 16, color: theme.textTheme.bodySmall?.color),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(t.name, style: theme.textTheme.titleSmall),
-                                              const SizedBox(height: 2),
-                                              Text(t.goalLabel, style: theme.textTheme.bodySmall),
-                                            ],
+                                        : () => widget.onToggleTemplate(
+                                            category.id,
+                                            t,
                                           ),
-                                        ),
-                                        if (locked) ...[
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                            decoration: BoxDecoration(
-                                              color: theme.colorScheme.primary,
-                                              borderRadius: BorderRadius.circular(999),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 14,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          locked
+                                              ? Icon(
+                                                  Icons.lock_rounded,
+                                                  size: 20,
+                                                  color: theme
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.color,
+                                                )
+                                              : _SquareCheckbox(
+                                                  checked: selectedSet.contains(
+                                                    t,
+                                                  ),
+                                                ),
+                                          const SizedBox(width: 14),
+                                          HabitIcon(
+                                            icon: t.icon,
+                                            size: 16,
+                                            color: theme
+                                                .textTheme
+                                                .bodySmall
+                                                ?.color,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  t.name,
+                                                  style: theme
+                                                      .textTheme
+                                                      .titleSmall,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  t.goalLabel,
+                                                  style:
+                                                      theme.textTheme.bodySmall,
+                                                ),
+                                              ],
                                             ),
-                                            child: const Text(
-                                              'PRO',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w800,
+                                          ),
+                                          if (locked) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    theme.colorScheme.primary,
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                              ),
+                                              child: const Text(
+                                                'PRO',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
                                               ),
                                             ),
-                                          ),
+                                          ],
                                         ],
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                      ],
-                    );
-                  }),
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: 6),
                 ],
                 DashedBorder(
@@ -927,12 +1104,15 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   onTap: _saving
                       ? null
                       : () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const AddHabitFlowScreen(),
-                            ),
+                          MaterialPageRoute(
+                            builder: (_) => const AddHabitFlowScreen(),
                           ),
+                        ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     child: Text(
                       '+ Explore Other Categories / Add Custom Habit',
                       textAlign: TextAlign.center,
@@ -948,7 +1128,10 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
       bottomButton: Row(
         children: [
           Expanded(
-            child: OutlinedButton(onPressed: _saving ? null : widget.onBack, child: const Text('Back')),
+            child: OutlinedButton(
+              onPressed: _saving ? null : widget.onBack,
+              child: const Text('Back'),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1026,8 +1209,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
       if (mounted) widget.onNext();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1054,7 +1238,9 @@ class _SquareCheckbox extends StatelessWidget {
           width: 2,
         ),
       ),
-      child: checked ? const Icon(Icons.check_rounded, size: 16, color: Colors.white) : null,
+      child: checked
+          ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+          : null,
     );
   }
 }
@@ -1090,7 +1276,7 @@ class _SummaryStep extends ConsumerWidget {
             data: (habits) => Text(
               habits.isEmpty
                   ? 'No habits added yet. You can add one anytime via the '
-                      'Add Habit button on Home.'
+                        'Add Habit button on Home.'
                   : '${habits.length} habit(s) added successfully',
               style: theme.textTheme.bodySmall,
             ),
@@ -1105,13 +1291,25 @@ class _SummaryStep extends ConsumerWidget {
                   Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Row(
                         children: [
                           const SizedBox(width: 8),
-                          HabitIcon(icon: habit.icon, size: 16, color: theme.colorScheme.primary),
+                          HabitIcon(
+                            icon: habit.icon,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 12),
-                          Expanded(child: Text(habit.name, style: theme.textTheme.titleSmall)),
+                          Expanded(
+                            child: Text(
+                              habit.name,
+                              style: theme.textTheme.titleSmall,
+                            ),
+                          ),
                           IconButton(
                             tooltip: 'Cancel this habit',
                             icon: const Icon(Icons.close_rounded, size: 18),
@@ -1128,7 +1326,9 @@ class _SummaryStep extends ConsumerWidget {
       ),
       bottomButton: Row(
         children: [
-          Expanded(child: OutlinedButton(onPressed: onBack, child: const Text('Back'))),
+          Expanded(
+            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+          ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,

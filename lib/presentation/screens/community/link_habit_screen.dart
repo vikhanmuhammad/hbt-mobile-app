@@ -5,6 +5,8 @@ import '../../../domain/models/community/group_habit.dart';
 import '../../../domain/models/habit.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pill_button.dart';
 import '../add_habit/add_habit_flow_screen.dart';
@@ -26,6 +28,7 @@ class LinkHabitScreen extends ConsumerWidget {
       appBar: AppBar(title: Text('Link ke "${groupHabit.name}"')),
       body: Padding(
         padding: const EdgeInsets.all(20),
+        child: FadeSlideIn(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -54,12 +57,16 @@ class LinkHabitScreen extends ConsumerWidget {
                   return ListView.separated(
                     itemCount: habits.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) => _HabitLinkTile(habit: habits[i], groupHabit: groupHabit),
+                    itemBuilder: (context, i) => FadeSlideIn(
+                      delay: staggeredDelay(i),
+                      child: _HabitLinkTile(habit: habits[i], groupHabit: groupHabit),
+                    ),
                   );
                 },
               ),
             ),
           ],
+        ),
         ),
       ),
     );

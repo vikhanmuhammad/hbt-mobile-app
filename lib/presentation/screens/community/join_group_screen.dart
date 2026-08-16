@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/community/community_repository.dart';
 import '../../../providers/community_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import 'group_detail_screen.dart';
 
 class JoinGroupScreen extends ConsumerStatefulWidget {
@@ -67,6 +68,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       appBar: AppBar(title: const Text('Join Group')),
       body: Padding(
         padding: const EdgeInsets.all(20),
+        child: FadeSlideIn(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -101,6 +103,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

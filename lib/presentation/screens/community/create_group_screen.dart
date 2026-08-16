@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/community_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import 'group_detail_screen.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
@@ -58,6 +59,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       appBar: AppBar(title: const Text('Create Group')),
       body: Padding(
         padding: const EdgeInsets.all(20),
+        child: FadeSlideIn(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -86,6 +88,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

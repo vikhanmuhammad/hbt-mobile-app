@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 enum EmptyStateVariant { checklist, wallet }
 
@@ -35,6 +36,13 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isWallet = widget.variant == EmptyStateVariant.wallet;
+    return _buildIllustration(theme, isWallet)
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .scale(begin: const Offset(0.9, 0.9));
+  }
+
+  Widget _buildIllustration(ThemeData theme, bool isWallet) {
     return SizedBox(
       height: 140,
       width: 140,

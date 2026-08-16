@@ -9,6 +9,9 @@ import '../../../domain/models/community/group_member.dart';
 import '../../../domain/models/community/leaderboard_entry.dart';
 import '../../../domain/models/community_enums.dart';
 import '../../../providers/community_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/habit_icon.dart';
 import 'create_group_habit_screen.dart';
 import 'link_habit_screen.dart';
@@ -147,7 +150,10 @@ class _HabitsTab extends ConsumerWidget {
                     padding: const EdgeInsets.all(16),
                     itemCount: habits.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, i) => _GroupHabitTile(habit: habits[i]),
+                    itemBuilder: (context, i) => FadeSlideIn(
+                      delay: staggeredDelay(i),
+                      child: _GroupHabitTile(habit: habits[i]),
+                    ),
                   ),
           );
         },
@@ -171,16 +177,18 @@ class _GroupHabitTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: ListTile(
-        leading: HabitIcon(icon: habit.icon, size: 20),
-        title: Text(habit.name),
-        subtitle: Text('${habit.unit} • ${habit.leaderboardMode.label}', style: theme.textTheme.bodySmall),
-        trailing: TextButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => LinkHabitScreen(groupHabit: habit)),
+    return TapScale(
+      child: Card(
+        child: ListTile(
+          leading: HabitIcon(icon: habit.icon, size: 20),
+          title: Text(habit.name),
+          subtitle: Text('${habit.unit} • ${habit.leaderboardMode.label}', style: theme.textTheme.bodySmall),
+          trailing: TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => LinkHabitScreen(groupHabit: habit)),
+            ),
+            child: const Text('Link'),
           ),
-          child: const Text('Link'),
         ),
       ),
     );
@@ -316,8 +324,11 @@ class _LeaderboardList extends ConsumerWidget {
                   itemBuilder: (context, i) {
                     final entry = sorted[i];
                     final isMe = entry.uid == myUid;
-                    return _LeaderboardTile(
-                        rank: i + 1, entry: entry, unit: unit, byProgress: byProgress, isMe: isMe);
+                    return FadeSlideIn(
+                      delay: staggeredDelay(i),
+                      child: _LeaderboardTile(
+                          rank: i + 1, entry: entry, unit: unit, byProgress: byProgress, isMe: isMe),
+                    );
                   },
                 ),
         );
@@ -538,10 +549,13 @@ class _MembersTab extends ConsumerWidget {
         separatorBuilder: (_, _) => const SizedBox(height: 8),
         itemBuilder: (context, i) {
           final member = group.members[i];
-          return _MemberTile(
-            groupId: group.id,
-            member: member,
-            canManage: iAmAdmin && member.uid != myUid,
+          return FadeSlideIn(
+            delay: staggeredDelay(i),
+            child: _MemberTile(
+              groupId: group.id,
+              member: member,
+              canManage: iAmAdmin && member.uid != myUid,
+            ),
           );
         },
       ),

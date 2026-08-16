@@ -15,6 +15,8 @@ import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/daily_progress_ring.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/monthly_calendar_grid.dart';
@@ -121,42 +123,46 @@ class DashboardScreen extends ConsumerWidget {
       return Scaffold(
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    filterRow,
-                    const SizedBox(height: 16),
-                    calendarCard,
-                  ],
+          child: FadeSlideIn(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      filterRow,
+                      const SizedBox(height: 16),
+                      calendarCard,
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(child: statsSection),
-            ],
+                const SizedBox(width: 24),
+                Expanded(child: statsSection),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      body: ListView(
-        padding: EdgeInsets.fromLTRB(
-          isTablet ? 32 : 16,
-          isTablet ? 32 : 20,
-          isTablet ? 32 : 16,
-          24,
+      body: FadeSlideIn(
+        child: ListView(
+          padding: EdgeInsets.fromLTRB(
+            isTablet ? 32 : 16,
+            isTablet ? 32 : 20,
+            isTablet ? 32 : 16,
+            24,
+          ),
+          children: [
+            filterRow,
+            const SizedBox(height: 16),
+            calendarCard,
+            const SizedBox(height: 24),
+            statsSection,
+          ],
         ),
-        children: [
-          filterRow,
-          const SizedBox(height: 16),
-          calendarCard,
-          const SizedBox(height: 24),
-          statsSection,
-        ],
       ),
     );
   }
@@ -546,30 +552,32 @@ class _DayDetailSheet extends ConsumerWidget {
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, i) {
                     final item = items[i];
-                    return InkWell(
-                      onTap: () => _toggle(context, ref, item),
-                      child: Row(
-                        children: [
-                          _MiniCheckbox(checked: item.isDone),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color:
-                                  colorByCategory[item.habit.categoryId] ??
-                                  AppColors.gold,
-                              shape: BoxShape.circle,
+                    return TapScale(
+                      child: InkWell(
+                        onTap: () => _toggle(context, ref, item),
+                        child: Row(
+                          children: [
+                            _MiniCheckbox(checked: item.isDone),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color:
+                                    colorByCategory[item.habit.categoryId] ??
+                                    AppColors.gold,
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.habit.name,
-                              style: theme.textTheme.bodyMedium,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.habit.name,
+                                style: theme.textTheme.bodyMedium,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },

@@ -15,6 +15,9 @@ import '../../../providers/progress_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_progress_card.dart';
 import '../../widgets/date_strip.dart';
@@ -44,7 +47,8 @@ class HomeScreen extends ConsumerWidget {
     final monthSummariesAsync = ref.watch(monthSummariesProvider(month));
 
     return SafeArea(
-      child: Column(
+      child: FadeSlideIn(
+        child: Column(
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 24 : 16, isTablet ? 32 : 16, 0),
@@ -104,6 +108,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -151,7 +156,7 @@ class _HabitList extends ConsumerWidget {
           padding: padding,
           itemCount: items.length,
           separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (context, index) => _buildCard(context, ref, items[index]),
+          itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
         );
       }
       return GridView.builder(
@@ -163,7 +168,7 @@ class _HabitList extends ConsumerWidget {
           childAspectRatio: 3.6,
         ),
         itemCount: items.length,
-        itemBuilder: (context, index) => _buildCard(context, ref, items[index]),
+        itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
       );
     }
 
@@ -193,13 +198,18 @@ class _HabitList extends ConsumerWidget {
     );
   }
 
-  Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item) {
-    return HabitProgressCard(
-      key: ValueKey(item.habit.id),
-      item: item,
-      accentColor: _accentFor(item.habit.categoryId),
-      isEditMode: false,
-      onTap: () => _onTapCard(context, ref, item),
+  Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item, int index) {
+    return FadeSlideIn(
+      delay: staggeredDelay(index),
+      child: TapScale(
+        child: HabitProgressCard(
+          key: ValueKey(item.habit.id),
+          item: item,
+          accentColor: _accentFor(item.habit.categoryId),
+          isEditMode: false,
+          onTap: () => _onTapCard(context, ref, item),
+        ),
+      ),
     );
   }
 

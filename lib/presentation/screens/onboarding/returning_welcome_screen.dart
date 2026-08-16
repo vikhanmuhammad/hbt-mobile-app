@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/app_logo.dart';
 import '../../widgets/navigation_shell.dart';
 
@@ -50,17 +51,19 @@ class _ReturningWelcomeScreenState extends State<ReturningWelcomeScreen> {
             behavior: HitTestBehavior.opaque,
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppLogo(size: 72),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Welcome Back,\n${widget.name}',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineMedium,
-                  ),
-                ],
+              child: FadeSlideIn(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const AppLogo(size: 72),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Welcome Back,\n${widget.name}',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.headlineMedium,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

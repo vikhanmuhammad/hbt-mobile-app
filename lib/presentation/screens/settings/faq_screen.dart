@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+
 /// Frequently asked questions about the offline principle & data security. CLAUDE.md v3 §8.
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
@@ -35,24 +38,29 @@ class FaqScreen extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
+          child: FadeSlideIn(
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              for (final faq in _faqs)
+              for (final (index, faq) in _faqs.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: ExpansionTile(
-                      title: Text(faq.q, style: theme.textTheme.titleSmall),
-                      childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-                      expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(faq.a, style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),
-                      ],
+                  child: FadeSlideIn(
+                    delay: staggeredDelay(index),
+                    child: Card(
+                      child: ExpansionTile(
+                        title: Text(faq.q, style: theme.textTheme.titleSmall),
+                        childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+                        expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(faq.a, style: theme.textTheme.bodySmall?.copyWith(height: 1.5)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
             ],
+          ),
           ),
         ),
       ),

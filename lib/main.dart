@@ -43,6 +43,18 @@ class HabitTrackerApp extends ConsumerWidget {
       theme: AppTheme.light(accent: accent),
       darkTheme: AppTheme.dark(accent: accent),
       themeMode: themeMode,
+      // Many fixed-size elements throughout the app (bottom nav bar, circular
+      // icon badges, checkboxes, category tiles) are sized for roughly 1x
+      // text scale and don't grow to match. Without a ceiling, an elder user
+      // who cranks their device's font/display size setting up gets text
+      // that overflows/clips out of those containers instead of scaling
+      // responsively. Clamping keeps accessibility scaling meaningful while
+      // staying within what the fixed layouts can actually accommodate.
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 0.85,
+        maxScaleFactor: 1.3,
+        child: child!,
+      ),
       home: const AppBootstrap(),
     );
   }
@@ -132,8 +144,11 @@ class _SplashScreen extends StatefulWidget {
   State<_SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<_SplashScreen> {
+class _SplashScreenState extends State<_SplashScreen> with TickerProviderStateMixin {
   late final Timer _timer;
+  late final AnimationController _progressController;
+  late final AnimationController _logoController;
+  late final Animation<double> _logoScale;
   int _quoteIndex = 0;
 
   @override
@@ -144,11 +159,27 @@ class _SplashScreenState extends State<_SplashScreen> {
       if (!mounted) return;
       setState(() => _quoteIndex = (_quoteIndex + 1) % _splashQuotes.length);
     });
+    // Matches AppBootstrap's minDuration below so the bar reaches a full
+    // 100% right around when the splash screen is dismissed, instead of
+    // just looping indeterminately.
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4200),
+    )..forward();
+    _logoController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _logoScale = Tween<double>(begin: 0.92, end: 1.06).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _timer.cancel();
+    _progressController.dispose();
+    _logoController.dispose();
     super.dispose();
   }
 
@@ -162,12 +193,18 @@ class _SplashScreenState extends State<_SplashScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const AppLogo(size: 72),
+              ScaleTransition(scale: _logoScale, child: const AppLogo(size: 72)),
               const SizedBox(height: 24),
               SizedBox(
                 width: 120,
-                child: LinearProgressIndicator(
+                child: ClipRRect(
                   borderRadius: BorderRadius.circular(999),
+                  child: AnimatedBuilder(
+                    animation: _progressController,
+                    builder: (context, _) => LinearProgressIndicator(
+                      value: _progressController.value,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 28),

@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/settings_providers.dart';
 import '../../theme/app_palettes.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+import '../../widgets/animations/tap_scale.dart';
 
 /// Pick the app's color theme — 5 palettes with swatch previews. CLAUDE.md v3 §8.
 class PersonalizeScreen extends ConsumerWidget {
@@ -18,6 +21,7 @@ class PersonalizeScreen extends ConsumerWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
+          child: FadeSlideIn(
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
@@ -27,16 +31,22 @@ class PersonalizeScreen extends ConsumerWidget {
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),
-              for (final palette in AppPalettes.all)
+              for (final (index, palette) in AppPalettes.all.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: _PaletteTile(
-                    palette: palette,
-                    selected: active.key == palette.key,
-                    onTap: () => ref.read(activePaletteProvider.notifier).setPalette(palette.key),
+                  child: FadeSlideIn(
+                    delay: staggeredDelay(index),
+                    child: TapScale(
+                      child: _PaletteTile(
+                        palette: palette,
+                        selected: active.key == palette.key,
+                        onTap: () => ref.read(activePaletteProvider.notifier).setPalette(palette.key),
+                      ),
+                    ),
                   ),
                 ),
             ],
+          ),
           ),
         ),
       ),

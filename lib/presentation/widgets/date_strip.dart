@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/date_utils.dart';
 import '../../domain/models/day_summary.dart';
 import '../../domain/models/enums.dart';
+import 'animations/tap_scale.dart';
 import 'daily_progress_ring.dart';
 
 /// Strip tanggal horizontal untuk 1 bulan — hari terpilih diberi ring
@@ -69,8 +70,13 @@ class _DateStripState extends State<DateStrip> {
     final daysInMonth = DateTime(widget.month.year, widget.month.month + 1, 0).day;
     final byDay = {for (final s in widget.summaries) s.date.day: s};
 
+    // 74 is tuned for a 1x text scale; on a device with a larger font/display
+    // size setting (common for elder users), the weekday label + ring column
+    // grows taller than that fixed height and overflows. Growing the strip
+    // proportionally with the text scale keeps it from clipping.
+    final textScale = MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.3);
     return SizedBox(
-      height: 74,
+      height: 74 * textScale,
       child: ListView.builder(
         controller: _controller,
         scrollDirection: Axis.horizontal,
@@ -113,45 +119,47 @@ class _DateStripItem extends StatelessWidget {
     final weekdayLabel = weekdayLabels[weekdayKeys[day.weekday - 1]]!;
     final isToday = isSameDay(day, today());
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: SizedBox(
-        width: 60,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                weekdayLabel,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: selected ? theme.colorScheme.primary : null,
-                  fontWeight: selected ? FontWeight.w700 : null,
+    return TapScale(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 60,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  weekdayLabel,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: selected ? theme.colorScheme.primary : null,
+                    fontWeight: selected ? FontWeight.w700 : null,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              selected
-                  ? DailyProgressRing(
-                      done: (ratio * 100).round(),
-                      total: hasData ? 100 : 0,
-                      size: 40,
-                      strokeWidth: 3,
-                      centerLabel: '${day.day}',
-                    )
-                  : Container(
-                      width: 36,
-                      height: 36,
-                      alignment: Alignment.center,
-                      decoration: isToday
-                          ? BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: theme.dividerColor, width: 1.5),
-                            )
-                          : null,
-                      child: Text('${day.day}', style: theme.textTheme.bodyMedium),
-                    ),
-            ],
+                const SizedBox(height: 6),
+                selected
+                    ? DailyProgressRing(
+                        done: (ratio * 100).round(),
+                        total: hasData ? 100 : 0,
+                        size: 40,
+                        strokeWidth: 3,
+                        centerLabel: '${day.day}',
+                      )
+                    : Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: isToday
+                            ? BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: theme.dividerColor, width: 1.5),
+                              )
+                            : null,
+                        child: Text('${day.day}', style: theme.textTheme.bodyMedium),
+                      ),
+              ],
+            ),
           ),
         ),
       ),

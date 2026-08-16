@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
+import 'page_transitions.dart';
+
+const _pageTransitionsTheme = PageTransitionsTheme(
+  builders: {
+    TargetPlatform.android: FadeSlideUpPageTransitionsBuilder(),
+    TargetPlatform.iOS: FadeSlideUpPageTransitionsBuilder(),
+    TargetPlatform.macOS: FadeSlideUpPageTransitionsBuilder(),
+    TargetPlatform.windows: FadeSlideUpPageTransitionsBuilder(),
+    TargetPlatform.linux: FadeSlideUpPageTransitionsBuilder(),
+  },
+);
 
 class AppTheme {
   AppTheme._();
@@ -92,6 +103,7 @@ class AppTheme {
       // tone M3 auto-generate dari seed emas yang jadi coklat pudar, bukan
       // borderColor asli yang kita pakai di tempat lain.
       dividerColor: borderColor,
+      pageTransitionsTheme: _pageTransitionsTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: scaffoldBackground,
         foregroundColor: textColor,

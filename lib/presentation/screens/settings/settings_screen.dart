@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/toggle_switch.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'faq_screen.dart';
@@ -36,6 +37,7 @@ class SettingsScreen extends ConsumerWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
+          child: FadeSlideIn(
           child: ListView(
             padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 40),
             children: [
@@ -152,6 +154,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

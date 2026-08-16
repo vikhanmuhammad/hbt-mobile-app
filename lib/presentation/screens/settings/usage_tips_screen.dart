@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+
 /// Quick tips for using the app — reminders, backfilling progress, changing
 /// the theme, using Edit Mode. CLAUDE.md v3 §8.
 class UsageTipsScreen extends StatelessWidget {
@@ -41,39 +44,44 @@ class UsageTipsScreen extends StatelessWidget {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
+          child: FadeSlideIn(
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              for (final tip in _tips)
+              for (final (index, tip) in _tips.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(tip.icon, color: theme.colorScheme.primary),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(tip.title, style: theme.textTheme.titleSmall),
-                                const SizedBox(height: 6),
-                                Text(
-                                  tip.body,
-                                  style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-                                ),
-                              ],
+                  child: FadeSlideIn(
+                    delay: staggeredDelay(index),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(tip.icon, color: theme.colorScheme.primary),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(tip.title, style: theme.textTheme.titleSmall),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    tip.body,
+                                    style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
             ],
+          ),
           ),
         ),
       ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/app_logo.dart';
 
 /// Edit the user's name & age profile. Profile photo (CLAUDE.md v3 §8) is
@@ -79,6 +80,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
+              child: FadeSlideIn(
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
@@ -114,6 +116,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Text(_saving ? 'Saving...' : 'Save'),
                   ),
                 ],
+              ),
               ),
             ),
           );

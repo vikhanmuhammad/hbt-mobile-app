@@ -58,6 +58,7 @@ dependencies:
   sign_in_with_apple: ^8.1.0
   firebase_messaging: ^16.5.0
   flutter_undraw: ^0.2.1
+  flutter_animate: ^4.5.2
 
 dev_dependencies:
   flutter_test:

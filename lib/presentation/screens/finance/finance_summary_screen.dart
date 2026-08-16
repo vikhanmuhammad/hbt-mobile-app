@@ -8,6 +8,7 @@ import '../../../providers/community_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
@@ -46,7 +47,8 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
-      body: ListView(
+      body: FadeSlideIn(
+        child: ListView(
         padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
         children: [
           _MonthNav(
@@ -80,6 +82,7 @@ class FinanceSummaryScreen extends ConsumerWidget {
             },
           ),
         ],
+        ),
       ),
     );
   }

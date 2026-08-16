@@ -45,8 +45,8 @@ class ProFeatureTeaser extends ConsumerWidget {
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.55)),
+              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.35)),
             ),
           ),
           Center(

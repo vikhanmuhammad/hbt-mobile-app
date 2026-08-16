@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/community/app_group.dart';
 import '../../../providers/community_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
+import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/pill_button.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import 'create_group_screen.dart';
@@ -191,6 +194,7 @@ class _GroupListView extends ConsumerWidget {
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: Padding(
             padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
+            child: FadeSlideIn(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -263,13 +267,17 @@ class _GroupListView extends ConsumerWidget {
                                 physics: const AlwaysScrollableScrollPhysics(),
                                 itemCount: groups.length,
                                 separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                itemBuilder: (context, i) => _GroupTile(group: groups[i]),
+                                itemBuilder: (context, i) => FadeSlideIn(
+                                  delay: staggeredDelay(i),
+                                  child: _GroupTile(group: groups[i]),
+                                ),
                               ),
                       );
                     },
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ),
@@ -305,7 +313,8 @@ class _GroupTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return TapScale(
+      child: Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () => Navigator.of(context).push(
@@ -335,6 +344,7 @@ class _GroupTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

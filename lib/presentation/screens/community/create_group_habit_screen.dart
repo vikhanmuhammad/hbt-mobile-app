@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/community_enums.dart';
 import '../../../providers/community_providers.dart';
+import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
 
@@ -68,7 +69,8 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('Create Group Habit')),
-      body: ListView(
+      body: FadeSlideIn(
+        child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text('Challenge Name', style: theme.textTheme.labelMedium),
@@ -113,6 +115,7 @@ class _CreateGroupHabitScreenState extends ConsumerState<CreateGroupHabitScreen>
                 : const Text('Create Group Habit'),
           ),
         ],
+        ),
       ),
     );
   }

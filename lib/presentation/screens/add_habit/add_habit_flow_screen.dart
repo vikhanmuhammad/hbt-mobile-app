@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
-import '../../../domain/format_utils.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
@@ -14,6 +14,8 @@ import '../../../providers/finance_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
+import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
@@ -78,6 +80,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   // Step 3 form state.
   final _nameController = TextEditingController();
   final _goalUnitController = TextEditingController(text: 'x');
+  final _goalValueController = TextEditingController(text: '1');
   String _habitIcon = defaultHabitIconKey;
   String _unitDropdownValue = 'x';
   GoalPeriod _goalPeriod = GoalPeriod.daily;
@@ -119,6 +122,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   void dispose() {
     _nameController.dispose();
     _goalUnitController.dispose();
+    _goalValueController.dispose();
     _newCatNameController.dispose();
     super.dispose();
   }
@@ -157,6 +161,18 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   bool get _isRupiahUnit => _goalUnitController.text.trim() == 'rupiah';
 
+  /// Updates [_goalValue] and keeps the text field in sync — used by every
+  /// programmatic change (steppers, loading a habit/template, unit presets)
+  /// so typing directly into the field (which sets `_goalValue` without
+  /// touching the controller) doesn't get fought over/reset the cursor.
+  void _setGoalValue(int value) {
+    _goalValue = value.clamp(0, 1 << 30);
+    final text = '$_goalValue';
+    if (_goalValueController.text != text) {
+      _goalValueController.text = text;
+    }
+  }
+
   /// Larger step for the rupiah unit so users don't have to press +/-
   /// hundreds of times to reach a reasonable amount.
   int get _goalValueStep {
@@ -171,7 +187,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _habitIcon = habit.icon ?? defaultHabitIconKey;
     _applyUnit(habit.goalUnit);
     _goalPeriod = habit.goalPeriod;
-    _goalValue = habit.goalValue;
+    _setGoalValue(habit.goalValue);
     _goalDirection = habit.goalDirection;
     _taskDays = habit.taskDays.toSet();
     _timeRange = habit.timeRange;
@@ -194,7 +210,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _habitIcon = icon ?? defaultHabitIconKey;
     _applyUnit(goalUnit ?? 'x');
     _goalPeriod = goalPeriod ?? GoalPeriod.daily;
-    _goalValue = goalValue ?? 1;
+    _setGoalValue(goalValue ?? 1);
     _goalDirection = goalDirection ?? GoalDirection.atLeast;
     _taskDays = {allDaysKey};
     _timeRange = timeRange ?? TimeRange.anytime;
@@ -300,6 +316,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         child: Center(
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
+            child: FadeSlideIn(
             child: ListView(
               padding: EdgeInsets.fromLTRB(isTablet ? 44 : 16, isTablet ? 32 : 20, isTablet ? 44 : 16, 40),
               children: [
@@ -329,6 +346,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   _ => const SizedBox.shrink(),
                 },
               ],
+            ),
             ),
           ),
         ),
@@ -363,7 +381,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               itemCount: categories.length + 1,
               itemBuilder: (context, index) {
                 if (index == categories.length) {
-                  return DashedBorder(
+                  return FadeSlideIn(
+                    delay: staggeredDelay(index),
+                    child: DashedBorder(
                     borderRadius: 20,
                     onTap: () => _push(4),
                     child: Padding(
@@ -397,28 +417,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                         ],
                       ),
                     ),
+                    ),
                   );
                 }
                 final category = categories[index];
                 final color = AppColors.categoryColorFromHex(category.colorHex, index);
-                return _CategoryGridTile(
-                  name: category.name,
-                  description: goalPhraseDescriptionFor(category),
-                  icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
-                  color: color,
-                  onTap: () {
-                    if (isFinanceCategory(category) && !ref.read(isProProvider)) {
-                      showProRequiredDialog(
-                        context,
-                        message:
-                            'The Finance category (Save Money) is Pro-only. Upgrade to '
-                            'Pro to manage finance habits & see your savings summary.',
-                      );
-                      return;
-                    }
-                    _categoryId = category.id;
-                    _push(2);
-                  },
+                return FadeSlideIn(
+                  delay: staggeredDelay(index),
+                  child: _CategoryGridTile(
+                    name: category.name,
+                    description: goalPhraseDescriptionFor(category),
+                    icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
+                    color: color,
+                    onTap: () {
+                      if (isFinanceCategory(category) && !ref.read(isProProvider)) {
+                        showProRequiredDialog(
+                          context,
+                          message:
+                              'The Finance category (Save Money) is Pro-only. Upgrade to '
+                              'Pro to manage finance habits & see your savings summary.',
+                        );
+                        return;
+                      }
+                      _categoryId = category.id;
+                      _push(2);
+                    },
+                  ),
                 );
               },
             );
@@ -683,20 +707,30 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       _StepperButton(
                         icon: Icons.remove_rounded,
                         onTap: _goalValue > 0
-                            ? () => setState(() => _goalValue = (_goalValue - _goalValueStep).clamp(0, 1 << 30))
+                            ? () => setState(() => _setGoalValue(_goalValue - _goalValueStep))
                             : null,
                       ),
                       Expanded(
-                        child: Center(
-                          child: Text(
-                            _isRupiahUnit ? formatRupiah(_goalValue) : '$_goalValue',
-                            style: theme.textTheme.titleMedium,
+                        child: TextField(
+                          controller: _goalValueController,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          style: theme.textTheme.titleMedium,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            prefixText: _isRupiahUnit ? 'Rp ' : null,
                           ),
+                          onChanged: (text) {
+                            final parsed = int.tryParse(text) ?? 0;
+                            setState(() => _goalValue = parsed.clamp(0, 1 << 30));
+                          },
                         ),
                       ),
                       _StepperButton(
                         icon: Icons.add_rounded,
-                        onTap: () => setState(() => _goalValue += _goalValueStep),
+                        onTap: () => setState(() => _setGoalValue(_goalValue + _goalValueStep)),
                       ),
                     ],
                   ),
@@ -724,7 +758,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                         if (v != 'custom') _goalUnitController.text = v;
                         // Reasonable starting amount for rupiah — more
                         // sensible than starting at 1 and stepping by 500s.
-                        if (v == 'rupiah' && _goalValue < 1000) _goalValue = 50000;
+                        if (v == 'rupiah' && _goalValue < 1000) _setGoalValue(50000);
                       });
                     },
                   ),

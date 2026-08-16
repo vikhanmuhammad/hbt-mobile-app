@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/ui_state_providers.dart';
@@ -19,8 +20,40 @@ class NavigationShell extends ConsumerStatefulWidget {
   ConsumerState<NavigationShell> createState() => _NavigationShellState();
 }
 
-class _NavigationShellState extends ConsumerState<NavigationShell> {
+class _NavigationShellState extends ConsumerState<NavigationShell>
+    with SingleTickerProviderStateMixin {
   int _index = 0;
+
+  // Tabs are mounted lazily (only once visited) rather than all at once, so
+  // each tab's own entrance animations (see FadeSlideIn usage inside the
+  // screens) actually play the first time a user switches to it — an
+  // eagerly-built IndexedStack would build every tab up front and their
+  // entrance animations would already be finished by the time the user
+  // switches to them.
+  final Set<int> _builtIndices = {0};
+
+  late final AnimationController _fadeController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+    value: 1,
+  );
+
+  void _onDestinationSelected(int i) {
+    if (i == _index) return;
+    setState(() {
+      _index = i;
+      _builtIndices.add(i);
+    });
+    _fadeController
+      ..value = 0
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
 
   // Community sits in the middle slot (index 2 of 5) so it's the centered
   // destination in the bottom nav bar.
@@ -32,19 +65,28 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
     (icon: Icons.settings_rounded, label: 'Settings'),
   ];
 
-  static final _screens = [
-    const HomeScreen(),
-    const DashboardScreen(),
-    const CommunityEntryScreen(),
-    const FinanceSummaryScreen(),
-    const SettingsScreen(),
+  static final _screenBuilders = <Widget Function()>[
+    () => const HomeScreen(),
+    () => const DashboardScreen(),
+    () => const CommunityEntryScreen(),
+    () => const FinanceSummaryScreen(),
+    () => const SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
-    final body = IndexedStack(index: _index, children: _screens);
+    final body = FadeTransition(
+      opacity: CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+      child: IndexedStack(
+        index: _index,
+        children: [
+          for (var i = 0; i < _screenBuilders.length; i++)
+            _builtIndices.contains(i) ? _screenBuilders[i]() : const SizedBox.shrink(),
+        ],
+      ),
+    );
 
     if (isWide) {
       return Scaffold(
@@ -54,14 +96,17 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
             children: [
               NavigationRail(
                 selectedIndex: _index,
-                onDestinationSelected: (i) => setState(() => _index = i),
+                onDestinationSelected: _onDestinationSelected,
                 labelType: NavigationRailLabelType.all,
                 leading: const SizedBox(height: 12),
                 destinations: [
                   for (final d in _destinations)
                     NavigationRailDestination(
                       icon: Icon(d.icon),
-                      label: Text(d.label),
+                      label: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(d.label, maxLines: 1),
+                      ),
                     ),
                 ],
               ),
@@ -80,13 +125,22 @@ class _NavigationShellState extends ConsumerState<NavigationShell> {
       // edge-to-edge by default, without this the top content (e.g. the
       // "Today" header) would be covered by the status bar.
       body: SafeArea(bottom: false, child: body),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: [
-          for (final d in _destinations)
-            NavigationDestination(icon: Icon(d.icon), label: d.label),
-        ],
+      // NavigationDestination.label is a plain String (no way to give it its
+      // own FittedBox), so the longer labels ("Dashboard", "Community")
+      // sharing narrow per-item width wrap into an ugly mid-word 2nd line
+      // once the system font/display size is scaled up. Capping the scale
+      // locally, just for this bar, keeps every label on one line while the
+      // rest of the app still scales up to the full app-wide maximum.
+      bottomNavigationBar: MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 1.1,
+        child: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: _onDestinationSelected,
+          destinations: [
+            for (final d in _destinations)
+              NavigationDestination(icon: Icon(d.icon), label: d.label),
+          ],
+        ),
       ),
       floatingActionButton: _index == 0 ? const _HomeFabRow() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -120,7 +174,7 @@ class _HomeFabRow extends ConsumerWidget {
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 250.ms).scale(begin: const Offset(0.85, 0.85), curve: Curves.easeOutBack);
   }
 }
 
@@ -148,7 +202,12 @@ class _RoundFab extends ConsumerWidget {
           }
         },
         shape: const CircleBorder(),
-        child: Icon(icon, size: 26),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) =>
+              ScaleTransition(scale: animation, child: FadeTransition(opacity: animation, child: child)),
+          child: Icon(icon, key: ValueKey(icon), size: 26),
+        ),
       ),
     );
   }

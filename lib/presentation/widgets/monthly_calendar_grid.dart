@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/date_utils.dart';
 import '../../domain/models/day_summary.dart';
 import '../theme/app_colors.dart';
+import 'animations/tap_scale.dart';
 import 'daily_progress_ring.dart';
 
 const _monthNames = [
@@ -145,37 +146,39 @@ class _DayCell extends StatelessWidget {
     final hasData = summary?.hasData ?? false;
     final ratio = summary?.ratio ?? 0;
 
-    return InkWell(
-      customBorder: const CircleBorder(),
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : isToday
-                    ? AppColors.gold
-                    : Colors.transparent,
-            width: isSelected || isToday ? 1.5 : 0,
+    return TapScale(
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : isToday
+                      ? AppColors.gold
+                      : Colors.transparent,
+              width: isSelected || isToday ? 1.5 : 0,
+            ),
           ),
+          alignment: Alignment.center,
+          child: hasData
+              ? DailyProgressRing(
+                  done: (ratio * 100).round(),
+                  total: 100,
+                  size: 34,
+                  strokeWidth: 3,
+                  centerLabel: '$day',
+                  centerLabelStyle:
+                      theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800, fontSize: 12),
+                )
+              : Text(
+                  '$day',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                ),
         ),
-        alignment: Alignment.center,
-        child: hasData
-            ? DailyProgressRing(
-                done: (ratio * 100).round(),
-                total: 100,
-                size: 34,
-                strokeWidth: 3,
-                centerLabel: '$day',
-                centerLabelStyle:
-                    theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800, fontSize: 12),
-              )
-            : Text(
-                '$day',
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
       ),
     );
   }
