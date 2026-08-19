@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
@@ -177,25 +179,13 @@ class SettingsScreen extends ConsumerWidget {
               _NavTile(
                 icon: Icons.mail_outline_rounded,
                 label: 'Contact us',
-                onTap: () => _showComingSoon(context, 'Contact us'),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.camera_alt_outlined,
-                label: 'Instagram: lightbyte_apps',
-                onTap: () => _showComingSoon(context, 'Instagram'),
+                onTap: () => _contactUs(context),
               ),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.share_outlined,
                 label: 'Share',
-                onTap: () => _showComingSoon(context, 'Share'),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.star_outline_rounded,
-                label: 'Review & Support',
-                onTap: () => _showComingSoon(context, 'Review & Support'),
+                onTap: () => _shareApp(context),
               ),
               const SizedBox(height: 24),
               Card(
@@ -233,6 +223,33 @@ class SettingsScreen extends ConsumerWidget {
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('$feature is not available in this version yet')),
+    );
+  }
+
+  static const _supportEmail = 'habtrack08@gmail.com';
+
+  Future<void> _contactUs(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      query: 'subject=${Uri.encodeComponent('Habit Tracker Support')}',
+    );
+    final launched = await launchUrl(uri);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No email app found — reach us at $_supportEmail'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _shareApp(BuildContext context) async {
+    await SharePlus.instance.share(
+      ShareParams(
+        text: "I'm building better habits with Habit Tracker — join me!",
+        subject: 'Habit Tracker',
+      ),
     );
   }
 
