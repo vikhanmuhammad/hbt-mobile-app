@@ -91,3 +91,103 @@ final class FinanceSummaryFamily extends $Family
   @override
   String toString() => r'financeSummaryProvider';
 }
+
+/// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
+/// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
+/// Monthly (`selectedFinancePeriodProvider`).
+
+@ProviderFor(financeSummaryForPeriod)
+final financeSummaryForPeriodProvider = FinanceSummaryForPeriodFamily._();
+
+/// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
+/// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
+/// Monthly (`selectedFinancePeriodProvider`).
+
+final class FinanceSummaryForPeriodProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<FinanceSummary>,
+          FinanceSummary,
+          FutureOr<FinanceSummary>
+        >
+    with $FutureModifier<FinanceSummary>, $FutureProvider<FinanceSummary> {
+  /// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
+  /// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
+  /// Monthly (`selectedFinancePeriodProvider`).
+  FinanceSummaryForPeriodProvider._({
+    required FinanceSummaryForPeriodFamily super.from,
+    required (FinancePeriod, DateTime) super.argument,
+  }) : super(
+         retry: null,
+         name: r'financeSummaryForPeriodProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$financeSummaryForPeriodHash();
+
+  @override
+  String toString() {
+    return r'financeSummaryForPeriodProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<FinanceSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<FinanceSummary> create(Ref ref) {
+    final argument = this.argument as (FinancePeriod, DateTime);
+    return financeSummaryForPeriod(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FinanceSummaryForPeriodProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$financeSummaryForPeriodHash() =>
+    r'4c469a3296420d8e00d22e8889bea2f7ec8955a5';
+
+/// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
+/// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
+/// Monthly (`selectedFinancePeriodProvider`).
+
+final class FinanceSummaryForPeriodFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          FutureOr<FinanceSummary>,
+          (FinancePeriod, DateTime)
+        > {
+  FinanceSummaryForPeriodFamily._()
+    : super(
+        retry: null,
+        name: r'financeSummaryForPeriodProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
+  /// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
+  /// Monthly (`selectedFinancePeriodProvider`).
+
+  FinanceSummaryForPeriodProvider call(FinancePeriod period, DateTime anchor) =>
+      FinanceSummaryForPeriodProvider._(argument: (period, anchor), from: this);
+
+  @override
+  String toString() => r'financeSummaryForPeriodProvider';
+}

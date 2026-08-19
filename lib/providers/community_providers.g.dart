@@ -938,3 +938,213 @@ final class HabitGroupLinksForHabitFamily extends $Family
   @override
   String toString() => r'habitGroupLinksForHabitProvider';
 }
+
+/// Habits (on this device) currently linked to a specific Group Habit —
+/// drives the Link/Unlink state shown in the group's Habits tab, so it's
+/// clear which local habit (if any) is already contributing to a given
+/// habit item instead of only offering "Link".
+
+@ProviderFor(habitGroupLinksForGroupHabit)
+final habitGroupLinksForGroupHabitProvider =
+    HabitGroupLinksForGroupHabitFamily._();
+
+/// Habits (on this device) currently linked to a specific Group Habit —
+/// drives the Link/Unlink state shown in the group's Habits tab, so it's
+/// clear which local habit (if any) is already contributing to a given
+/// habit item instead of only offering "Link".
+
+final class HabitGroupLinksForGroupHabitProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<HabitGroupLink>>,
+          List<HabitGroupLink>,
+          Stream<List<HabitGroupLink>>
+        >
+    with
+        $FutureModifier<List<HabitGroupLink>>,
+        $StreamProvider<List<HabitGroupLink>> {
+  /// Habits (on this device) currently linked to a specific Group Habit —
+  /// drives the Link/Unlink state shown in the group's Habits tab, so it's
+  /// clear which local habit (if any) is already contributing to a given
+  /// habit item instead of only offering "Link".
+  HabitGroupLinksForGroupHabitProvider._({
+    required HabitGroupLinksForGroupHabitFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'habitGroupLinksForGroupHabitProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$habitGroupLinksForGroupHabitHash();
+
+  @override
+  String toString() {
+    return r'habitGroupLinksForGroupHabitProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<HabitGroupLink>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<HabitGroupLink>> create(Ref ref) {
+    final argument = this.argument as String;
+    return habitGroupLinksForGroupHabit(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HabitGroupLinksForGroupHabitProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$habitGroupLinksForGroupHabitHash() =>
+    r'a2c7589bb4ee6e8c47e72b6ff61fae2c4fd8c154';
+
+/// Habits (on this device) currently linked to a specific Group Habit —
+/// drives the Link/Unlink state shown in the group's Habits tab, so it's
+/// clear which local habit (if any) is already contributing to a given
+/// habit item instead of only offering "Link".
+
+final class HabitGroupLinksForGroupHabitFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<HabitGroupLink>>, String> {
+  HabitGroupLinksForGroupHabitFamily._()
+    : super(
+        retry: null,
+        name: r'habitGroupLinksForGroupHabitProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Habits (on this device) currently linked to a specific Group Habit —
+  /// drives the Link/Unlink state shown in the group's Habits tab, so it's
+  /// clear which local habit (if any) is already contributing to a given
+  /// habit item instead of only offering "Link".
+
+  HabitGroupLinksForGroupHabitProvider call(String groupHabitId) =>
+      HabitGroupLinksForGroupHabitProvider._(
+        argument: groupHabitId,
+        from: this,
+      );
+
+  @override
+  String toString() => r'habitGroupLinksForGroupHabitProvider';
+}
+
+/// All of this device's local links into a given Group, across every Group
+/// Habit in it — used by the group's Habits tab to figure out which of the
+/// viewer's own habits are already published, and which existing Group
+/// Habits they haven't adopted yet.
+
+@ProviderFor(habitGroupLinksForGroup)
+final habitGroupLinksForGroupProvider = HabitGroupLinksForGroupFamily._();
+
+/// All of this device's local links into a given Group, across every Group
+/// Habit in it — used by the group's Habits tab to figure out which of the
+/// viewer's own habits are already published, and which existing Group
+/// Habits they haven't adopted yet.
+
+final class HabitGroupLinksForGroupProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<HabitGroupLink>>,
+          List<HabitGroupLink>,
+          Stream<List<HabitGroupLink>>
+        >
+    with
+        $FutureModifier<List<HabitGroupLink>>,
+        $StreamProvider<List<HabitGroupLink>> {
+  /// All of this device's local links into a given Group, across every Group
+  /// Habit in it — used by the group's Habits tab to figure out which of the
+  /// viewer's own habits are already published, and which existing Group
+  /// Habits they haven't adopted yet.
+  HabitGroupLinksForGroupProvider._({
+    required HabitGroupLinksForGroupFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'habitGroupLinksForGroupProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$habitGroupLinksForGroupHash();
+
+  @override
+  String toString() {
+    return r'habitGroupLinksForGroupProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<HabitGroupLink>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<HabitGroupLink>> create(Ref ref) {
+    final argument = this.argument as String;
+    return habitGroupLinksForGroup(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is HabitGroupLinksForGroupProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$habitGroupLinksForGroupHash() =>
+    r'38b7d783dc436b871f8b0bdcd70dbe1755924be5';
+
+/// All of this device's local links into a given Group, across every Group
+/// Habit in it — used by the group's Habits tab to figure out which of the
+/// viewer's own habits are already published, and which existing Group
+/// Habits they haven't adopted yet.
+
+final class HabitGroupLinksForGroupFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<HabitGroupLink>>, String> {
+  HabitGroupLinksForGroupFamily._()
+    : super(
+        retry: null,
+        name: r'habitGroupLinksForGroupProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// All of this device's local links into a given Group, across every Group
+  /// Habit in it — used by the group's Habits tab to figure out which of the
+  /// viewer's own habits are already published, and which existing Group
+  /// Habits they haven't adopted yet.
+
+  HabitGroupLinksForGroupProvider call(String groupId) =>
+      HabitGroupLinksForGroupProvider._(argument: groupId, from: this);
+
+  @override
+  String toString() => r'habitGroupLinksForGroupProvider';
+}

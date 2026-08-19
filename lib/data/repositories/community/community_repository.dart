@@ -162,6 +162,43 @@ class CommunityRepository {
     });
   }
 
+  /// Self-removal — a member leaving a group of their own accord, as
+  /// opposed to [removeMember] which is the admin-only kick action.
+  /// Whether it's safe to call (e.g. not the group's only admin) is checked
+  /// by the caller; Firestore rules only guarantee a member can remove
+  /// themselves and no one else.
+  Future<void> leaveGroup({
+    required String groupId,
+    required String uid,
+  }) {
+    return _groups.doc(groupId).update({
+      'members.$uid': FieldValue.delete(),
+      'memberUids': FieldValue.arrayRemove([uid]),
+    });
+  }
+
+  /// Tears down a group: its Group Habits, the invite code that points to
+  /// it, and the group doc itself. Admin-only (enforced by rules on each
+  /// delete). Per-member leaderboard entries and chat messages are left as
+  /// orphaned/unreachable data — Firestore has no cascading delete without
+  /// Cloud Functions, chat messages are intentionally immutable (rules deny
+  /// deleting them even here), and a member can only ever delete their own
+  /// leaderboard entry, not everyone else's.
+  Future<void> deleteGroup({
+    required String groupId,
+    required String inviteCode,
+  }) async {
+    final groupHabitsSnap =
+        await _groups.doc(groupId).collection('groupHabits').get();
+    final batch = _firestore.batch();
+    for (final doc in groupHabitsSnap.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(_invites.doc(inviteCode));
+    batch.delete(_groups.doc(groupId));
+    await batch.commit();
+  }
+
   // ---------------------------------------------------------------------
   // Group Habit
   // ---------------------------------------------------------------------
@@ -258,6 +295,23 @@ class CommunityRepository {
       'progressValue': progressValue,
       'lastUpdated': Timestamp.fromDate(DateTime.now()),
     });
+  }
+
+  /// Called when a user unlinks their habit from a Group Habit — without
+  /// this, their streak/progress stayed visible on the leaderboard even
+  /// though nothing local is contributing to it anymore.
+  Future<void> deleteLeaderboardEntry({
+    required String groupId,
+    required String groupHabitId,
+    required String uid,
+  }) {
+    return _groups
+        .doc(groupId)
+        .collection('groupHabits')
+        .doc(groupHabitId)
+        .collection('leaderboard')
+        .doc(uid)
+        .delete();
   }
 
   // ---------------------------------------------------------------------

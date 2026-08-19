@@ -153,3 +153,24 @@ Stream<List<ChatMessage>> groupMessages(Ref ref, String groupId) {
 Stream<List<HabitGroupLink>> habitGroupLinksForHabit(Ref ref, int habitId) {
   return ref.watch(habitGroupLinkRepositoryProvider).watchForHabit(habitId);
 }
+
+/// Habits (on this device) currently linked to a specific Group Habit —
+/// drives the Link/Unlink state shown in the group's Habits tab, so it's
+/// clear which local habit (if any) is already contributing to a given
+/// habit item instead of only offering "Link".
+@riverpod
+Stream<List<HabitGroupLink>> habitGroupLinksForGroupHabit(
+  Ref ref,
+  String groupHabitId,
+) {
+  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroupHabit(groupHabitId);
+}
+
+/// All of this device's local links into a given Group, across every Group
+/// Habit in it — used by the group's Habits tab to figure out which of the
+/// viewer's own habits are already published, and which existing Group
+/// Habits they haven't adopted yet.
+@riverpod
+Stream<List<HabitGroupLink>> habitGroupLinksForGroup(Ref ref, String groupId) {
+  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroup(groupId);
+}

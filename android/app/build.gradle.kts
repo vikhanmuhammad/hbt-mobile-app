@@ -9,7 +9,8 @@ plugins {
 
 android {
     namespace = "com.example.habbit_tracker_app"
-    compileSdk = flutter.compileSdkVersion
+    // `health`'s Health Connect dependency requires compileSdk >= 35.
+    compileSdk = maxOf(flutter.compileSdkVersion, 36)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -24,8 +25,9 @@ android {
         applicationId = "com.example.habbit_tracker_app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        // minSdk 24 is required by flutter_local_notifications.
-        minSdk = maxOf(flutter.minSdkVersion, 24)
+        // minSdk 24 is required by flutter_local_notifications; bumped to 26
+        // for the `health` plugin's Health Connect integration (point 10).
+        minSdk = maxOf(flutter.minSdkVersion, 26)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

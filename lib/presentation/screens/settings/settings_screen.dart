@@ -6,9 +6,12 @@ import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/app_logo.dart';
 import '../../widgets/toggle_switch.dart';
+import '../add_habit/add_habit_flow_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'faq_screen.dart';
+import 'health_sync_settings_tile.dart';
 import 'personalize_screen.dart';
 import 'profile_screen.dart';
 import 'usage_tips_screen.dart';
@@ -33,6 +36,9 @@ class SettingsScreen extends ConsumerWidget {
             MediaQuery.platformBrightnessOf(context) == Brightness.dark);
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
 
+    final profile = ref.watch(userProfileStreamProvider).value;
+    final isPro = ref.watch(isProProvider);
+
     return Scaffold(
       body: Center(
         child: ConstrainedBox(
@@ -41,9 +47,70 @@ class SettingsScreen extends ConsumerWidget {
           child: ListView(
             padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 40),
             children: [
-              Text('Settings', style: theme.textTheme.titleLarge),
-              const SizedBox(height: 24),
-              _SectionLabel('Display'),
+              // Profile header card — avatar/name + Pro badge, matches the
+              // reference app's Settings layout (point 16).
+              Row(
+                children: [
+                  const AppLogo(size: 52),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile?.name.isNotEmpty == true ? profile!.name : 'No Name',
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                        if (isPro) ...[
+                          const SizedBox(height: 2),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.workspace_premium_rounded, size: 14, color: theme.colorScheme.primary),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Pro Member',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              _SectionLabel('Settings'),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.checklist_rounded,
+                label: 'Habit Manager',
+                onTap: () => openCreateCategoryFlow(context),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.widgets_outlined,
+                label: 'Widget Theme',
+                onTap: () => _showComingSoon(context, 'Widget Theme'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.palette_outlined,
+                label: 'Theme',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PersonalizeScreen()),
+                ),
+              ),
               const SizedBox(height: 10),
               Card(
                 child: Padding(
@@ -60,24 +127,29 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.tune_rounded,
+                label: 'Page & Function',
+                onTap: () => _showComingSoon(context, 'Page & Function'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.cloud_outlined,
+                label: 'iCloud Sync',
+                trailing: 'Disabled',
+                onTap: () => _showComingSoon(context, 'iCloud Sync'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.crop_din_rounded,
+                label: 'Dynamic Island',
+                onTap: () => _showComingSoon(context, 'Dynamic Island'),
+              ),
               const SizedBox(height: 24),
-              _SectionLabel('Account'),
+              _SectionLabel('Health & Calendar Sync'),
               const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.person_outline_rounded,
-                label: 'Profile',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                ),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.palette_outlined,
-                label: 'Personalize',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PersonalizeScreen()),
-                ),
-              ),
+              const HealthSyncSettingsTile(),
               if (kDebugMode) ...[
                 const SizedBox(height: 24),
                 _SectionLabel('Community (Debug)'),
@@ -109,7 +181,7 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              _SectionLabel('Help'),
+              _SectionLabel('About'),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.lightbulb_outline_rounded,
@@ -121,14 +193,36 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.help_outline_rounded,
-                label: 'FAQ',
+                label: 'FAQs',
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const FaqScreen()),
                 ),
               ),
-              const SizedBox(height: 24),
-              _SectionLabel('About'),
               const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.mail_outline_rounded,
+                label: 'Contact us',
+                onTap: () => _showComingSoon(context, 'Contact us'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.camera_alt_outlined,
+                label: 'Instagram: lightbyte_apps',
+                onTap: () => _showComingSoon(context, 'Instagram'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.share_outlined,
+                label: 'Share',
+                onTap: () => _showComingSoon(context, 'Share'),
+              ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.star_outline_rounded,
+                label: 'Review & Support',
+                onTap: () => _showComingSoon(context, 'Review & Support'),
+              ),
+              const SizedBox(height: 24),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(18),
@@ -234,11 +328,15 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _NavTile extends StatelessWidget {
-  const _NavTile({required this.icon, required this.label, required this.onTap});
+  const _NavTile({required this.icon, required this.label, required this.onTap, this.trailing});
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+
+  /// Optional short trailing label shown before the chevron (e.g. "Disabled"
+  /// for iCloud Sync) — matches the reference app's Settings layout.
+  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -254,6 +352,10 @@ class _NavTile extends StatelessWidget {
               Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
               const SizedBox(width: 12),
               Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+              if (trailing != null) ...[
+                Text(trailing!, style: theme.textTheme.bodySmall),
+                const SizedBox(width: 6),
+              ],
               Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
             ],
           ),

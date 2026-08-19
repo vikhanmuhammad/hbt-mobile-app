@@ -286,6 +286,12 @@ class _HabitList extends ConsumerWidget {
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
+    // financeSummaryForPeriodProvider (daily/weekly/monthly toggle) is a
+    // separate family from the month-only financeSummaryProvider above —
+    // without this, logging a finance habit from Home didn't show up on the
+    // Finance screen until some unrelated action (e.g. changing day)
+    // happened to trigger a rebuild.
+    ref.invalidate(financeSummaryForPeriodProvider);
   }
 }
 

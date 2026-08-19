@@ -37,6 +37,7 @@ class FinanceRepository {
     var totalExpense = 0;
     var totalBudget = 0;
     var totalSavingsDeposit = 0;
+    var totalSavingsTarget = 0;
     final habitStats = <FinanceHabitStat>[];
 
     for (final habit in habits) {
@@ -52,6 +53,7 @@ class FinanceRepository {
         totalBudget += totalTarget;
       } else {
         totalSavingsDeposit += totalValue;
+        totalSavingsTarget += totalTarget;
       }
 
       habitStats.add(FinanceHabitStat(
@@ -85,6 +87,7 @@ class FinanceRepository {
       totalExpense: totalExpense,
       totalBudget: totalBudget,
       totalSavingsDeposit: totalSavingsDeposit,
+      totalSavingsTarget: totalSavingsTarget,
       habitStats: habitStats,
       dailyTrend: dailyTrend,
     );

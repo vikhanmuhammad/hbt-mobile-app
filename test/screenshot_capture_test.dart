@@ -31,11 +31,9 @@ import 'package:habbit_tracker_app/domain/models/community_enums.dart';
 import 'package:habbit_tracker_app/domain/models/enums.dart';
 import 'package:habbit_tracker_app/domain/models/habit_template.dart';
 import 'package:habbit_tracker_app/presentation/screens/add_habit/add_habit_flow_screen.dart';
-import 'package:habbit_tracker_app/presentation/screens/community/create_group_habit_screen.dart';
 import 'package:habbit_tracker_app/presentation/screens/community/create_group_screen.dart';
 import 'package:habbit_tracker_app/presentation/screens/community/group_detail_screen.dart';
 import 'package:habbit_tracker_app/presentation/screens/community/join_group_screen.dart';
-import 'package:habbit_tracker_app/presentation/screens/community/link_habit_screen.dart';
 import 'package:habbit_tracker_app/presentation/screens/onboarding/onboarding_flow.dart';
 import 'package:habbit_tracker_app/presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'package:habbit_tracker_app/presentation/screens/settings/faq_screen.dart';
@@ -384,15 +382,6 @@ void main() {
     await _capture(tester, 'S5_03_join_group_screen', const JoinGroupScreen(), overrides: baseOverrides());
   });
 
-  testWidgets('S5_04 Create group habit screen', (tester) async {
-    await _capture(
-      tester,
-      'S5_04_create_group_habit_screen',
-      const CreateGroupHabitScreen(groupId: 'g1'),
-      overrides: baseOverrides(),
-    );
-  });
-
   testWidgets('S5_05 Group detail screen', (tester) async {
     final group = _sampleGroup();
     final groupHabit = _sampleGroupHabit();
@@ -407,18 +396,9 @@ void main() {
         groupHabitLeaderboardProvider('g1', 'gh1')
             .overrideWith((ref) => Stream.value(_sampleLeaderboard())),
         groupMessagesProvider('g1').overrideWith((ref) => Stream.value(_sampleMessages())),
+        habitGroupLinksForGroupProvider('g1').overrideWith((ref) => Stream.value(const [])),
       ],
       settlePumps: 8,
-    );
-  });
-
-  testWidgets('S5_06 Link habit screen', (tester) async {
-    final groupHabit = _sampleGroupHabit();
-    await _capture(
-      tester,
-      'S5_06_link_habit_screen',
-      LinkHabitScreen(groupHabit: groupHabit),
-      overrides: baseOverrides(),
     );
   });
 

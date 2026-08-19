@@ -40,9 +40,17 @@ class _HabitCurveChartState extends State<HabitCurveChart> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+    // Slowed down (1100ms -> 2000ms) and started after a short delay so the
+    // reveal is still clearly animating once the page's own enter transition
+    // (FadeSlideUpPageTransitionsBuilder, ~300ms) has settled — starting
+    // immediately on initState made the two animations overlap, so the
+    // chart was already mostly drawn by the time the page was visible and
+    // looked static instead of animating.
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000));
     _reveal = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
-    _controller.forward();
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) _controller.forward();
+    });
   }
 
   @override

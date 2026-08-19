@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_undraw/flutter_undraw.dart';
@@ -7,6 +9,7 @@ import '../../../domain/models/category.dart';
 import '../../../domain/models/habit_template.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/onboarding_response.dart';
+import '../../../domain/onboarding_strings.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
@@ -14,9 +17,11 @@ import '../../../providers/finance_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
+import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/dashed_border.dart';
+import '../../widgets/finance_preview_mock.dart';
 import '../../widgets/habit_curve_chart.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/navigation_shell.dart';
@@ -66,8 +71,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   }
 
   /// Total onboarding pages, matching the `PageView.children` list below
-  /// 1:1 — drives the overall progress bar shown above every step.
-  int get _totalSteps => 1 + lifestyleQuestions.length + 1 + 1 + 1 + 1;
+  /// 1:1 — drives the overall progress bar shown above every step. +1 for
+  /// the language pick step (point 4) at index 0.
+  int get _totalSteps => 1 + 1 + lifestyleQuestions.length + 1 + 1 + 1 + 1;
 
   @override
   Widget build(BuildContext context) {
@@ -122,10 +128,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   controller: _pageController,
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
+                    _LanguagePickStep(onNext: () => _goTo(1)),
                     _PersonalInfoStep(
                       nameController: _nameController,
                       ageController: _ageController,
-                      onNext: () => _goTo(1),
+                      onNext: () => _goTo(2),
                     ),
                     for (var i = 0; i < lifestyleQuestions.length; i++)
                       _LifestyleQuestionStep(
@@ -138,13 +145,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                           () => _lifestyleAnswers[lifestyleQuestions[i].key] =
                               answer,
                         ),
-                        onBack: () => _goTo(i),
-                        onNext: () => _goTo(i + 2),
-                        onSkip: () => _goTo(i + 2),
+                        onBack: () => _goTo(i + 1),
+                        onNext: () => _goTo(i + 3),
+                        onSkip: () => _goTo(i + 3),
                       ),
                     _EducationStep(
-                      onBack: () => _goTo(3),
-                      onNext: () => _goTo(5),
+                      onBack: () => _goTo(4),
+                      onNext: () => _goTo(6),
                     ),
                     _GoalPhrasePickStep(
                       selected: _selectedCategoryIds,
@@ -157,8 +164,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                       }),
                       onCategoriesChanged: (ids) =>
                           setState(() => _selectedCategoryIds.addAll(ids)),
-                      onBack: () => _goTo(4),
-                      onNext: () => _goTo(6),
+                      onBack: () => _goTo(5),
+                      onNext: () => _goTo(7),
                     ),
                     _RecommendationStep(
                       selectedCategoryIds: _selectedCategoryIds,
@@ -183,11 +190,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                           set.remove(template);
                         }
                       }),
-                      onBack: () => _goTo(5),
-                      onNext: () => _goTo(7),
+                      onBack: () => _goTo(6),
+                      onNext: () => _goTo(8),
                     ),
                     _SummaryStep(
-                      onBack: () => _goTo(6),
+                      onBack: () => _goTo(7),
                       onFinish: _completeOnboarding,
                       onRemoveHabit: _removeHabit,
                     ),
@@ -245,6 +252,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
+    ref.invalidate(financeSummaryForPeriodProvider);
 
     HabitTemplate? matchedTemplate;
     _createdHabitIds.forEach((template, id) {
@@ -296,16 +304,62 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-const List<String> onboardingGoalOptions = [
-  'Health & Fitness',
-  'Productivity',
-  'Learning Something New',
-  'Finance',
-  'Mental Health',
-];
+/// Step 0 (no progress bar yet): pick the language used for the rest of
+/// onboarding's instructional copy and the 3 lifestyle questions only —
+/// point 4. Doesn't affect the rest of the app.
+class _LanguagePickStep extends ConsumerWidget {
+  const _LanguagePickStep({required this.onNext});
 
-/// Step 1 (no progress bar): name (required) + age (optional) + goal
-/// dropdown. CLAUDE.md v3 §4.1 step 2.
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final selected = ref.watch(introLanguageProvider);
+    return _StepScaffold(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        children: [
+          Text('Choose your language / Pilih bahasa', style: theme.textTheme.headlineMedium),
+          const SizedBox(height: 10),
+          Text(
+            'This only changes the questions during setup — the rest of the app stays in '
+            'English.\n\nIni hanya mengubah pertanyaan selama pengaturan awal — bagian lain '
+            'aplikasi tetap berbahasa Inggris.',
+            style: theme.textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 28),
+          _OptionTile(
+            label: 'English',
+            selected: selected == OnboardingLang.en,
+            onTap: () => ref.read(introLanguageProvider.notifier).state = OnboardingLang.en,
+          ),
+          const SizedBox(height: 10),
+          _OptionTile(
+            label: 'Bahasa Indonesia',
+            selected: selected == OnboardingLang.id,
+            onTap: () => ref.read(introLanguageProvider.notifier).state = OnboardingLang.id,
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            height: 240,
+            width: double.infinity,
+            child: Undraw(
+              illustration: UndrawIllustration.chatting,
+              color: theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      ),
+      bottomButton: ElevatedButton(onPressed: onNext, child: const Text('Next / Lanjut')),
+    );
+  }
+}
+
+/// Step 1 (no progress bar): name (required) + age (optional) + gender.
+/// CLAUDE.md v3 §4.1 step 2. The gender dropdown replaces an earlier
+/// "Choose your goals" dropdown that was effectively dead — the real goal
+/// phrase selection happens later in `_GoalPhrasePickStep` (point 1).
 class _PersonalInfoStep extends ConsumerStatefulWidget {
   const _PersonalInfoStep({
     required this.nameController,
@@ -322,76 +376,65 @@ class _PersonalInfoStep extends ConsumerStatefulWidget {
 }
 
 class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
-  String? _selectedGoal;
+  Gender? _selectedGender;
 
   @override
   void initState() {
     super.initState();
-    final stored = ref.read(settingsRepositoryProvider).onboardingGoal;
-    // Guard against a value persisted under an older label set (e.g. before
-    // onboardingGoalOptions was translated to English) — DropdownButtonFormField
-    // asserts if initialValue doesn't match any item.
-    _selectedGoal = onboardingGoalOptions.contains(stored) ? stored : null;
+    _selectedGender = Gender.fromValue(ref.read(settingsRepositoryProvider).gender);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
+    final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
     return _StepScaffold(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('What\'s your name?', style: theme.textTheme.headlineSmall),
+          Text(lang.whatsYourName, style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
-          Text(
-            'So we can greet you more personally.',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text(lang.soWeCanGreet, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 24),
           Text(
-            'Name',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            lang.nameLabel,
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: widget.nameController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Your name'),
+            decoration: InputDecoration(hintText: lang.nameHint),
           ),
           const SizedBox(height: 16),
           Text(
-            'Age (optional)',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            lang.ageLabel,
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: widget.ageController,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'e.g. 25'),
+            decoration: InputDecoration(hintText: lang.ageHint),
           ),
           const SizedBox(height: 16),
           Text(
-            'Choose your goals',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
+            lang.genderLabel,
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedGoal,
-            hint: const Text('Select a goal'),
+          DropdownButtonFormField<Gender>(
+            initialValue: _selectedGender,
+            hint: Text(lang.genderHint),
             items: [
-              for (final goal in onboardingGoalOptions)
-                DropdownMenuItem(value: goal, child: Text(goal)),
+              for (final g in Gender.values)
+                DropdownMenuItem(value: g, child: Text(g.label(indonesian))),
             ],
             onChanged: (value) {
               if (value == null) return;
-              setState(() => _selectedGoal = value);
-              ref.read(settingsRepositoryProvider).setOnboardingGoal(value);
+              setState(() => _selectedGender = value);
+              ref.read(settingsRepositoryProvider).setGender(value.name);
             },
           ),
           const SizedBox(height: 28),
@@ -404,7 +447,7 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
           onPressed: widget.nameController.text.trim().isEmpty
               ? null
               : widget.onNext,
-          child: const Text('Next'),
+          child: Text(lang.next),
         ),
       ),
     );
@@ -455,45 +498,73 @@ class _LifestyleQuestionStep extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
+  /// One fitting undraw.co illustration per question (point 5) — cycled by
+  /// `stepIndex` rather than hand-picked per question key, so it stays in
+  /// sync automatically if the question list is reordered.
+  static const _illustrations = [
+    UndrawIllustration.questions,
+    UndrawIllustration.timeManagement,
+    UndrawIllustration.feelingProud,
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return _StepScaffold(
-      topBar: Align(
-        alignment: Alignment.centerRight,
-        child: TextButton(onPressed: onSkip, child: const Text('Skip')),
-      ),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-        children: [
-          Text(question.prompt, style: theme.textTheme.headlineSmall),
-          const SizedBox(height: 20),
-          for (final option in question.options)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _OptionTile(
-                label: option,
-                selected: selectedAnswer == option,
-                onTap: () => onSelect(option),
+    return Consumer(
+      builder: (context, ref, _) {
+        final theme = Theme.of(context);
+        final lang = OnboardingStrings(ref.watch(introLanguageProvider));
+        final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
+        final options = question.optionsFor(indonesian);
+        return _StepScaffold(
+          topBar: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(onPressed: onSkip, child: Text(lang.skip)),
+          ),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            children: [
+              Text(question.promptFor(indonesian), style: theme.textTheme.headlineMedium),
+              const SizedBox(height: 20),
+              for (var i = 0; i < options.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _OptionTile(
+                    label: options[i],
+                    // Stored/compared as the canonical English value
+                    // regardless of the displayed language, so answers stay
+                    // consistent across language toggles/db records.
+                    selected: selectedAnswer == question.options[i],
+                    onTap: () => onSelect(question.options[i]),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 200,
+                width: double.infinity,
+                child: Undraw(
+                  illustration: _illustrations[(stepIndex - 1) % _illustrations.length],
+                  color: theme.colorScheme.primary,
+                ),
               ),
-            ),
-        ],
-      ),
-      bottomButton: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: selectedAnswer == null ? null : onNext,
-              child: const Text('Next'),
-            ),
+          bottomButton: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(onPressed: onBack, child: Text(lang.back)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: selectedAnswer == null ? null : onNext,
+                  child: Text(lang.next),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -553,7 +624,7 @@ class _OptionTile extends StatelessWidget {
                     : null,
               ),
               const SizedBox(width: 14),
-              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+              Expanded(child: Text(label, style: theme.textTheme.bodyLarge)),
             ],
           ),
         ),
@@ -589,29 +660,26 @@ const _habitTips = [
   ),
 ];
 
-class _EducationStep extends StatelessWidget {
+class _EducationStep extends ConsumerWidget {
   const _EducationStep({required this.onBack, required this.onNext});
 
   final VoidCallback onBack;
   final VoidCallback onNext;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
     return _StepScaffold(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
           Text(
-            'Consistency Builds Habits',
-            style: theme.textTheme.headlineSmall,
+            lang.consistencyBuildsHabits,
+            style: theme.textTheme.headlineMedium,
           ),
           const SizedBox(height: 8),
-          Text(
-            'According to research by Lally et al. (UCL), a new habit takes about 66 days '
-            'of repetition to become automatic — not just a fleeting intention.',
-            style: theme.textTheme.bodyMedium,
-          ),
+          Text(lang.educationBody, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 24),
           Card(
             child: Padding(
@@ -621,7 +689,7 @@ class _EducationStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Building good habits increases happiness!',
+            lang.habitsIncreaseHappiness,
             textAlign: TextAlign.center,
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.colorScheme.primary,
@@ -630,18 +698,21 @@ class _EducationStep extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Good to know', style: theme.textTheme.titleSmall),
+          Text(lang.goodToKnow, style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
-          for (final tip in _habitTips)
+          for (var i = 0; i < _habitTips.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(tip.icon, size: 18, color: theme.colorScheme.primary),
+                  Icon(_habitTips[i].icon, size: 18, color: theme.colorScheme.primary),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(tip.text, style: theme.textTheme.bodyMedium),
+                    child: Text(
+                      i < lang.habitTips.length ? lang.habitTips[i] : _habitTips[i].text,
+                      style: theme.textTheme.bodyLarge,
+                    ),
                   ),
                 ],
               ),
@@ -651,12 +722,12 @@ class _EducationStep extends StatelessWidget {
       bottomButton: Row(
         children: [
           Expanded(
-            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+            child: OutlinedButton(onPressed: onBack, child: Text(lang.back)),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
-            child: ElevatedButton(onPressed: onNext, child: const Text('Next')),
+            child: ElevatedButton(onPressed: onNext, child: Text(lang.next)),
           ),
         ],
       ),
@@ -685,6 +756,7 @@ class _GoalPhrasePickStep extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final categoriesAsync = ref.watch(categoriesProvider);
     final theme = Theme.of(context);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
 
     return _StepScaffold(
       child: categoriesAsync.when(
@@ -694,13 +766,13 @@ class _GoalPhrasePickStep extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           children: [
             Text(
-              'Choose Habits That Match Your Goals',
-              style: theme.textTheme.titleLarge,
+              lang.chooseHabitsTitle,
+              style: theme.textTheme.headlineSmall,
             ),
             const SizedBox(height: 6),
             Text(
-              'Pick one or more goals you want to achieve.',
-              style: theme.textTheme.bodySmall,
+              lang.pickOneOrMoreGoals,
+              style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: 20),
             GridView.builder(
@@ -755,9 +827,9 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            '+ Create New Goal',
+                            lang.createNewGoal,
                             textAlign: TextAlign.center,
-                            style: theme.textTheme.titleSmall,
+                            style: theme.textTheme.titleMedium,
                           ),
                         ],
                       ),
@@ -781,14 +853,14 @@ class _GoalPhrasePickStep extends ConsumerWidget {
       bottomButton: Row(
         children: [
           Expanded(
-            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+            child: OutlinedButton(onPressed: onBack, child: Text(lang.back)),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: selected.isEmpty ? null : onNext,
-              child: const Text('Next'),
+              child: Text(lang.next),
             ),
           ),
         ],
@@ -830,13 +902,13 @@ class _CategoryPickTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                 child: Center(
                   child: HabitIcon(
                     icon: category.icon,
-                    size: 18,
+                    size: 24,
                     color: Colors.white,
                   ),
                 ),
@@ -847,7 +919,7 @@ class _CategoryPickTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 4),
               Text(
@@ -855,7 +927,7 @@ class _CategoryPickTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),
@@ -894,14 +966,49 @@ class _RecommendationStep extends ConsumerStatefulWidget {
       _RecommendationStepState();
 }
 
+/// Same cap as `add_habit_flow_screen.dart`'s `_freeActiveHabitLimit` — kept
+/// as a separate constant (not shared/imported) since this file has no
+/// dependency on that screen file otherwise; keep both in sync if the free
+/// tier limit ever changes.
+const _onboardingFreeHabitLimit = 5;
+
 class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
   bool _saving = false;
+
+  /// Guards the checkbox toggle itself (not just the final Save) so a free
+  /// user can't check more than 5 habits total during onboarding — mirrors
+  /// the Add Habit flow's `_blockedByFreeHabitLimit`, which only covers
+  /// habits added after onboarding via that screen.
+  void _handleToggle(int categoryId, HabitTemplate template, bool isCurrentlySelected) {
+    if (isCurrentlySelected || ref.read(isProProvider)) {
+      widget.onToggleTemplate(categoryId, template);
+      return;
+    }
+
+    final activeHabits = ref.read(allActiveHabitsProvider).value ?? const [];
+    final nonOnboardingActiveCount =
+        (activeHabits.length - widget.createdHabitIds.length).clamp(0, activeHabits.length);
+    final currentlySelectedCount =
+        widget.selectedTemplates.values.fold<int>(0, (sum, set) => sum + set.length);
+    final wouldBeSelectedCount = currentlySelectedCount + 1;
+
+    if (nonOnboardingActiveCount + wouldBeSelectedCount > _onboardingFreeHabitLimit) {
+      showProRequiredDialog(
+        context,
+        message: 'You\'ve reached the $_onboardingFreeHabitLimit active habit limit for '
+            'Free users. Upgrade to Pro to add unlimited habits.',
+      );
+      return;
+    }
+    widget.onToggleTemplate(categoryId, template);
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final categoriesAsync = ref.watch(categoriesProvider);
     final templatesAsync = ref.watch(habitTemplatesProvider);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
 
     return _StepScaffold(
       child: categoriesAsync.when(
@@ -915,17 +1022,45 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                 .where((c) => widget.selectedCategoryIds.contains(c.id))
                 .toList();
 
+            final isPro = ref.watch(isProProvider);
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
               children: [
-                Text(
-                  'Habit Recommendations',
-                  style: theme.textTheme.titleLarge,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        lang.habitRecommendations,
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                    ),
+                    if (!isPro)
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ProFeatureTeaser(
+                              icon: Icons.workspace_premium_rounded,
+                              title: 'Habit Tracker Pro',
+                              description: 'Unlock unlimited habits, the Finance tracker, and '
+                                  'Community leaderboards.',
+                              benefits: const [
+                                'No limit on active habits (Free is capped at 5)',
+                                'Track spending & savings with the Finance summary',
+                                'Join or create Community groups & leaderboards',
+                              ],
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.workspace_premium_rounded, size: 16),
+                        label: Text(lang.upgradeToPro),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Check the habits you want to start. You can skip the rest.',
-                  style: theme.textTheme.bodySmall,
+                  lang.checkHabitsYouWant,
+                  style: theme.textTheme.bodyLarge,
                 ),
                 const SizedBox(height: 20),
                 for (final category in selectedCategories) ...[
@@ -963,6 +1098,33 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   const SizedBox(height: 14),
                   Builder(
                     builder: (context) {
+                      // Finance (Save Money) for non-Pro users: instead of
+                      // showing the (locked, grayed) template list, show a
+                      // blurred preview of the real Finance screen + an
+                      // upgrade button — gives a clearer sense of what's
+                      // behind the paywall than a grayscale checklist.
+                      if (isFinanceCategory(category) && !isPro) {
+                        return _FinanceLockedPreview(
+                          onUpgrade: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ProFeatureTeaser(
+                                icon: Icons.account_balance_wallet_rounded,
+                                title: 'Finance — Pro Feature',
+                                description:
+                                    'Track spending, savings, and saving habits in one '
+                                    'monthly summary. Upgrade to Pro to unlock this feature.',
+                                benefits: const [
+                                  'Monthly spending & savings totals across all your finance habits',
+                                  'Daily spending trend chart so you can spot patterns early',
+                                  'Per-habit breakdown to see exactly where your money goes',
+                                ],
+                                previewBuilder: (context) => const FinancePreviewMock(),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
                       final match = allTemplates.where(
                         (t) => t.defaultGoalPhrase == category.name,
                       );
@@ -1007,10 +1169,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                                 'amount) are Pro-only. Upgrade to Pro to '
                                                 'start tracking them.',
                                           )
-                                        : () => widget.onToggleTemplate(
-                                            category.id,
-                                            t,
-                                          ),
+                                        : () => _handleToggle(category.id, t, selectedSet.contains(t)),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -1035,7 +1194,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                           const SizedBox(width: 14),
                                           HabitIcon(
                                             icon: t.icon,
-                                            size: 16,
+                                            size: 20,
                                             color: theme
                                                 .textTheme
                                                 .bodySmall
@@ -1051,13 +1210,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                                   t.name,
                                                   style: theme
                                                       .textTheme
-                                                      .titleSmall,
+                                                      .titleMedium,
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   t.goalLabel,
                                                   style:
-                                                      theme.textTheme.bodySmall,
+                                                      theme.textTheme.bodyMedium,
                                                 ),
                                               ],
                                             ),
@@ -1114,9 +1273,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       vertical: 14,
                     ),
                     child: Text(
-                      '+ Explore Other Categories / Add Custom Habit',
+                      lang.exploreOtherCategories,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.titleSmall,
+                      style: theme.textTheme.titleMedium,
                     ),
                   ),
                 ),
@@ -1130,7 +1289,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           Expanded(
             child: OutlinedButton(
               onPressed: _saving ? null : widget.onBack,
-              child: const Text('Back'),
+              child: Text(lang.back),
             ),
           ),
           const SizedBox(width: 12),
@@ -1138,7 +1297,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
             flex: 2,
             child: ElevatedButton(
               onPressed: _saving ? null : _saveSelections,
-              child: Text(_saving ? 'Saving...' : 'Next'),
+              child: Text(_saving ? lang.saving : lang.next),
             ),
           ),
         ],
@@ -1219,6 +1378,55 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
   }
 }
 
+/// Blurred preview of the real Finance screen + an "Upgrade to Pro" button —
+/// shown instead of the Finance template checklist when the user picked
+/// "Save Money" during onboarding but isn't Pro yet (point 13).
+class _FinanceLockedPreview extends StatelessWidget {
+  const _FinanceLockedPreview({required this.onUpgrade});
+
+  final VoidCallback onUpgrade;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(
+        children: [
+          const SizedBox(
+            height: 260,
+            child: IgnorePointer(child: FinancePreviewMock()),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.45)),
+            ),
+          ),
+          Positioned.fill(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.lock_rounded, size: 28, color: theme.colorScheme.primary),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Finance tracking is a Pro feature',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(onPressed: onUpgrade, child: const Text('Upgrade to Pro')),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SquareCheckbox extends StatelessWidget {
   const _SquareCheckbox({required this.checked});
 
@@ -1263,22 +1471,22 @@ class _SummaryStep extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final habitsAsync = ref.watch(allActiveHabitsProvider);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
 
     return _StepScaffold(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
-          Text('Summary', style: theme.textTheme.titleLarge),
+          Text(lang.summary, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 6),
           habitsAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (e, st) => Text('$e', style: theme.textTheme.bodySmall),
             data: (habits) => Text(
               habits.isEmpty
-                  ? 'No habits added yet. You can add one anytime via the '
-                        'Add Habit button on Home.'
-                  : '${habits.length} habit(s) added successfully',
-              style: theme.textTheme.bodySmall,
+                  ? lang.noHabitsAddedYet
+                  : lang.habitsAddedSuccessfully(habits.length),
+              style: theme.textTheme.bodyLarge,
             ),
           ),
           const SizedBox(height: 16),
@@ -1327,14 +1535,14 @@ class _SummaryStep extends ConsumerWidget {
       bottomButton: Row(
         children: [
           Expanded(
-            child: OutlinedButton(onPressed: onBack, child: const Text('Back')),
+            child: OutlinedButton(onPressed: onBack, child: Text(lang.back)),
           ),
           const SizedBox(width: 12),
           Expanded(
             flex: 2,
             child: ElevatedButton(
               onPressed: () => onFinish(),
-              child: const Text('Start Tracking'),
+              child: Text(lang.startTracking),
             ),
           ),
         ],

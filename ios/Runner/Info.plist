@@ -26,6 +26,15 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Point 10 — Health/Calendar sync (opt-in via Settings). -->
+	<key>NSHealthShareUsageDescription</key>
+	<string>Habit Tracker reads your step count to automatically fill in step-based habits.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Habit Tracker can write habit progress (like steps) back to the Health app.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Habit Tracker can add your habit reminders to your Calendar.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Habit Tracker can add your habit reminders to your Calendar.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

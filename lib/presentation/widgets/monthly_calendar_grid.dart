@@ -7,8 +7,8 @@ import 'animations/tap_scale.dart';
 import 'daily_progress_ring.dart';
 
 const _monthNames = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 const _weekdayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];

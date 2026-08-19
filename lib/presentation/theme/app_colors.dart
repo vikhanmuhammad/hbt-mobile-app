@@ -17,7 +17,10 @@ class AppColors {
   static const Color gold = Color(0xFFE8C468); // warna interaktif utama
 
   // Light theme — persis nilai `colors` di prototipe saat isDark=false.
-  static const Color lightBackground = Color(0xFFF7F5EE);
+  // Shifted slightly cooler/grayer than the original warm off-white
+  // (#F7F5EE) so the scaffold background reads as a neutral light gray
+  // against white cards, instead of nearly-white-on-white.
+  static const Color lightBackground = Color(0xFFF0F0EE);
   static const Color lightSurface = Color(0xFFFFFFFF); // colors.card
   static const Color lightSurfaceAlt = Color(0xFFEDEAE2); // colors.grayLight
   static const Color lightText = Color(0xFF2B2A26);

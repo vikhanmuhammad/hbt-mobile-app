@@ -19,6 +19,18 @@ class HabitGroupLinkRepository {
         .map((rows) => rows.map(mapHabitGroupLink).toList());
   }
 
+  Stream<List<HabitGroupLink>> watchForGroupHabit(String groupHabitId) {
+    return _db.habitGroupLinkDao
+        .watchForGroupHabit(groupHabitId)
+        .map((rows) => rows.map(mapHabitGroupLink).toList());
+  }
+
+  Stream<List<HabitGroupLink>> watchForGroup(String groupId) {
+    return _db.habitGroupLinkDao
+        .watchForGroup(groupId)
+        .map((rows) => rows.map(mapHabitGroupLink).toList());
+  }
+
   Future<List<HabitGroupLink>> getForHabit(int habitId) async {
     final rows = await _db.habitGroupLinkDao.getForHabit(habitId);
     return rows.map(mapHabitGroupLink).toList();
@@ -42,4 +54,10 @@ class HabitGroupLinkRepository {
       _db.habitGroupLinkDao.setLastSyncedAt(linkId, syncedAt);
 
   Future<void> unlink(int linkId) => _db.habitGroupLinkDao.deleteLink(linkId);
+
+  /// Clears any local link(s) to a Group Habit that just got deleted (by the
+  /// admin) — this device's own bookkeeping only, so the Habits tab doesn't
+  /// keep pointing a local habit at a challenge that no longer exists.
+  Future<void> unlinkAllForGroupHabit(String groupHabitId) =>
+      _db.habitGroupLinkDao.deleteLinksForGroupHabit(groupHabitId);
 }

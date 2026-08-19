@@ -2,6 +2,14 @@
     <!-- Dipakai supaya reminder habit (notifikasi lokal biasa, bukan exact
          alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <!-- Point 10 — Health/Calendar/Alarm sync (opt-in via Settings). -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <uses-permission android:name="android.permission.health.READ_STEPS"/>
+    <uses-permission android:name="android.permission.health.WRITE_STEPS"/>
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
+    <uses-permission android:name="android.permission.SET_ALARM"/>
     <application
         android:label="Habit Tracker"
         android:name="${applicationName}"
@@ -56,6 +64,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Health Connect package visibility, required by the `health`
+             plugin to detect whether Health Connect is installed. -->
+        <package android:name="com.google.android.apps.healthdata" />
+        <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>
     </queries>
 </manifest>

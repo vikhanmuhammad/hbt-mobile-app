@@ -27,11 +27,21 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid;
-      allow update, delete: if false;
+      allow update: if false;
+      // Only whoever created the invite (i.e. the group's original admin)
+      // may delete it — needed to clean up the invite when its group is
+      // deleted, so a stale code doesn't linger pointing at nothing.
+      allow delete: if isSignedIn() &&
+        resource.data.createdBy == request.auth.uid;
     }
 
     match /groups/{groupId} {
-      allow get: if isSignedIn() && request.auth.uid in resource.data.members;
+      // Any signed-in user may fetch a single group by its exact (opaque,
+      // unguessable) ID — needed for the join-by-code flow, where a user who
+      // isn't a member yet must read the group doc to check they aren't
+      // already a member before self-joining. `list` below stays
+      // members-only so groups still can't be enumerated/browsed publicly.
+      allow get: if isSignedIn();
       // `memberUids` (array, didenormalisasi dari `members` map) dipakai
       // supaya query "grup yang saya ikuti" (where memberUids array-contains
       // uid) bisa lolos rule tanpa listing publik.
@@ -54,13 +64,37 @@ service cloud.firestore {
            .affectedKeys().hasOnly([request.auth.uid]) &&
          request.resource.data.members[request.auth.uid].role == 'member' &&
          request.resource.data.memberUids.hasAll(resource.data.memberUids) &&
-         request.resource.data.memberUids.hasAny([request.auth.uid]));
+         request.resource.data.memberUids.hasAny([request.auth.uid])) ||
+        // Self-leave: any current member (including an admin, as long as
+        // another admin remains — enforced client-side since rules can't
+        // easily scan the remaining members map for another admin) may
+        // remove ONLY themselves. Distinct from the admin-kick branch
+        // above (which can remove anyone) and the self-join branch above
+        // (which only ever ADDS the caller, never removes).
+        (isSignedIn() &&
+         request.auth.uid in resource.data.members &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['members', 'memberUids']) &&
+         request.resource.data.members.diff(resource.data.members)
+           .affectedKeys().hasOnly([request.auth.uid]) &&
+         !(request.auth.uid in request.resource.data.members) &&
+         !(request.auth.uid in request.resource.data.memberUids));
       allow delete: if isAdminOfGroup(groupId);
 
       match /groupHabits/{habitId} {
         allow read: if isMemberOfGroup(groupId);
-        allow create, update: if isMemberOfGroup(groupId);
-        allow delete: if isAdminOfGroup(groupId);
+        // Any group member may propose a new Group Habit to track — not
+        // admin-only anymore. `createdBy` must be the caller so ownership
+        // (used below for delete) can't be spoofed.
+        allow create: if isMemberOfGroup(groupId) &&
+          request.resource.data.createdBy == request.auth.uid;
+        // Reconfiguring an existing Group Habit is still admin-only — this
+        // is only about who's initially allowed to define one.
+        allow update: if isAdminOfGroup(groupId);
+        // Deletable by an admin (moderation) or by whoever originally
+        // created it (retracting their own proposal).
+        allow delete: if isAdminOfGroup(groupId) ||
+          (isMemberOfGroup(groupId) && resource.data.createdBy == request.auth.uid);
 
         match /leaderboard/{uid} {
           allow read: if isMemberOfGroup(groupId);

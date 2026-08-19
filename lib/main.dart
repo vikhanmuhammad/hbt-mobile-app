@@ -96,6 +96,22 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
+
+    // Warm the profile stream (which `activePaletteProvider` derives the
+    // personalized accent color from) before the splash screen is dismissed
+    // — otherwise the splash's first frame(s) render with the default gold
+    // palette and only flash to the real personalized color once the
+    // stream's first snapshot arrives after the splash is already gone.
+    try {
+      await ref.read(userProfileStreamProvider.future).timeout(
+            const Duration(milliseconds: 1500),
+          );
+    } catch (_) {
+      // Stream didn't resolve in time or errored (e.g. brand-new user with
+      // no profile row yet) — fall back to the default palette, same as
+      // before this warm-up existed.
+    }
+
     await minDuration;
   }
 

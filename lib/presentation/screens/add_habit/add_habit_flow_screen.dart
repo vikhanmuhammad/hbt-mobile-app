@@ -62,11 +62,29 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
     this.initialCategoryId,
     this.editingHabit,
     this.startAtNewCategory = false,
+    this.prefillName,
+    this.prefillIcon,
+    this.prefillUnit,
+    this.onHabitSaved,
   });
 
   final int? initialCategoryId;
   final Habit? editingHabit;
   final bool startAtNewCategory;
+
+  /// Pre-fills the habit form and jumps straight to it (skipping the goal
+  /// phrase/template browse steps) — used when "adopting" a Community Group
+  /// Habit into your own habit list (see `group_detail_screen.dart`'s
+  /// leaderboard "Add to My Habits" action). The user still picks a goal
+  /// phrase via the in-form dropdown before saving.
+  final String? prefillName;
+  final String? prefillIcon;
+  final String? prefillUnit;
+
+  /// Called with the new habit's id right after it's successfully created
+  /// (not called when editing an existing habit) — used to auto-link the
+  /// new habit back to the Group Habit it was adopted from.
+  final Future<void> Function(int habitId)? onHabitSaved;
 
   @override
   ConsumerState<AddHabitFlowScreen> createState() => _AddHabitFlowScreenState();
@@ -110,6 +128,13 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       _stepStack = [3];
     } else if (widget.startAtNewCategory) {
       _stepStack = [4];
+    } else if (widget.prefillName != null) {
+      _resetFormDraft(
+        name: widget.prefillName,
+        icon: widget.prefillIcon,
+        goalUnit: widget.prefillUnit,
+      );
+      _stepStack = [3];
     } else if (widget.initialCategoryId != null) {
       _categoryId = widget.initialCategoryId;
       _stepStack = [2];
@@ -522,9 +547,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(t.name, style: theme.textTheme.titleSmall),
+                                  Text(t.name, style: theme.textTheme.titleMedium),
                                   const SizedBox(height: 2),
-                                  Text(t.goalLabel, style: theme.textTheme.bodySmall),
+                                  Text(t.goalLabel, style: theme.textTheme.bodyMedium),
                                 ],
                               ),
                             ),
@@ -572,7 +597,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   void _openCustomForm() {
     setState(() {
-      _resetFormDraft();
+      // Finance habits are nominal (rupiah) only — seed the form with that
+      // unit already applied instead of landing on the generic 'x' default
+      // that the locked Unit dropdown (see _buildStep3) can't then change.
+      _resetFormDraft(goalUnit: _categoryIdIsFinance(_categoryId) ? 'rupiah' : null);
+      if (_categoryIdIsFinance(_categoryId) && _goalValue < 1000) _setGoalValue(50000);
       _stepStack.add(3);
     });
   }
@@ -669,7 +698,18 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               initialValue: validId,
               items: [for (final c in categories) DropdownMenuItem(value: c.id, child: Text(c.name))],
               onChanged: (v) {
-                if (v != null) setState(() => _categoryId = v);
+                if (v == null) return;
+                setState(() {
+                  _categoryId = v;
+                  // Finance habits only ever take a nominal (rupiah) input —
+                  // no plain checkbox habits under this goal phrase. Force
+                  // the unit the moment the goal phrase is switched to
+                  // Finance instead of leaving it user-editable.
+                  if (_categoryIdIsFinance(v) && !_isRupiahUnit) {
+                    _applyUnit('rupiah');
+                    if (_goalValue < 1000) _setGoalValue(50000);
+                  }
+                });
               },
             );
           },
@@ -746,21 +786,25 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: _unitDropdownValue,
+                    // Locked to Rupiah under the Finance goal phrase — no
+                    // plain checkbox/x-count habits allowed there (point 15).
+                    onChanged: _categoryIdIsFinance(_categoryId)
+                        ? null
+                        : (v) {
+                            if (v == null) return;
+                            setState(() {
+                              _unitDropdownValue = v;
+                              if (v != 'custom') _goalUnitController.text = v;
+                              // Reasonable starting amount for rupiah — more
+                              // sensible than starting at 1 and stepping by 500s.
+                              if (v == 'rupiah' && _goalValue < 1000) _setGoalValue(50000);
+                            });
+                          },
                     items: [
                       for (final value in unitPresetValues)
                         DropdownMenuItem(value: value, child: Text(unitPresetLabels[value]!)),
                       DropdownMenuItem(value: 'custom', child: Text(unitPresetLabels['custom']!)),
                     ],
-                    onChanged: (v) {
-                      if (v == null) return;
-                      setState(() {
-                        _unitDropdownValue = v;
-                        if (v != 'custom') _goalUnitController.text = v;
-                        // Reasonable starting amount for rupiah — more
-                        // sensible than starting at 1 and stepping by 500s.
-                        if (v == 'rupiah' && _goalValue < 1000) _setGoalValue(50000);
-                      });
-                    },
                   ),
                   if (_unitDropdownValue == 'custom') ...[
                     const SizedBox(height: 8),
@@ -1015,6 +1059,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         if (created != null) {
           await _tryScheduleNotification(created);
         }
+        if (widget.onHabitSaved != null) await widget.onHabitSaved!(id);
       }
 
       await _finishAndReturn(
@@ -1139,6 +1184,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.invalidate(monthSummariesProvider);
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
+    ref.invalidate(financeSummaryForPeriodProvider);
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
@@ -1178,10 +1224,10 @@ class _CategoryGridTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(child: HabitIcon(icon: icon, size: 18, color: Colors.white)),
+                child: Center(child: HabitIcon(icon: icon, size: 24, color: Colors.white)),
               ),
               const SizedBox(height: 10),
               Text(
@@ -1189,7 +1235,7 @@ class _CategoryGridTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall,
+                style: theme.textTheme.titleLarge,
               ),
               const SizedBox(height: 4),
               Text(
@@ -1197,7 +1243,7 @@ class _CategoryGridTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),

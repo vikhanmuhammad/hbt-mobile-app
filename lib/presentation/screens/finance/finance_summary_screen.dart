@@ -10,8 +10,10 @@ import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/empty_state_illustration.dart';
+import '../../widgets/finance_preview_mock.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
+import '../../widgets/segmented_pill_toggle.dart';
 
 const _monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,12 +40,15 @@ class FinanceSummaryScreen extends ConsumerWidget {
           'Daily spending trend chart so you can spot patterns early',
           'Per-habit breakdown to see exactly where your money goes',
         ],
-        previewBuilder: (context) => const _FinancePreviewMock(),
+        previewBuilder: (context) => const FinancePreviewMock(),
       );
     }
 
-    final month = ref.watch(selectedFinanceMonthProvider);
-    final summaryAsync = ref.watch(financeSummaryProvider(month));
+    final period = ref.watch(selectedFinancePeriodProvider);
+    final anchor = period == FinancePeriod.monthly
+        ? ref.watch(selectedFinanceMonthProvider)
+        : ref.watch(selectedFinanceAnchorDateProvider);
+    final summaryAsync = ref.watch(financeSummaryForPeriodProvider(period, anchor));
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
@@ -51,9 +56,26 @@ class FinanceSummaryScreen extends ConsumerWidget {
         child: ListView(
         padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
         children: [
-          _MonthNav(
-            month: month,
-            onChangeMonth: (m) => ref.read(selectedFinanceMonthProvider.notifier).state = m,
+          SegmentedPillToggle<FinancePeriod>(
+            segments: const [
+              PillSegment(value: FinancePeriod.daily, label: 'Daily'),
+              PillSegment(value: FinancePeriod.weekly, label: 'Weekly'),
+              PillSegment(value: FinancePeriod.monthly, label: 'Monthly'),
+            ],
+            selected: period,
+            onChanged: (p) => ref.read(selectedFinancePeriodProvider.notifier).state = p,
+          ),
+          const SizedBox(height: 14),
+          _PeriodNav(
+            period: period,
+            anchor: anchor,
+            onChangeAnchor: (d) {
+              if (period == FinancePeriod.monthly) {
+                ref.read(selectedFinanceMonthProvider.notifier).state = d;
+              } else {
+                ref.read(selectedFinanceAnchorDateProvider.notifier).state = d;
+              }
+            },
           ),
           const SizedBox(height: 20),
           summaryAsync.when(
@@ -88,97 +110,39 @@ class FinanceSummaryScreen extends ConsumerWidget {
   }
 }
 
-/// Mock preview of the real Finance summary screen, rendered blurred behind
-/// the Pro teaser card so free users see roughly what they'd unlock.
-class _FinancePreviewMock extends StatelessWidget {
-  const _FinancePreviewMock();
+/// Prev/next navigator whose step size and label follow the selected
+/// [FinancePeriod] — a day, a week, or a calendar month at a time.
+class _PeriodNav extends StatelessWidget {
+  const _PeriodNav({required this.period, required this.anchor, required this.onChangeAnchor});
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-          children: [
-            Text('Finance', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 20),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Total Spending', style: theme.textTheme.bodyMedium),
-                    const SizedBox(height: 6),
-                    Text('Rp 850.000', style: theme.textTheme.headlineMedium),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: 0.6,
-                        minHeight: 8,
-                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.savings_rounded, size: 20, color: theme.colorScheme.primary),
-                          const SizedBox(height: 10),
-                          Text('Total Saved', style: theme.textTheme.labelSmall),
-                          const SizedBox(height: 4),
-                          Text('Rp 1.200.000',
-                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.account_balance_wallet_rounded, size: 20, color: theme.colorScheme.primary),
-                          const SizedBox(height: 10),
-                          Text('Total Deposited', style: theme.textTheme.labelSmall),
-                          const SizedBox(height: 4),
-                          Text('Rp 2.000.000',
-                              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+  final FinancePeriod period;
+  final DateTime anchor;
+  final ValueChanged<DateTime> onChangeAnchor;
+
+  String get _label {
+    switch (period) {
+      case FinancePeriod.daily:
+        return '${anchor.day} ${_monthNames[anchor.month - 1]} ${anchor.year}';
+      case FinancePeriod.weekly:
+        final (start, end) = financePeriodRange(FinancePeriod.weekly, anchor);
+        final sameMonth = start.month == end.month;
+        final startLabel = sameMonth ? '${start.day}' : '${start.day} ${_monthNames[start.month - 1]}';
+        return '$startLabel–${end.day} ${_monthNames[end.month - 1]} ${end.year}';
+      case FinancePeriod.monthly:
+        return '${_monthNames[anchor.month - 1]} ${anchor.year}';
+    }
   }
-}
 
-class _MonthNav extends StatelessWidget {
-  const _MonthNav({required this.month, required this.onChangeMonth});
-
-  final DateTime month;
-  final ValueChanged<DateTime> onChangeMonth;
+  DateTime _step(int direction) {
+    switch (period) {
+      case FinancePeriod.daily:
+        return anchor.add(Duration(days: direction));
+      case FinancePeriod.weekly:
+        return anchor.add(Duration(days: 7 * direction));
+      case FinancePeriod.monthly:
+        return DateTime(anchor.year, anchor.month + direction);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,15 +150,9 @@ class _MonthNav extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _NavCircleButton(
-          icon: Icons.chevron_left_rounded,
-          onTap: () => onChangeMonth(DateTime(month.year, month.month - 1)),
-        ),
-        Text('${_monthNames[month.month - 1]} ${month.year}', style: theme.textTheme.titleLarge),
-        _NavCircleButton(
-          icon: Icons.chevron_right_rounded,
-          onTap: () => onChangeMonth(DateTime(month.year, month.month + 1)),
-        ),
+        _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
+        Text(_label, style: theme.textTheme.titleLarge),
+        _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),
       ],
     );
   }
@@ -271,7 +229,13 @@ class _TotalsSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Total Spending', style: theme.textTheme.bodyMedium),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Total Spending', style: theme.textTheme.bodyMedium),
+                    if (hasBudget) _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
+                  ],
+                ),
                 const SizedBox(height: 6),
                 Text(formatRupiah(summary.totalExpense), style: theme.textTheme.headlineMedium),
                 if (hasBudget) ...[
@@ -296,6 +260,37 @@ class _TotalsSection extends StatelessWidget {
             ),
           ),
         ),
+        if (summary.totalSavingsTarget > 0) ...[
+          const SizedBox(height: 14),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Save Money Goal', style: theme.textTheme.bodyMedium),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${formatRupiah(summary.totalSavingsDeposit)} / ${formatRupiah(summary.totalSavingsTarget)}',
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value: (summary.totalSavingsDeposit / summary.totalSavingsTarget).clamp(0, 1).toDouble(),
+                      minHeight: 8,
+                      backgroundColor: theme.brightness == Brightness.light
+                          ? AppColors.lightSurfaceAlt
+                          : AppColors.darkSurfaceAlt,
+                      valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 14),
         Row(
           children: [
@@ -319,6 +314,38 @@ class _TotalsSection extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Green "On Track" / red "Overspending" pill — compares how far through the
+/// budget period we are against how much of the budget is already spent
+/// (see [FinanceSummary.paceAt]). Hidden when pacing isn't meaningful (e.g.
+/// viewing a past/future period).
+class _BudgetPaceChip extends StatelessWidget {
+  const _BudgetPaceChip({required this.pace});
+
+  final BudgetPace? pace;
+
+  @override
+  Widget build(BuildContext context) {
+    final pace = this.pace;
+    if (pace == null) return const SizedBox.shrink();
+    final color = pace.onTrack ? const Color(0xFF3E9B5C) : const Color(0xFFD1544A);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(pace.onTrack ? Icons.trending_down_rounded : Icons.trending_up_rounded, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            pace.onTrack ? 'On Track' : 'Overspending',
+            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -362,15 +389,42 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _SpendingTrendCard extends StatelessWidget {
+class _SpendingTrendCard extends StatefulWidget {
   const _SpendingTrendCard({required this.summary});
 
   final FinanceSummary summary;
 
   @override
+  State<_SpendingTrendCard> createState() => _SpendingTrendCardState();
+}
+
+class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _grow;
+
+  @override
+  void initState() {
+    super.initState();
+    // Same treatment as HabitCurveChart: start after the page transition has
+    // settled, and slow enough (1600ms) to actually read as motion instead
+    // of finishing before the bars are even visible.
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+    _grow = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final points = summary.dailyTrend;
+    final points = widget.summary.dailyTrend;
     final maxValue = points.fold<int>(0, (m, p) => p.totalExpense > m ? p.totalExpense : m);
 
     return Card(
@@ -385,42 +439,47 @@ class _SpendingTrendCard extends StatelessWidget {
               height: 140,
               child: maxValue == 0
                   ? Center(child: Text('No data yet', style: theme.textTheme.bodySmall))
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          for (final point in points)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    height: 100,
-                                    child: Align(
-                                      alignment: Alignment.bottomCenter,
-                                      child: FractionallySizedBox(
-                                        heightFactor: (point.totalExpense / maxValue).clamp(0.04, 1).toDouble(),
-                                        child: Container(
-                                          width: 20,
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary,
-                                            borderRadius: const BorderRadius.only(
-                                              topLeft: Radius.circular(4),
-                                              topRight: Radius.circular(4),
+                  : AnimatedBuilder(
+                      animation: _grow,
+                      builder: (context, _) => SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            for (final point in points)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      height: 100,
+                                      child: Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: FractionallySizedBox(
+                                          heightFactor: ((point.totalExpense / maxValue).clamp(0.04, 1) * _grow.value)
+                                              .clamp(0.001, 1)
+                                              .toDouble(),
+                                          child: Container(
+                                            width: 20,
+                                            decoration: BoxDecoration(
+                                              color: theme.colorScheme.primary,
+                                              borderRadius: const BorderRadius.only(
+                                                topLeft: Radius.circular(4),
+                                                topRight: Radius.circular(4),
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text('${point.date.day}', style: theme.textTheme.labelSmall),
-                                ],
+                                    const SizedBox(height: 6),
+                                    Text('${point.date.day}', style: theme.textTheme.labelSmall),
+                                  ],
+                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
             ),

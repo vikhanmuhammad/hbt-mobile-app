@@ -1,6 +1,11 @@
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../domain/date_utils.dart';
+import '../domain/onboarding_strings.dart';
+
+/// Language used for onboarding's intro copy/questions only (point 4) —
+/// session-scoped, not persisted, defaults to English.
+final introLanguageProvider = StateProvider<OnboardingLang>((ref) => OnboardingLang.en);
 
 /// Tanggal yang sedang dipilih di kalender layar Dashboard (menentukan hari
 /// mana yang dibuka lewat bottom sheet detail).
@@ -30,3 +35,16 @@ final homeEditModeProvider = StateProvider<bool>((ref) => false);
 /// Bulan yang sedang ditampilkan di layar Rangkuman Keuangan.
 final selectedFinanceMonthProvider =
     StateProvider<DateTime>((ref) => DateTime(today().year, today().month));
+
+/// Granularitas periode yang sedang ditampilkan di layar Rangkuman Keuangan
+/// (harian/mingguan/bulanan) — `selectedFinanceMonthProvider` di atas tetap
+/// dipakai sebagai anchor bulan saat mode `monthly`; mode `daily`/`weekly`
+/// pakai `selectedFinanceAnchorDateProvider` di bawah.
+enum FinancePeriod { daily, weekly, monthly }
+
+final selectedFinancePeriodProvider =
+    StateProvider<FinancePeriod>((ref) => FinancePeriod.monthly);
+
+/// Tanggal anchor untuk mode `daily`/`weekly` di layar Rangkuman Keuangan.
+final selectedFinanceAnchorDateProvider =
+    StateProvider<DateTime>((ref) => today());
