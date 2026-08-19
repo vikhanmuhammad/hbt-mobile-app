@@ -99,12 +99,6 @@ class SettingsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               _NavTile(
-                icon: Icons.widgets_outlined,
-                label: 'Widget Theme',
-                onTap: () => _showComingSoon(context, 'Widget Theme'),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
                 icon: Icons.palette_outlined,
                 label: 'Theme',
                 onTap: () => Navigator.of(context).push(
@@ -126,25 +120,6 @@ class SettingsScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.tune_rounded,
-                label: 'Page & Function',
-                onTap: () => _showComingSoon(context, 'Page & Function'),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.cloud_outlined,
-                label: 'iCloud Sync',
-                trailing: 'Disabled',
-                onTap: () => _showComingSoon(context, 'iCloud Sync'),
-              ),
-              const SizedBox(height: 10),
-              _NavTile(
-                icon: Icons.crop_din_rounded,
-                label: 'Dynamic Island',
-                onTap: () => _showComingSoon(context, 'Dynamic Island'),
               ),
               const SizedBox(height: 24),
               _SectionLabel('Health & Calendar Sync'),
@@ -328,15 +303,11 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _NavTile extends StatelessWidget {
-  const _NavTile({required this.icon, required this.label, required this.onTap, this.trailing});
+  const _NavTile({required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-
-  /// Optional short trailing label shown before the chevron (e.g. "Disabled"
-  /// for iCloud Sync) — matches the reference app's Settings layout.
-  final String? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -352,10 +323,6 @@ class _NavTile extends StatelessWidget {
               Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
               const SizedBox(width: 12),
               Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-              if (trailing != null) ...[
-                Text(trailing!, style: theme.textTheme.bodySmall),
-                const SizedBox(width: 6),
-              ],
               Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
             ],
           ),

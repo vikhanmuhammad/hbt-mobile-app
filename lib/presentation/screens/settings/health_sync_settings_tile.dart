@@ -59,26 +59,12 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
   }
 
   Future<void> _toggleAlarm(bool value) async {
+    // This row is only ever shown on Android (see build()) — iOS has no
+    // public API for third-party apps to create native Clock alarms, so
+    // there's no toggle to hide-behind-a-block here anymore, it's just not
+    // rendered on iOS at all.
     final repo = ref.read(settingsRepositoryProvider);
-    if (!value) {
-      await repo.setAlarmSyncEnabled(false);
-      setState(() {});
-      return;
-    }
-    if (!Platform.isAndroid) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Setting native alarms isn\'t supported on iOS — Apple doesn\'t expose a '
-              'public Clock API. Use Calendar sync instead.',
-            ),
-          ),
-        );
-      }
-      return;
-    }
-    await repo.setAlarmSyncEnabled(true);
+    await repo.setAlarmSyncEnabled(value);
     setState(() {});
   }
 
@@ -111,14 +97,19 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
             enabled: !_busy,
             onChanged: _toggleCalendar,
           ),
-          Divider(height: 1, color: theme.dividerColor),
-          _SyncRow(
-            icon: Icons.alarm_rounded,
-            label: 'Sync reminders to phone Alarm (Android)',
-            value: repo.alarmSyncEnabled,
-            enabled: !_busy,
-            onChanged: _toggleAlarm,
-          ),
+          // Android only — iOS has no public API for third-party apps to
+          // create native Clock alarms (confirmed with the user rather than
+          // faking it with a private/undocumented URL scheme).
+          if (Platform.isAndroid) ...[
+            Divider(height: 1, color: theme.dividerColor),
+            _SyncRow(
+              icon: Icons.alarm_rounded,
+              label: 'Sync reminders to phone Alarm',
+              value: repo.alarmSyncEnabled,
+              enabled: !_busy,
+              onChanged: _toggleAlarm,
+            ),
+          ],
         ],
       ),
     );
