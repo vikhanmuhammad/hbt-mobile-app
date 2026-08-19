@@ -219,6 +219,8 @@ class CommunityRepository {
     String? icon,
     required LeaderboardMode leaderboardMode,
     required String createdBy,
+    required int goalValue,
+    required String goalPeriod,
   }) async {
     final now = DateTime.now();
     final ref = _groups.doc(groupId).collection('groupHabits').doc();
@@ -229,6 +231,8 @@ class CommunityRepository {
       'leaderboardMode': leaderboardMode.name,
       'createdBy': createdBy,
       'createdAt': Timestamp.fromDate(now),
+      'goalValue': goalValue,
+      'goalPeriod': goalPeriod,
     });
     return GroupHabit(
       id: ref.id,
@@ -239,6 +243,8 @@ class CommunityRepository {
       leaderboardMode: leaderboardMode,
       createdBy: createdBy,
       createdAt: now,
+      goalValue: goalValue,
+      goalPeriod: goalPeriod,
     );
   }
 
@@ -382,6 +388,8 @@ class CommunityRepository {
           LeaderboardMode.fromValue(data['leaderboardMode'] as String? ?? 'streak'),
       createdBy: data['createdBy'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      goalValue: (data['goalValue'] as num?)?.toInt(),
+      goalPeriod: data['goalPeriod'] as String?,
     );
   }
 

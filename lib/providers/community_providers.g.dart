@@ -1158,3 +1158,48 @@ final class HabitGroupLinksForGroupFamily extends $Family
   @override
   String toString() => r'habitGroupLinksForGroupProvider';
 }
+
+/// Ids of every local habit the current account has published/linked to
+/// *any* community group — drives Home's "My Habits" vs "Community" split
+/// (point: separate local habits from ones already online).
+
+@ProviderFor(linkedHabitIds)
+final linkedHabitIdsProvider = LinkedHabitIdsProvider._();
+
+/// Ids of every local habit the current account has published/linked to
+/// *any* community group — drives Home's "My Habits" vs "Community" split
+/// (point: separate local habits from ones already online).
+
+final class LinkedHabitIdsProvider
+    extends
+        $FunctionalProvider<AsyncValue<Set<int>>, Set<int>, Stream<Set<int>>>
+    with $FutureModifier<Set<int>>, $StreamProvider<Set<int>> {
+  /// Ids of every local habit the current account has published/linked to
+  /// *any* community group — drives Home's "My Habits" vs "Community" split
+  /// (point: separate local habits from ones already online).
+  LinkedHabitIdsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'linkedHabitIdsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$linkedHabitIdsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<Set<int>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<Set<int>> create(Ref ref) {
+    return linkedHabitIds(ref);
+  }
+}
+
+String _$linkedHabitIdsHash() => r'ff1b754839ece7f5234bc2974b69186262c9c680';

@@ -262,6 +262,29 @@ class SettingsScreen extends ConsumerWidget {
       }
     }
 
+    // Best-effort: retract this account's Community leaderboard entries
+    // before the local links that reference them get wiped by
+    // deleteAllData() below — otherwise they'd sit in Firestore forever,
+    // permanently stuck showing whatever progress existed right before this
+    // reset, with no local link left to ever update or remove them again.
+    final uid = ref.read(currentUidProvider);
+    if (uid != null) {
+      try {
+        final links = await ref.read(habitGroupLinkRepositoryProvider).getAllForUid(uid);
+        final communityRepo = ref.read(communityRepositoryProvider);
+        for (final link in links) {
+          await communityRepo.deleteLeaderboardEntry(
+            groupId: link.groupId,
+            groupHabitId: link.groupHabitId,
+            uid: uid,
+          );
+        }
+      } catch (_) {
+        // Best-effort/offline-tolerant — the local wipe below still leaves
+        // the app in a consistent state even if this network cleanup fails.
+      }
+    }
+
     await habitRepo.deleteAllData();
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();

@@ -105,6 +105,7 @@ class HomeScreen extends ConsumerWidget {
                     isWide: isWide,
                     isTablet: isTablet,
                     selectedDate: selectedDate,
+                    linkedHabitIds: ref.watch(linkedHabitIdsProvider).value ?? const <int>{},
                   ),
           ),
         ],
@@ -128,6 +129,7 @@ class _HabitList extends ConsumerWidget {
     required this.isWide,
     required this.isTablet,
     required this.selectedDate,
+    required this.linkedHabitIds,
   });
 
   final List<HabitWithProgress> items;
@@ -137,6 +139,11 @@ class _HabitList extends ConsumerWidget {
   final bool isWide;
   final bool isTablet;
   final DateTime selectedDate;
+
+  /// Habits published/linked to a community group — drives the "My Habits"
+  /// vs "Community" split below. Ignored in Edit Mode, where reordering
+  /// needs one flat, unambiguous index order across every habit.
+  final Set<int> linkedHabitIds;
 
   Color _accentFor(int categoryId) {
     final category = categoryById[categoryId];
@@ -151,24 +158,86 @@ class _HabitList extends ConsumerWidget {
     final crossAxisCount = isWide ? 2 : 1;
 
     if (!isEditMode) {
-      if (crossAxisCount == 1) {
-        return ListView.separated(
+      // Separate "My Habits" (local-only) from "Community" (published/
+      // linked to a group) — only worth the extra headers when there's
+      // actually a mix; a user with zero community habits (the common
+      // case) still just sees one plain list.
+      final communityItems = items.where((i) => linkedHabitIds.contains(i.habit.id)).toList();
+      final localItems = items.where((i) => !linkedHabitIds.contains(i.habit.id)).toList();
+      final showSections = communityItems.isNotEmpty && localItems.isNotEmpty;
+
+      if (!showSections) {
+        if (crossAxisCount == 1) {
+          return ListView.separated(
+            padding: padding,
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
+          );
+        }
+        return GridView.builder(
           padding: padding,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 14,
+            childAspectRatio: 3.6,
+          ),
           itemCount: items.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
           itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
         );
       }
-      return GridView.builder(
+
+      if (crossAxisCount == 1) {
+        return ListView(
+          padding: padding,
+          children: [
+            const _HomeSectionLabel('My Habits'),
+            const SizedBox(height: 8),
+            for (var i = 0; i < localItems.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildCard(context, ref, localItems[i], i),
+              ),
+            const SizedBox(height: 20),
+            const _HomeSectionLabel('Community'),
+            const SizedBox(height: 8),
+            for (var i = 0; i < communityItems.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildCard(context, ref, communityItems[i], localItems.length + i),
+              ),
+          ],
+        );
+      }
+
+      Widget sectionGrid(List<HabitWithProgress> sectionItems, int startIndex) {
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 14,
+            childAspectRatio: 3.6,
+          ),
+          itemCount: sectionItems.length,
+          itemBuilder: (context, index) =>
+              _buildCard(context, ref, sectionItems[index], startIndex + index),
+        );
+      }
+
+      return ListView(
         padding: padding,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 14,
-          childAspectRatio: 3.6,
-        ),
-        itemCount: items.length,
-        itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
+        children: [
+          const _HomeSectionLabel('My Habits'),
+          const SizedBox(height: 8),
+          sectionGrid(localItems, 0),
+          const SizedBox(height: 20),
+          const _HomeSectionLabel('Community'),
+          const SizedBox(height: 8),
+          sectionGrid(communityItems, localItems.length),
+        ],
       );
     }
 
@@ -292,6 +361,25 @@ class _HabitList extends ConsumerWidget {
     // Finance screen until some unrelated action (e.g. changing day)
     // happened to trigger a rebuild.
     ref.invalidate(financeSummaryForPeriodProvider);
+  }
+}
+
+/// Section header for Home's "My Habits" vs "Community" split (point:
+/// separate local habits from ones already online in a community).
+class _HomeSectionLabel extends StatelessWidget {
+  const _HomeSectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+    );
   }
 }
 

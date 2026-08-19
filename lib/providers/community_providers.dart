@@ -182,3 +182,16 @@ Stream<List<HabitGroupLink>> habitGroupLinksForGroup(Ref ref, String groupId) {
   if (uid == null) return Stream.value(const <HabitGroupLink>[]);
   return ref.watch(habitGroupLinkRepositoryProvider).watchForGroup(groupId, uid);
 }
+
+/// Ids of every local habit the current account has published/linked to
+/// *any* community group — drives Home's "My Habits" vs "Community" split
+/// (point: separate local habits from ones already online).
+@riverpod
+Stream<Set<int>> linkedHabitIds(Ref ref) {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <int>{});
+  return ref
+      .watch(habitGroupLinkRepositoryProvider)
+      .watchAllForUid(uid)
+      .map((links) => links.map((l) => l.habitId).toSet());
+}

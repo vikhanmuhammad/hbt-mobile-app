@@ -13,6 +13,8 @@ class GroupHabit {
     required this.leaderboardMode,
     required this.createdBy,
     required this.createdAt,
+    this.goalValue,
+    this.goalPeriod,
   });
 
   final String id;
@@ -23,4 +25,14 @@ class GroupHabit {
   final LeaderboardMode leaderboardMode;
   final String createdBy;
   final DateTime createdAt;
+
+  /// Target amount/period this Group Habit was published with (copied from
+  /// whichever local habit first published it) — used to tell "same habit,
+  /// same target" from "same name, different target" when deciding whether
+  /// linking/adopting should reuse an existing habit or create a new one.
+  /// Nullable because Group Habits created before this field existed don't
+  /// have it; treat null as "unknown" (never auto-match) rather than
+  /// guessing. `goalPeriod` stores the raw `GoalPeriod` enum name.
+  final int? goalValue;
+  final String? goalPeriod;
 }

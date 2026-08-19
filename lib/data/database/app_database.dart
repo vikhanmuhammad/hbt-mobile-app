@@ -85,6 +85,13 @@ class AppDatabase extends _$AppDatabase {
   /// kembali menganggap ini first launch.
   Future<void> clearAllData() {
     return transaction(() async {
+      // Must go before `habits` — otherwise these links are left pointing
+      // at habitIds that no longer exist. Previously missing here: the
+      // Community tab would keep matching against those stale links
+      // (`linkedGroupHabitIds`) so a re-created habit with the same name
+      // could never re-link, and its progress would silently stop
+      // reaching Firestore since no *current* habitId had a link anymore.
+      await delete(habitGroupLinks).go();
       await delete(habitLogs).go();
       await delete(habits).go();
       await delete(categories).go();

@@ -34,6 +34,20 @@ class HabitGroupLinkDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Every link this account has made, across every group/habit — used to
+  /// best-effort clean up this account's Firestore leaderboard entries
+  /// before a full local data wipe (e.g. "Replay the onboarding flow"),
+  /// since those entries would otherwise sit there permanently stale.
+  Future<List<HabitGroupLink>> getAllForUid(String uid) {
+    return (select(habitGroupLinks)..where((l) => l.uid.equals(uid))).get();
+  }
+
+  /// Reactive version of [getAllForUid] — drives Home's "which of my habits
+  /// are already online in a community" split.
+  Stream<List<HabitGroupLink>> watchAllForUid(String uid) {
+    return (select(habitGroupLinks)..where((l) => l.uid.equals(uid))).watch();
+  }
+
   Future<HabitGroupLink?> getByGroupHabit(int habitId, String groupHabitId, String uid) {
     return (select(habitGroupLinks)
           ..where((l) =>

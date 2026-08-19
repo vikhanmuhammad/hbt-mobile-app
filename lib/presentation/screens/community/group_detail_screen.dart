@@ -292,6 +292,8 @@ class _HabitsTab extends ConsumerWidget {
     final groupHabitsAsync = ref.watch(groupHabitsProvider(groupId));
     final localHabitsAsync = ref.watch(allActiveHabitsProvider);
     final linksAsync = ref.watch(habitGroupLinksForGroupProvider(groupId));
+    final myUid = ref.watch(currentUidProvider);
+    final iAmAdmin = myUid != null && group.isAdmin(myUid);
 
     final groupHabits = groupHabitsAsync.value;
     final localHabits = localHabitsAsync.value;
@@ -369,16 +371,28 @@ class _HabitsTab extends ConsumerWidget {
             const _TabSectionLabel('Your Habits'),
             const SizedBox(height: 8),
             for (var i = 0; i < myUnlinkedHabits.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FadeSlideIn(
-                  delay: staggeredDelay(i),
-                  child: _YourHabitRow(
-                    habit: myUnlinkedHabits[i],
-                    groupId: groupId,
-                    matchingGroupHabit: _findByName(communityUnlinkedHabits, myUnlinkedHabits[i].name),
-                  ),
-                ),
+              Builder(
+                builder: (context) {
+                  // Matched against the FULL group habits list (not just the
+                  // unlinked ones) — if this device already linked a
+                  // *different* local habit to the matching entry, we still
+                  // need to know that so "Publish" doesn't silently create a
+                  // duplicate (see _YourHabitRow's alreadyTrackedByMe).
+                  final match = findMatchingGroupHabit(groupHabits, myUnlinkedHabits[i]);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FadeSlideIn(
+                      delay: staggeredDelay(i),
+                      child: _YourHabitRow(
+                        habit: myUnlinkedHabits[i],
+                        groupId: groupId,
+                        matchingGroupHabit: match,
+                        matchAlreadyTrackedByMe:
+                            match != null && linkedGroupHabitIds.contains(match.id),
+                      ),
+                    ),
+                  );
+                },
               ),
             const SizedBox(height: 16),
           ],
@@ -390,7 +404,7 @@ class _HabitsTab extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: FadeSlideIn(
                   delay: staggeredDelay(i),
-                  child: _CommunityHabitRow(habit: communityUnlinkedHabits[i]),
+                  child: _CommunityHabitRow(habit: communityUnlinkedHabits[i], canManage: iAmAdmin),
                 ),
               ),
             const SizedBox(height: 16),
@@ -403,7 +417,11 @@ class _HabitsTab extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: FadeSlideIn(
                   delay: staggeredDelay(i),
-                  child: _LinkedHabitRow(localHabit: linkedRows[i].$1, groupHabit: linkedRows[i].$2),
+                  child: _LinkedHabitRow(
+                    localHabit: linkedRows[i].$1,
+                    groupHabit: linkedRows[i].$2,
+                    canManage: iAmAdmin,
+                  ),
                 ),
               ),
           ],
@@ -412,16 +430,60 @@ class _HabitsTab extends ConsumerWidget {
     );
   }
 
-  /// Case/whitespace-insensitive exact-name match — the only auto-suggest
-  /// convenience for point: community redesign (deliberately not a fuzzy
-  /// matcher, so it never wrongly links two different habits).
-  GroupHabit? _findByName(List<GroupHabit> candidates, String name) {
-    final normalized = name.trim().toLowerCase();
-    for (final gh in candidates) {
-      if (gh.name.trim().toLowerCase() == normalized) return gh;
-    }
-    return null;
+}
+
+/// Finds a Group Habit that's effectively the *same habit* as [local] — same
+/// name (plural/singular-insensitive) AND same target (goal value, unit,
+/// period). Matching on name alone isn't enough: two habits can share a name
+/// but track different targets (e.g. "Drink water" 6 glasses vs 8 glasses),
+/// and treating those as interchangeable would silently merge unrelated
+/// progress. Deliberately not a fuzzy matcher beyond that, so it never
+/// wrongly links two genuinely different habits. Group Habits published
+/// before goalValue/goalPeriod were tracked (both null) never match, since
+/// there's no way to confirm the target — safer to let the user create a
+/// second entry than to guess.
+GroupHabit? findMatchingGroupHabit(List<GroupHabit> candidates, Habit local) {
+  final normalizedName = _normalizeHabitName(local.name);
+  for (final gh in candidates) {
+    if (_normalizeHabitName(gh.name) != normalizedName) continue;
+    if (gh.goalValue == null || gh.goalPeriod == null) continue;
+    if (gh.goalValue != local.goalValue) continue;
+    if (gh.goalPeriod != local.goalPeriod.name) continue;
+    if (gh.unit.trim().toLowerCase() != local.goalUnit.trim().toLowerCase()) continue;
+    return gh;
   }
+  return null;
+}
+
+/// Inverse of [findMatchingGroupHabit] — given a Group Habit, finds a local
+/// habit among [candidates] that's effectively the same thing. Used by
+/// [adoptGroupHabit] so "Add to My Habits" links an existing matching habit
+/// instead of always creating a new one.
+Habit? _findMatchingLocalHabit(List<Habit> candidates, GroupHabit groupHabit) {
+  if (groupHabit.goalValue == null || groupHabit.goalPeriod == null) return null;
+  final normalizedName = _normalizeHabitName(groupHabit.name);
+  for (final h in candidates) {
+    if (_normalizeHabitName(h.name) != normalizedName) continue;
+    if (h.goalValue != groupHabit.goalValue) continue;
+    if (h.goalPeriod.name != groupHabit.goalPeriod) continue;
+    if (h.goalUnit.trim().toLowerCase() != groupHabit.unit.trim().toLowerCase()) continue;
+    return h;
+  }
+  return null;
+}
+
+/// Lowercases, trims, collapses whitespace, and strips a trailing 's'/'es'
+/// from each word — just enough to treat "Eat vegetables & fruit" and "Eat
+/// vegetable & fruit" as the same habit without attempting real fuzzy
+/// matching (which risks merging genuinely different habits).
+String _normalizeHabitName(String name) {
+  final words = name.trim().toLowerCase().split(RegExp(r'\s+'));
+  final singularized = words.map((w) {
+    if (w.length > 4 && w.endsWith('es')) return w.substring(0, w.length - 2);
+    if (w.length > 3 && w.endsWith('s')) return w.substring(0, w.length - 1);
+    return w;
+  });
+  return singularized.join(' ');
 }
 
 class _TabSectionLabel extends StatelessWidget {
@@ -442,16 +504,27 @@ class _TabSectionLabel extends StatelessWidget {
 }
 
 /// One of the viewer's own local habits not yet linked to this group.
-/// `matchingGroupHabit` (non-null when an existing Group Habit has the exact
-/// same name) switches the action from "Publish" (creates a brand-new Group
+/// `matchingGroupHabit` (non-null when an existing Group Habit has the same
+/// name) switches the action from "Publish" (creates a brand-new Group
 /// Habit from this local habit) to "Link" (attaches directly to the
-/// existing one instead of creating a duplicate).
+/// existing one instead of creating a duplicate) — unless
+/// [matchAlreadyTrackedByMe] is true, meaning this device already linked a
+/// *different* local habit of the viewer's to that same Group Habit, in
+/// which case both actions are blocked (linking a second local habit to the
+/// same Group Habit would just be a second, redundant contribution from the
+/// same account, and "Publish" would create an outright duplicate entry).
 class _YourHabitRow extends ConsumerStatefulWidget {
-  const _YourHabitRow({required this.habit, required this.groupId, required this.matchingGroupHabit});
+  const _YourHabitRow({
+    required this.habit,
+    required this.groupId,
+    required this.matchingGroupHabit,
+    required this.matchAlreadyTrackedByMe,
+  });
 
   final Habit habit;
   final String groupId;
   final GroupHabit? matchingGroupHabit;
+  final bool matchAlreadyTrackedByMe;
 
   @override
   ConsumerState<_YourHabitRow> createState() => _YourHabitRowState();
@@ -475,6 +548,8 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
                 icon: widget.habit.icon,
                 leaderboardMode: LeaderboardMode.both,
                 createdBy: uid,
+                goalValue: widget.habit.goalValue,
+                goalPeriod: widget.habit.goalPeriod.name,
               ))
               .id;
       await ref.read(habitGroupLinkRepositoryProvider).link(
@@ -502,12 +577,18 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
           leading: HabitIcon(icon: widget.habit.icon, size: 20),
           title: Text(widget.habit.name),
           subtitle: Text(
-            matched ? 'Matches an existing community habit' : widget.habit.goalLabel,
+            widget.matchAlreadyTrackedByMe
+                ? 'Already tracked in this group via another habit of yours'
+                : matched
+                    ? 'Matches an existing community habit'
+                    : widget.habit.goalLabel,
             style: theme.textTheme.bodySmall,
           ),
-          trailing: _working
-              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : TextButton(onPressed: _publishOrLink, child: Text(matched ? 'Link' : 'Publish')),
+          trailing: widget.matchAlreadyTrackedByMe
+              ? null
+              : _working
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton(onPressed: _publishOrLink, child: Text(matched ? 'Link' : 'Publish')),
         ),
       ),
     );
@@ -517,9 +598,14 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
 /// A Group Habit that already exists in this group but the viewer hasn't
 /// adopted into their own local habits yet.
 class _CommunityHabitRow extends ConsumerWidget {
-  const _CommunityHabitRow({required this.habit});
+  const _CommunityHabitRow({required this.habit, required this.canManage});
 
   final GroupHabit habit;
+
+  /// Admin-only — lets an admin remove a habit from the *community* (the
+  /// Firestore Group Habit doc + its leaderboard) without touching anyone's
+  /// local habit or progress history, which live entirely on-device.
+  final bool canManage;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -530,9 +616,20 @@ class _CommunityHabitRow extends ConsumerWidget {
           leading: HabitIcon(icon: habit.icon, size: 20),
           title: Text(habit.name),
           subtitle: Text(habit.unit, style: theme.textTheme.bodySmall),
-          trailing: TextButton(
-            onPressed: () => adoptGroupHabit(context, ref, habit),
-            child: const Text('Add to My Habits'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canManage)
+                IconButton(
+                  tooltip: 'Remove from community',
+                  icon: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.error),
+                  onPressed: () => removeGroupHabitFromCommunity(context, ref, habit),
+                ),
+              TextButton(
+                onPressed: () => adoptGroupHabit(context, ref, habit),
+                child: const Text('Add to My Habits'),
+              ),
+            ],
           ),
         ),
       ),
@@ -542,10 +639,15 @@ class _CommunityHabitRow extends ConsumerWidget {
 
 /// A habit the viewer already tracks locally and has linked to the group.
 class _LinkedHabitRow extends ConsumerStatefulWidget {
-  const _LinkedHabitRow({required this.localHabit, required this.groupHabit});
+  const _LinkedHabitRow({required this.localHabit, required this.groupHabit, required this.canManage});
 
   final Habit localHabit;
   final GroupHabit groupHabit;
+
+  /// Admin-only — same "remove from community" action as
+  /// [_CommunityHabitRow], available here too since the group habit might
+  /// be one the admin themselves has linked.
+  final bool canManage;
 
   @override
   ConsumerState<_LinkedHabitRow> createState() => _LinkedHabitRowState();
@@ -602,10 +704,21 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
         ),
         trailing: _working
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-            : OutlinedButton(
-                onPressed: _unlink,
-                style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
-                child: const Text('Unlink'),
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (widget.canManage)
+                    IconButton(
+                      tooltip: 'Remove from community',
+                      icon: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.error),
+                      onPressed: () => removeGroupHabitFromCommunity(context, ref, widget.groupHabit),
+                    ),
+                  OutlinedButton(
+                    onPressed: _unlink,
+                    style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                    child: const Text('Unlink'),
+                  ),
+                ],
               ),
       ),
     );
@@ -926,14 +1039,41 @@ class _LeaderboardTile extends ConsumerWidget {
   }
 }
 
-/// "Adopts" a Group Habit into the viewer's own habit list — opens the Add
-/// Habit form pre-filled with the Group Habit's name/unit/icon, and
-/// auto-links the newly created habit back to it on save. Shared by the
-/// Habits tab's "Community Habits" section and the Leaderboard tab's
-/// per-row "Add to My Habits" action.
+/// "Adopts" a Group Habit into the viewer's own habit list. If the viewer
+/// already has a local habit that's effectively the same thing (same name +
+/// same goal value/unit/period, via [findMatchingGroupHabit]'s inverse),
+/// that existing habit is linked directly instead of creating a duplicate.
+/// Otherwise opens the Add Habit form pre-filled with the Group Habit's
+/// name/unit/icon, and auto-links the newly created habit back to it on
+/// save. Shared by the Habits tab's "Community Habits" section and the
+/// Leaderboard tab's per-row "Add to My Habits" action.
 Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit groupHabit) async {
   final uid = ref.read(currentUidProvider);
   if (uid == null) return;
+
+  final localHabits = ref.read(allActiveHabitsProvider).value ?? const <Habit>[];
+  final existingMatch = _findMatchingLocalHabit(localHabits, groupHabit);
+  if (existingMatch != null) {
+    try {
+      await ref.read(habitGroupLinkRepositoryProvider).link(
+            habitId: existingMatch.id,
+            groupId: groupHabit.groupId,
+            groupHabitId: groupHabit.id,
+            uid: uid,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Linked your existing "${existingMatch.name}" habit')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link: $e')));
+      }
+    }
+    return;
+  }
+
   await Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => AddHabitFlowScreen(
@@ -949,6 +1089,52 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       ),
     ),
   );
+}
+
+/// Admin-only: removes a habit from the community — deletes the Group
+/// Habit doc + its leaderboard from Firestore, and clears this device's own
+/// local bookkeeping of it (other members' devices self-heal the same way
+/// next time they open this group's Habits tab). Deliberately does NOT
+/// touch anyone's local `Habit`/`HabitLog` rows — those stay exactly as
+/// they were, on every member's device, this only un-publishes the shared
+/// online record.
+Future<void> removeGroupHabitFromCommunity(
+  BuildContext context,
+  WidgetRef ref,
+  GroupHabit groupHabit,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Remove from community?'),
+      content: Text(
+        '"${groupHabit.name}" and its leaderboard will be removed for everyone in the '
+        "group. Everyone's own local habit and progress history stay untouched — this "
+        "can't be undone.",
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Remove'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  try {
+    await ref.read(communityRepositoryProvider).deleteGroupHabit(
+          groupId: groupHabit.groupId,
+          groupHabitId: groupHabit.id,
+        );
+    await ref.read(habitGroupLinkRepositoryProvider).unlinkAllForGroupHabit(groupHabit.id);
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
+    }
+  }
 }
 
 // ---------------------------------------------------------------------

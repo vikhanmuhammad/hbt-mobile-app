@@ -32,6 +32,17 @@ class HabitGroupLinkRepository {
     return rows.map(mapHabitGroupLink).toList();
   }
 
+  Future<List<HabitGroupLink>> getAllForUid(String uid) async {
+    final rows = await _db.habitGroupLinkDao.getAllForUid(uid);
+    return rows.map(mapHabitGroupLink).toList();
+  }
+
+  Stream<List<HabitGroupLink>> watchAllForUid(String uid) {
+    return _db.habitGroupLinkDao
+        .watchAllForUid(uid)
+        .map((rows) => rows.map(mapHabitGroupLink).toList());
+  }
+
   Future<int> link({
     required int habitId,
     required String groupId,
