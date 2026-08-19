@@ -262,29 +262,15 @@ class SettingsScreen extends ConsumerWidget {
       }
     }
 
-    // Best-effort: retract this account's Community leaderboard entries
-    // before the local links that reference them get wiped by
-    // deleteAllData() below — otherwise they'd sit in Firestore forever,
-    // permanently stuck showing whatever progress existed right before this
-    // reset, with no local link left to ever update or remove them again.
-    final uid = ref.read(currentUidProvider);
-    if (uid != null) {
-      try {
-        final links = await ref.read(habitGroupLinkRepositoryProvider).getAllForUid(uid);
-        final communityRepo = ref.read(communityRepositoryProvider);
-        for (final link in links) {
-          await communityRepo.deleteLeaderboardEntry(
-            groupId: link.groupId,
-            groupHabitId: link.groupHabitId,
-            uid: uid,
-          );
-        }
-      } catch (_) {
-        // Best-effort/offline-tolerant — the local wipe below still leaves
-        // the app in a consistent state even if this network cleanup fails.
-      }
-    }
-
+    // Deliberately does NOT touch Community leaderboard entries — a real
+    // uninstall can't run any app code to clean those up either (there's no
+    // OS hook for it), so this dev-only reset should behave the same way:
+    // wipe local data only, and leave Firestore progress exactly as a real
+    // uninstall would — frozen at its last value, not deleted, ready to
+    // pick back up via the Habits tab's "Community Habits" section (any
+    // Group Habit this account previously linked shows up there again,
+    // unlinked, since the local link is gone — "Add to My Habits" resumes
+    // syncing from wherever a freshly re-created local habit's progress is).
     await habitRepo.deleteAllData();
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();

@@ -610,12 +610,28 @@ class _CommunityHabitRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // If this account already has a leaderboard entry here but no local
+    // link (exactly the state left behind by an uninstall+reinstall, or the
+    // dev-only "Replay the onboarding flow" reset — see removeGroupHabitFromCommunity's
+    // doc comment on why progress is never deleted for those), surface this
+    // as reconnecting past progress rather than a generic first-time add.
+    final myUid = ref.watch(currentUidProvider);
+    final leaderboardAsync = ref.watch(groupHabitLeaderboardProvider(habit.groupId, habit.id));
+    final isReconnect =
+        myUid != null && (leaderboardAsync.value?.any((e) => e.uid == myUid) ?? false);
+
     return TapScale(
       child: Card(
         child: ListTile(
           leading: HabitIcon(icon: habit.icon, size: 20),
           title: Text(habit.name),
-          subtitle: Text(habit.unit, style: theme.textTheme.bodySmall),
+          subtitle: Text(
+            isReconnect ? 'You tracked this before — reconnect to resume' : habit.unit,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: isReconnect ? theme.colorScheme.primary : null,
+              fontWeight: isReconnect ? FontWeight.w700 : null,
+            ),
+          ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -627,7 +643,7 @@ class _CommunityHabitRow extends ConsumerWidget {
                 ),
               TextButton(
                 onPressed: () => adoptGroupHabit(context, ref, habit),
-                child: const Text('Add to My Habits'),
+                child: Text(isReconnect ? 'Reconnect' : 'Add to My Habits'),
               ),
             ],
           ),
