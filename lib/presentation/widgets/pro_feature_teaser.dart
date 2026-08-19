@@ -9,9 +9,10 @@ import '../../providers/community_providers.dart';
 /// Finance) — different from [showProRequiredDialog], which only blocks 1
 /// specific action (e.g. picking the Finance category, adding the 6th habit).
 /// Shows a blurred preview of what the unlocked feature looks like behind a
-/// frosted overlay, a short benefits list, and a demo "Upgrade to Pro" button
-/// (there's no real Play Store/App Store billing yet — it just flips the
-/// same debug entitlement flag as Settings > Pro Mode (Debug)).
+/// frosted overlay, a short benefits list, and an "Upgrade to Pro" button.
+/// Real Play Store/App Store billing isn't wired up yet — the button just
+/// flips the local entitlement flag (see `EntitlementService`) — but no
+/// user-facing copy should say so; that's an internal implementation detail.
 class ProFeatureTeaser extends ConsumerWidget {
   const ProFeatureTeaser({
     super.key,
@@ -102,13 +103,6 @@ class ProFeatureTeaser extends ConsumerWidget {
                             child: const Text('Upgrade to Pro'),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Demo only — real Play Store/App Store billing isn\'t connected yet. '
-                          'This button just enables Pro Mode locally, same as the toggle in Settings.',
-                          style: theme.textTheme.bodySmall?.copyWith(fontStyle: FontStyle.italic),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   ),
@@ -125,7 +119,7 @@ class ProFeatureTeaser extends ConsumerWidget {
     ref.read(isProProvider.notifier).setPro(true);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pro unlocked (demo) — welcome aboard!')),
+        const SnackBar(content: Text('Pro unlocked — welcome aboard!')),
       );
     }
   }
@@ -142,22 +136,7 @@ Future<void> showProRequiredDialog(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Pro Feature'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(message),
-          const SizedBox(height: 12),
-          Text(
-            'Real Pro purchase integration isn\'t available yet — enable it via '
-            'the "Pro Mode (Debug)" toggle in Settings to try this feature.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontStyle: FontStyle.italic),
-          ),
-        ],
-      ),
+      content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

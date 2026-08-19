@@ -129,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
               const HealthSyncSettingsTile(),
               if (kDebugMode) ...[
                 const SizedBox(height: 24),
-                _SectionLabel('Community (Debug)'),
+                _SectionLabel('Pro Access'),
                 const SizedBox(height: 10),
                 const _DebugProToggleTile(),
               ],
@@ -187,7 +187,7 @@ class SettingsScreen extends ConsumerWidget {
                 child: TextButton(
                   onPressed: () => _confirmResetDemo(context, ref),
                   child: const Text(
-                    'Replay the onboarding flow (demo)',
+                    'Replay the onboarding flow',
                     style: TextStyle(decoration: TextDecoration.underline, fontSize: 13),
                   ),
                 ),
@@ -340,7 +340,7 @@ class _DebugProToggleTile extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text('Pro Mode (Debug)', style: theme.textTheme.bodyMedium),
+              child: Text('Pro Mode', style: theme.textTheme.bodyMedium),
             ),
             ToggleSwitch(
               value: isPro,
