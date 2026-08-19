@@ -40,7 +40,7 @@ class CommunitySyncService {
     required String displayName,
     String? avatarIcon,
   }) async {
-    final links = await _linkRepository.getForHabit(habitId);
+    final links = await _linkRepository.getForHabit(habitId, uid);
     if (links.isEmpty) return;
 
     final habit = await _habitRepository.getById(habitId);

@@ -106,6 +106,14 @@ class HabitGroupLinks extends Table {
       dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get lastSyncedAt => dateTime().nullable()();
 
+  /// Signed-in Firebase uid that created this link — this table is a local
+  /// (per-device) DB, but a device isn't always 1:1 with 1 account (multiple
+  /// accounts signed in/out on the same phone, or a shared/test device), so
+  /// every link must be scoped to whoever actually made it. Without this,
+  /// account B would see account A's links as "already linked" and vice
+  /// versa. Nullable only for rows written before this column existed.
+  TextColumn get uid => text().nullable()();
+
   @override
   List<Set<Column>> get uniqueKeys => [
         {habitId, groupHabitId},

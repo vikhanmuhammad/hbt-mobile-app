@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show Value;
+
 import '../../domain/models/community/habit_group_link.dart';
 import '../database/app_database.dart' as db;
 import 'mappers.dart';
@@ -7,32 +9,26 @@ class HabitGroupLinkRepository {
 
   final db.AppDatabase _db;
 
-  Stream<List<HabitGroupLink>> watchAll() {
+  Stream<List<HabitGroupLink>> watchForHabit(int habitId, String uid) {
     return _db.habitGroupLinkDao
-        .watchAll()
+        .watchForHabit(habitId, uid)
         .map((rows) => rows.map(mapHabitGroupLink).toList());
   }
 
-  Stream<List<HabitGroupLink>> watchForHabit(int habitId) {
+  Stream<List<HabitGroupLink>> watchForGroupHabit(String groupHabitId, String uid) {
     return _db.habitGroupLinkDao
-        .watchForHabit(habitId)
+        .watchForGroupHabit(groupHabitId, uid)
         .map((rows) => rows.map(mapHabitGroupLink).toList());
   }
 
-  Stream<List<HabitGroupLink>> watchForGroupHabit(String groupHabitId) {
+  Stream<List<HabitGroupLink>> watchForGroup(String groupId, String uid) {
     return _db.habitGroupLinkDao
-        .watchForGroupHabit(groupHabitId)
+        .watchForGroup(groupId, uid)
         .map((rows) => rows.map(mapHabitGroupLink).toList());
   }
 
-  Stream<List<HabitGroupLink>> watchForGroup(String groupId) {
-    return _db.habitGroupLinkDao
-        .watchForGroup(groupId)
-        .map((rows) => rows.map(mapHabitGroupLink).toList());
-  }
-
-  Future<List<HabitGroupLink>> getForHabit(int habitId) async {
-    final rows = await _db.habitGroupLinkDao.getForHabit(habitId);
+  Future<List<HabitGroupLink>> getForHabit(int habitId, String uid) async {
+    final rows = await _db.habitGroupLinkDao.getForHabit(habitId, uid);
     return rows.map(mapHabitGroupLink).toList();
   }
 
@@ -40,12 +36,14 @@ class HabitGroupLinkRepository {
     required int habitId,
     required String groupId,
     required String groupHabitId,
+    required String uid,
   }) {
     return _db.habitGroupLinkDao.insertLink(
       db.HabitGroupLinksCompanion.insert(
         habitId: habitId,
         groupId: groupId,
         groupHabitId: groupHabitId,
+        uid: Value(uid),
       ),
     );
   }

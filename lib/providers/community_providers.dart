@@ -151,26 +151,34 @@ Stream<List<ChatMessage>> groupMessages(Ref ref, String groupId) {
 
 @riverpod
 Stream<List<HabitGroupLink>> habitGroupLinksForHabit(Ref ref, int habitId) {
-  return ref.watch(habitGroupLinkRepositoryProvider).watchForHabit(habitId);
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <HabitGroupLink>[]);
+  return ref.watch(habitGroupLinkRepositoryProvider).watchForHabit(habitId, uid);
 }
 
-/// Habits (on this device) currently linked to a specific Group Habit —
+/// Habits (on this device, linked by the currently signed-in account) —
 /// drives the Link/Unlink state shown in the group's Habits tab, so it's
 /// clear which local habit (if any) is already contributing to a given
-/// habit item instead of only offering "Link".
+/// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+/// since the local link table isn't 1:1 with "this device" — someone could
+/// sign in as a different account on the same phone.
 @riverpod
 Stream<List<HabitGroupLink>> habitGroupLinksForGroupHabit(
   Ref ref,
   String groupHabitId,
 ) {
-  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroupHabit(groupHabitId);
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <HabitGroupLink>[]);
+  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroupHabit(groupHabitId, uid);
 }
 
-/// All of this device's local links into a given Group, across every Group
-/// Habit in it — used by the group's Habits tab to figure out which of the
-/// viewer's own habits are already published, and which existing Group
-/// Habits they haven't adopted yet.
+/// All of the current account's local links into a given Group, across
+/// every Group Habit in it — used by the group's Habits tab to figure out
+/// which of the viewer's own habits are already published, and which
+/// existing Group Habits they haven't adopted yet.
 @riverpod
 Stream<List<HabitGroupLink>> habitGroupLinksForGroup(Ref ref, String groupId) {
-  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroup(groupId);
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return Stream.value(const <HabitGroupLink>[]);
+  return ref.watch(habitGroupLinkRepositoryProvider).watchForGroup(groupId, uid);
 }

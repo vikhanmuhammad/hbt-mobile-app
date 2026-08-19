@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -66,6 +66,14 @@ class AppDatabase extends _$AppDatabase {
             // v5: HabitGroupLinks — tabel baru untuk fitur Community (Pro),
             // relasi habit lokal ke Group Habit di Firestore.
             await m.createTable(habitGroupLinks);
+          }
+          if (from < 6) {
+            // v6: HabitGroupLinks.uid — scope link ke akun yang membuatnya,
+            // supaya ganti-ganti akun di 1 device tidak saling menganggap
+            // habit orang lain "sudah linked" (lihat dokumentasi kolom uid
+            // di tables.dart). Baris lama (uid null) otomatis jadi tidak
+            // terlihat oleh siapapun — aman, tinggal link ulang.
+            await m.addColumn(habitGroupLinks, habitGroupLinks.uid);
           }
         },
       );

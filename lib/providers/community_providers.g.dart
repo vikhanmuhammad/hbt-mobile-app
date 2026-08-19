@@ -919,7 +919,7 @@ final class HabitGroupLinksForHabitProvider
 }
 
 String _$habitGroupLinksForHabitHash() =>
-    r'9eb1a2643e4c4aeaef1ab8c8bade0c7e059f28ae';
+    r'c0d2a62edda89b5b55aa08f80f00bc5fa1253b29';
 
 final class HabitGroupLinksForHabitFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<HabitGroupLink>>, int> {
@@ -939,19 +939,23 @@ final class HabitGroupLinksForHabitFamily extends $Family
   String toString() => r'habitGroupLinksForHabitProvider';
 }
 
-/// Habits (on this device) currently linked to a specific Group Habit —
+/// Habits (on this device, linked by the currently signed-in account) —
 /// drives the Link/Unlink state shown in the group's Habits tab, so it's
 /// clear which local habit (if any) is already contributing to a given
-/// habit item instead of only offering "Link".
+/// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+/// since the local link table isn't 1:1 with "this device" — someone could
+/// sign in as a different account on the same phone.
 
 @ProviderFor(habitGroupLinksForGroupHabit)
 final habitGroupLinksForGroupHabitProvider =
     HabitGroupLinksForGroupHabitFamily._();
 
-/// Habits (on this device) currently linked to a specific Group Habit —
+/// Habits (on this device, linked by the currently signed-in account) —
 /// drives the Link/Unlink state shown in the group's Habits tab, so it's
 /// clear which local habit (if any) is already contributing to a given
-/// habit item instead of only offering "Link".
+/// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+/// since the local link table isn't 1:1 with "this device" — someone could
+/// sign in as a different account on the same phone.
 
 final class HabitGroupLinksForGroupHabitProvider
     extends
@@ -963,10 +967,12 @@ final class HabitGroupLinksForGroupHabitProvider
     with
         $FutureModifier<List<HabitGroupLink>>,
         $StreamProvider<List<HabitGroupLink>> {
-  /// Habits (on this device) currently linked to a specific Group Habit —
+  /// Habits (on this device, linked by the currently signed-in account) —
   /// drives the Link/Unlink state shown in the group's Habits tab, so it's
   /// clear which local habit (if any) is already contributing to a given
-  /// habit item instead of only offering "Link".
+  /// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+  /// since the local link table isn't 1:1 with "this device" — someone could
+  /// sign in as a different account on the same phone.
   HabitGroupLinksForGroupHabitProvider._({
     required HabitGroupLinksForGroupHabitFamily super.from,
     required String super.argument,
@@ -1013,12 +1019,14 @@ final class HabitGroupLinksForGroupHabitProvider
 }
 
 String _$habitGroupLinksForGroupHabitHash() =>
-    r'a2c7589bb4ee6e8c47e72b6ff61fae2c4fd8c154';
+    r'34d969f4d47672d65cd94a18e26669054fab5ad5';
 
-/// Habits (on this device) currently linked to a specific Group Habit —
+/// Habits (on this device, linked by the currently signed-in account) —
 /// drives the Link/Unlink state shown in the group's Habits tab, so it's
 /// clear which local habit (if any) is already contributing to a given
-/// habit item instead of only offering "Link".
+/// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+/// since the local link table isn't 1:1 with "this device" — someone could
+/// sign in as a different account on the same phone.
 
 final class HabitGroupLinksForGroupHabitFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<HabitGroupLink>>, String> {
@@ -1031,10 +1039,12 @@ final class HabitGroupLinksForGroupHabitFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// Habits (on this device) currently linked to a specific Group Habit —
+  /// Habits (on this device, linked by the currently signed-in account) —
   /// drives the Link/Unlink state shown in the group's Habits tab, so it's
   /// clear which local habit (if any) is already contributing to a given
-  /// habit item instead of only offering "Link".
+  /// habit item instead of only offering "Link". Scoped to `currentUidProvider`
+  /// since the local link table isn't 1:1 with "this device" — someone could
+  /// sign in as a different account on the same phone.
 
   HabitGroupLinksForGroupHabitProvider call(String groupHabitId) =>
       HabitGroupLinksForGroupHabitProvider._(
@@ -1046,18 +1056,18 @@ final class HabitGroupLinksForGroupHabitFamily extends $Family
   String toString() => r'habitGroupLinksForGroupHabitProvider';
 }
 
-/// All of this device's local links into a given Group, across every Group
-/// Habit in it — used by the group's Habits tab to figure out which of the
-/// viewer's own habits are already published, and which existing Group
-/// Habits they haven't adopted yet.
+/// All of the current account's local links into a given Group, across
+/// every Group Habit in it — used by the group's Habits tab to figure out
+/// which of the viewer's own habits are already published, and which
+/// existing Group Habits they haven't adopted yet.
 
 @ProviderFor(habitGroupLinksForGroup)
 final habitGroupLinksForGroupProvider = HabitGroupLinksForGroupFamily._();
 
-/// All of this device's local links into a given Group, across every Group
-/// Habit in it — used by the group's Habits tab to figure out which of the
-/// viewer's own habits are already published, and which existing Group
-/// Habits they haven't adopted yet.
+/// All of the current account's local links into a given Group, across
+/// every Group Habit in it — used by the group's Habits tab to figure out
+/// which of the viewer's own habits are already published, and which
+/// existing Group Habits they haven't adopted yet.
 
 final class HabitGroupLinksForGroupProvider
     extends
@@ -1069,10 +1079,10 @@ final class HabitGroupLinksForGroupProvider
     with
         $FutureModifier<List<HabitGroupLink>>,
         $StreamProvider<List<HabitGroupLink>> {
-  /// All of this device's local links into a given Group, across every Group
-  /// Habit in it — used by the group's Habits tab to figure out which of the
-  /// viewer's own habits are already published, and which existing Group
-  /// Habits they haven't adopted yet.
+  /// All of the current account's local links into a given Group, across
+  /// every Group Habit in it — used by the group's Habits tab to figure out
+  /// which of the viewer's own habits are already published, and which
+  /// existing Group Habits they haven't adopted yet.
   HabitGroupLinksForGroupProvider._({
     required HabitGroupLinksForGroupFamily super.from,
     required String super.argument,
@@ -1119,12 +1129,12 @@ final class HabitGroupLinksForGroupProvider
 }
 
 String _$habitGroupLinksForGroupHash() =>
-    r'38b7d783dc436b871f8b0bdcd70dbe1755924be5';
+    r'b9ae2c8e253d6b48ad48d676fff5e0992b3f4c81';
 
-/// All of this device's local links into a given Group, across every Group
-/// Habit in it — used by the group's Habits tab to figure out which of the
-/// viewer's own habits are already published, and which existing Group
-/// Habits they haven't adopted yet.
+/// All of the current account's local links into a given Group, across
+/// every Group Habit in it — used by the group's Habits tab to figure out
+/// which of the viewer's own habits are already published, and which
+/// existing Group Habits they haven't adopted yet.
 
 final class HabitGroupLinksForGroupFamily extends $Family
     with $FunctionalFamilyOverride<Stream<List<HabitGroupLink>>, String> {
@@ -1137,10 +1147,10 @@ final class HabitGroupLinksForGroupFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// All of this device's local links into a given Group, across every Group
-  /// Habit in it — used by the group's Habits tab to figure out which of the
-  /// viewer's own habits are already published, and which existing Group
-  /// Habits they haven't adopted yet.
+  /// All of the current account's local links into a given Group, across
+  /// every Group Habit in it — used by the group's Habits tab to figure out
+  /// which of the viewer's own habits are already published, and which
+  /// existing Group Habits they haven't adopted yet.
 
   HabitGroupLinksForGroupProvider call(String groupId) =>
       HabitGroupLinksForGroupProvider._(argument: groupId, from: this);

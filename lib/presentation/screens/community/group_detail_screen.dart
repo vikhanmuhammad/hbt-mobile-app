@@ -481,6 +481,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
             habitId: widget.habit.id,
             groupId: widget.groupId,
             groupHabitId: groupHabitId,
+            uid: uid,
           );
     } catch (e) {
       if (mounted) {
@@ -554,24 +555,23 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
   bool _working = false;
 
   Future<void> _unlink() async {
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
     setState(() => _working = true);
     try {
       final links = await ref
           .read(habitGroupLinkRepositoryProvider)
-          .getForHabit(widget.localHabit.id);
+          .getForHabit(widget.localHabit.id, uid);
       for (final link in links) {
         if (link.groupHabitId == widget.groupHabit.id) {
           await ref.read(habitGroupLinkRepositoryProvider).unlink(link.id);
         }
       }
-      final uid = ref.read(currentUidProvider);
-      if (uid != null) {
-        await ref.read(communityRepositoryProvider).deleteLeaderboardEntry(
-              groupId: widget.groupHabit.groupId,
-              groupHabitId: widget.groupHabit.id,
-              uid: uid,
-            );
-      }
+      await ref.read(communityRepositoryProvider).deleteLeaderboardEntry(
+            groupId: widget.groupHabit.groupId,
+            groupHabitId: widget.groupHabit.id,
+            uid: uid,
+          );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to unlink: $e')));
@@ -932,6 +932,8 @@ class _LeaderboardTile extends ConsumerWidget {
 /// Habits tab's "Community Habits" section and the Leaderboard tab's
 /// per-row "Add to My Habits" action.
 Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit groupHabit) async {
+  final uid = ref.read(currentUidProvider);
+  if (uid == null) return;
   await Navigator.of(context).push(
     MaterialPageRoute(
       builder: (_) => AddHabitFlowScreen(
@@ -942,6 +944,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
               habitId: habitId,
               groupId: groupHabit.groupId,
               groupHabitId: groupHabit.id,
+              uid: uid,
             ),
       ),
     ),

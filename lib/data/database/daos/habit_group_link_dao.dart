@@ -10,36 +10,36 @@ class HabitGroupLinkDao extends DatabaseAccessor<AppDatabase>
     with _$HabitGroupLinkDaoMixin {
   HabitGroupLinkDao(super.db);
 
-  Stream<List<HabitGroupLink>> watchAll() {
-    return select(habitGroupLinks).watch();
-  }
-
-  Stream<List<HabitGroupLink>> watchForHabit(int habitId) {
-    return (select(habitGroupLinks)..where((l) => l.habitId.equals(habitId)))
-        .watch();
-  }
-
-  Stream<List<HabitGroupLink>> watchForGroupHabit(String groupHabitId) {
+  Stream<List<HabitGroupLink>> watchForHabit(int habitId, String uid) {
     return (select(habitGroupLinks)
-          ..where((l) => l.groupHabitId.equals(groupHabitId)))
+          ..where((l) => l.habitId.equals(habitId) & l.uid.equals(uid)))
         .watch();
   }
 
-  Stream<List<HabitGroupLink>> watchForGroup(String groupId) {
-    return (select(habitGroupLinks)..where((l) => l.groupId.equals(groupId)))
+  Stream<List<HabitGroupLink>> watchForGroupHabit(String groupHabitId, String uid) {
+    return (select(habitGroupLinks)
+          ..where((l) => l.groupHabitId.equals(groupHabitId) & l.uid.equals(uid)))
         .watch();
   }
 
-  Future<List<HabitGroupLink>> getForHabit(int habitId) {
-    return (select(habitGroupLinks)..where((l) => l.habitId.equals(habitId)))
+  Stream<List<HabitGroupLink>> watchForGroup(String groupId, String uid) {
+    return (select(habitGroupLinks)
+          ..where((l) => l.groupId.equals(groupId) & l.uid.equals(uid)))
+        .watch();
+  }
+
+  Future<List<HabitGroupLink>> getForHabit(int habitId, String uid) {
+    return (select(habitGroupLinks)
+          ..where((l) => l.habitId.equals(habitId) & l.uid.equals(uid)))
         .get();
   }
 
-  Future<HabitGroupLink?> getByGroupHabit(int habitId, String groupHabitId) {
+  Future<HabitGroupLink?> getByGroupHabit(int habitId, String groupHabitId, String uid) {
     return (select(habitGroupLinks)
           ..where((l) =>
               l.habitId.equals(habitId) &
-              l.groupHabitId.equals(groupHabitId)))
+              l.groupHabitId.equals(groupHabitId) &
+              l.uid.equals(uid)))
         .getSingleOrNull();
   }
 

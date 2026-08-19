@@ -2587,6 +2587,15 @@ class $HabitGroupLinksTable extends HabitGroupLinks
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
+  @override
+  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
+    'uid',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2595,6 +2604,7 @@ class $HabitGroupLinksTable extends HabitGroupLinks
     groupHabitId,
     linkedAt,
     lastSyncedAt,
+    uid,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2653,6 +2663,12 @@ class $HabitGroupLinksTable extends HabitGroupLinks
         ),
       );
     }
+    if (data.containsKey('uid')) {
+      context.handle(
+        _uidMeta,
+        uid.isAcceptableOrUnknown(data['uid']!, _uidMeta),
+      );
+    }
     return context;
   }
 
@@ -2690,6 +2706,10 @@ class $HabitGroupLinksTable extends HabitGroupLinks
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_synced_at'],
       ),
+      uid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uid'],
+      ),
     );
   }
 
@@ -2706,6 +2726,14 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
   final String groupHabitId;
   final DateTime linkedAt;
   final DateTime? lastSyncedAt;
+
+  /// Signed-in Firebase uid that created this link — this table is a local
+  /// (per-device) DB, but a device isn't always 1:1 with 1 account (multiple
+  /// accounts signed in/out on the same phone, or a shared/test device), so
+  /// every link must be scoped to whoever actually made it. Without this,
+  /// account B would see account A's links as "already linked" and vice
+  /// versa. Nullable only for rows written before this column existed.
+  final String? uid;
   const HabitGroupLink({
     required this.id,
     required this.habitId,
@@ -2713,6 +2741,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
     required this.groupHabitId,
     required this.linkedAt,
     this.lastSyncedAt,
+    this.uid,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2724,6 +2753,9 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
     map['linked_at'] = Variable<DateTime>(linkedAt);
     if (!nullToAbsent || lastSyncedAt != null) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt);
+    }
+    if (!nullToAbsent || uid != null) {
+      map['uid'] = Variable<String>(uid);
     }
     return map;
   }
@@ -2738,6 +2770,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastSyncedAt),
+      uid: uid == null && nullToAbsent ? const Value.absent() : Value(uid),
     );
   }
 
@@ -2753,6 +2786,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
       groupHabitId: serializer.fromJson<String>(json['groupHabitId']),
       linkedAt: serializer.fromJson<DateTime>(json['linkedAt']),
       lastSyncedAt: serializer.fromJson<DateTime?>(json['lastSyncedAt']),
+      uid: serializer.fromJson<String?>(json['uid']),
     );
   }
   @override
@@ -2765,6 +2799,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
       'groupHabitId': serializer.toJson<String>(groupHabitId),
       'linkedAt': serializer.toJson<DateTime>(linkedAt),
       'lastSyncedAt': serializer.toJson<DateTime?>(lastSyncedAt),
+      'uid': serializer.toJson<String?>(uid),
     };
   }
 
@@ -2775,6 +2810,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
     String? groupHabitId,
     DateTime? linkedAt,
     Value<DateTime?> lastSyncedAt = const Value.absent(),
+    Value<String?> uid = const Value.absent(),
   }) => HabitGroupLink(
     id: id ?? this.id,
     habitId: habitId ?? this.habitId,
@@ -2782,6 +2818,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
     groupHabitId: groupHabitId ?? this.groupHabitId,
     linkedAt: linkedAt ?? this.linkedAt,
     lastSyncedAt: lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
+    uid: uid.present ? uid.value : this.uid,
   );
   HabitGroupLink copyWithCompanion(HabitGroupLinksCompanion data) {
     return HabitGroupLink(
@@ -2795,6 +2832,7 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
           : this.lastSyncedAt,
+      uid: data.uid.present ? data.uid.value : this.uid,
     );
   }
 
@@ -2806,14 +2844,22 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
           ..write('groupId: $groupId, ')
           ..write('groupHabitId: $groupHabitId, ')
           ..write('linkedAt: $linkedAt, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('uid: $uid')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, habitId, groupId, groupHabitId, linkedAt, lastSyncedAt);
+  int get hashCode => Object.hash(
+    id,
+    habitId,
+    groupId,
+    groupHabitId,
+    linkedAt,
+    lastSyncedAt,
+    uid,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2823,7 +2869,8 @@ class HabitGroupLink extends DataClass implements Insertable<HabitGroupLink> {
           other.groupId == this.groupId &&
           other.groupHabitId == this.groupHabitId &&
           other.linkedAt == this.linkedAt &&
-          other.lastSyncedAt == this.lastSyncedAt);
+          other.lastSyncedAt == this.lastSyncedAt &&
+          other.uid == this.uid);
 }
 
 class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
@@ -2833,6 +2880,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
   final Value<String> groupHabitId;
   final Value<DateTime> linkedAt;
   final Value<DateTime?> lastSyncedAt;
+  final Value<String?> uid;
   const HabitGroupLinksCompanion({
     this.id = const Value.absent(),
     this.habitId = const Value.absent(),
@@ -2840,6 +2888,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
     this.groupHabitId = const Value.absent(),
     this.linkedAt = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.uid = const Value.absent(),
   });
   HabitGroupLinksCompanion.insert({
     this.id = const Value.absent(),
@@ -2848,6 +2897,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
     required String groupHabitId,
     this.linkedAt = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
+    this.uid = const Value.absent(),
   }) : habitId = Value(habitId),
        groupId = Value(groupId),
        groupHabitId = Value(groupHabitId);
@@ -2858,6 +2908,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
     Expression<String>? groupHabitId,
     Expression<DateTime>? linkedAt,
     Expression<DateTime>? lastSyncedAt,
+    Expression<String>? uid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2866,6 +2917,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
       if (groupHabitId != null) 'group_habit_id': groupHabitId,
       if (linkedAt != null) 'linked_at': linkedAt,
       if (lastSyncedAt != null) 'last_synced_at': lastSyncedAt,
+      if (uid != null) 'uid': uid,
     });
   }
 
@@ -2876,6 +2928,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
     Value<String>? groupHabitId,
     Value<DateTime>? linkedAt,
     Value<DateTime?>? lastSyncedAt,
+    Value<String?>? uid,
   }) {
     return HabitGroupLinksCompanion(
       id: id ?? this.id,
@@ -2884,6 +2937,7 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
       groupHabitId: groupHabitId ?? this.groupHabitId,
       linkedAt: linkedAt ?? this.linkedAt,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      uid: uid ?? this.uid,
     );
   }
 
@@ -2908,6 +2962,9 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
     if (lastSyncedAt.present) {
       map['last_synced_at'] = Variable<DateTime>(lastSyncedAt.value);
     }
+    if (uid.present) {
+      map['uid'] = Variable<String>(uid.value);
+    }
     return map;
   }
 
@@ -2919,7 +2976,8 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
           ..write('groupId: $groupId, ')
           ..write('groupHabitId: $groupHabitId, ')
           ..write('linkedAt: $linkedAt, ')
-          ..write('lastSyncedAt: $lastSyncedAt')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('uid: $uid')
           ..write(')'))
         .toString();
   }
@@ -4817,6 +4875,7 @@ typedef $$HabitGroupLinksTableCreateCompanionBuilder =
       required String groupHabitId,
       Value<DateTime> linkedAt,
       Value<DateTime?> lastSyncedAt,
+      Value<String?> uid,
     });
 typedef $$HabitGroupLinksTableUpdateCompanionBuilder =
     HabitGroupLinksCompanion Function({
@@ -4826,6 +4885,7 @@ typedef $$HabitGroupLinksTableUpdateCompanionBuilder =
       Value<String> groupHabitId,
       Value<DateTime> linkedAt,
       Value<DateTime?> lastSyncedAt,
+      Value<String?> uid,
     });
 
 final class $$HabitGroupLinksTableReferences
@@ -4890,6 +4950,11 @@ class $$HabitGroupLinksTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$HabitsTableFilterComposer get habitId {
     final $$HabitsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -4948,6 +5013,11 @@ class $$HabitGroupLinksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get uid => $composableBuilder(
+    column: $table.uid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$HabitsTableOrderingComposer get habitId {
     final $$HabitsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4999,6 +5069,9 @@ class $$HabitGroupLinksTableAnnotationComposer
     column: $table.lastSyncedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get uid =>
+      $composableBuilder(column: $table.uid, builder: (column) => column);
 
   $$HabitsTableAnnotationComposer get habitId {
     final $$HabitsTableAnnotationComposer composer = $composerBuilder(
@@ -5060,6 +5133,7 @@ class $$HabitGroupLinksTableTableManager
                 Value<String> groupHabitId = const Value.absent(),
                 Value<DateTime> linkedAt = const Value.absent(),
                 Value<DateTime?> lastSyncedAt = const Value.absent(),
+                Value<String?> uid = const Value.absent(),
               }) => HabitGroupLinksCompanion(
                 id: id,
                 habitId: habitId,
@@ -5067,6 +5141,7 @@ class $$HabitGroupLinksTableTableManager
                 groupHabitId: groupHabitId,
                 linkedAt: linkedAt,
                 lastSyncedAt: lastSyncedAt,
+                uid: uid,
               ),
           createCompanionCallback:
               ({
@@ -5076,6 +5151,7 @@ class $$HabitGroupLinksTableTableManager
                 required String groupHabitId,
                 Value<DateTime> linkedAt = const Value.absent(),
                 Value<DateTime?> lastSyncedAt = const Value.absent(),
+                Value<String?> uid = const Value.absent(),
               }) => HabitGroupLinksCompanion.insert(
                 id: id,
                 habitId: habitId,
@@ -5083,6 +5159,7 @@ class $$HabitGroupLinksTableTableManager
                 groupHabitId: groupHabitId,
                 linkedAt: linkedAt,
                 lastSyncedAt: lastSyncedAt,
+                uid: uid,
               ),
           withReferenceMapper: (p0) => p0
               .map(
