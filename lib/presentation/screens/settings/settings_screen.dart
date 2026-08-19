@@ -138,26 +138,6 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               const _DefaultReminderTile(),
               const SizedBox(height: 24),
-              _SectionLabel('Data'),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showComingSoon(context, 'Export data'),
-                      child: const Text('Export Data'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showComingSoon(context, 'Import data'),
-                      child: const Text('Import Data'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
               _SectionLabel('About'),
               const SizedBox(height: 10),
               _NavTile(
@@ -217,12 +197,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
       ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is not available in this version yet')),
     );
   }
 
