@@ -59,3 +59,12 @@ macos/Runner/GoogleService-Info.plist
 *.pem
 *.p12
 secrets.json
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+
+# Cloud Functions
+functions/node_modules/
+functions/lib/
+firebase-debug.log
+firebase-debug.*.log

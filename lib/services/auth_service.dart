@@ -50,4 +50,26 @@ class AuthService {
       // lewat metode lain) — abaikan.
     }
   }
+
+  /// Menghapus akun Firebase Auth yang sedang login — dibutuhkan Play Store
+  /// account-deletion policy karena app ini mengizinkan pembuatan akun
+  /// (Google Sign-In). [beforeDelete] jalan dulu selagi user masih
+  /// ter-autentikasi (buat cleanup data terkait, mis. keluar dari
+  /// grup/hapus dokumen Firestore) — Firestore rules butuh `request.auth`
+  /// yang masih valid, jadi urutan ini penting.
+  ///
+  /// Firebase mewajibkan sesi "baru" untuk hapus akun; kalau sesi sudah
+  /// lama, re-auth sekali lewat Google Sign-In lalu retry.
+  Future<void> deleteAccount({required Future<void> Function() beforeDelete}) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) return;
+    await beforeDelete();
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code != 'requires-recent-login') rethrow;
+      await signInWithGoogle();
+      await _firebaseAuth.currentUser?.delete();
+    }
+  }
 }

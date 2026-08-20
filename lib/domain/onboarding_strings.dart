@@ -23,6 +23,36 @@ class OnboardingStrings {
   String get englishLabel => 'English';
   String get indonesianLabel => 'Bahasa Indonesia';
 
+  // Feature highlight step (intro carousel, between language pick and
+  // personal info).
+  List<String> get introTitles => _id
+      ? const [
+          'Catat progresmu dalam hitungan detik',
+          'Lihat konsistensimu sekilas pandang',
+          'Bertumbuh bersama teman',
+          'Rayakan setiap streak-mu',
+        ]
+      : const [
+          'Log your progress in seconds',
+          'See your consistency at a glance',
+          'Grow together with friends',
+          'Celebrate every streak',
+        ];
+  List<String> get introSubtitles => _id
+      ? const [
+          'Tap untuk selesaikan kebiasaan sederhana, atau tambahkan angka untuk yang kamu ukur.',
+          'Kalender bulanan dengan ring progress menunjukkan seberapa konsisten kamu selama ini.',
+          'Gabung Community, lacak kebiasaan bareng, dan naik di papan peringkat bersama.',
+          'Setiap hari kamu konsisten menambah streak-mu — langkah kecil yang berarti besar.',
+        ]
+      : const [
+          'Tap to check off simple habits, or add a quick number for the ones you measure.',
+          'A monthly calendar with progress rings shows exactly how consistent you\'ve been.',
+          'Join a Community group, track shared habits, and climb the leaderboard together.',
+          'Every day you show up adds to your streak — small steps that add up to real change.',
+        ];
+  String get getStarted => _t('Get Started', 'Mulai');
+
   // Personal info step.
   String get whatsYourName => _t('What\'s your name?', 'Siapa namamu?');
   String get soWeCanGreet =>

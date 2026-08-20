@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/repositories/community/community_repository.dart';
@@ -13,6 +15,7 @@ import '../domain/models/community/leaderboard_entry.dart';
 import '../services/auth_service.dart';
 import '../services/community_sync_service.dart';
 import '../services/entitlement_service.dart';
+import '../services/purchase_service.dart';
 import 'core_providers.dart';
 
 part 'community_providers.g.dart';
@@ -49,19 +52,67 @@ MockEntitlementService mockEntitlementService(Ref ref) {
 }
 
 @Riverpod(keepAlive: true)
-EntitlementService entitlementService(Ref ref) =>
-    ref.watch(mockEntitlementServiceProvider);
+IAPEntitlementService iapEntitlementService(Ref ref) {
+  final service = IAPEntitlementService(
+    ref.watch(firestoreProvider),
+    ref.watch(authServiceProvider).authStateChanges.map((user) => user?.uid),
+  );
+  ref.onDispose(service.dispose);
+  return service;
+}
+
+@Riverpod(keepAlive: true)
+LocalEntitlementService localEntitlementService(Ref ref) {
+  final service = LocalEntitlementService(ref.watch(sharedPreferencesProvider));
+  ref.onDispose(service.dispose);
+  return service;
+}
+
+/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
+/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
+/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
+/// di purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
+/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+@Riverpod(keepAlive: true)
+EntitlementService entitlementService(Ref ref) => kUseServerPurchaseVerification
+    ? ref.watch(iapEntitlementServiceProvider)
+    : ref.watch(localEntitlementServiceProvider);
+
+@Riverpod(keepAlive: true)
+PurchaseService purchaseService(Ref ref) {
+  final service = PurchaseService(
+    InAppPurchase.instance,
+    FirebaseFunctions.instance,
+    onLocalGrant: kUseServerPurchaseVerification
+        ? null
+        : (productId) => ref.read(localEntitlementServiceProvider).grant(productId),
+  )..init();
+  ref.onDispose(service.dispose);
+  return service;
+}
+
+/// Purchase-flow errors (cancelled, failed, verification rejected, dsb) —
+/// diwatch dari UI yang memicu pembelian buat nampilin snackbar.
+@riverpod
+Stream<String> purchaseErrors(Ref ref) => ref.watch(purchaseServiceProvider).purchaseErrors;
 
 /// Status Pro reaktif — dipakai seluruh entry point Community (tab
 /// navigasi, deep link invite, dst). Toggle debug ada di Settings.
 @riverpod
 class IsPro extends _$IsPro {
   @override
-  bool build() => ref.watch(entitlementServiceProvider).isPro;
+  bool build() {
+    final service = ref.watch(entitlementServiceProvider);
+    final subscription = service.isProChanges.listen((value) => state = value);
+    ref.onDispose(subscription.cancel);
+    return service.isPro;
+  }
 
+  /// Cuma dipakai debug toggle — flow production update state lewat stream
+  /// Firestore di [IAPEntitlementService], bukan lewat method ini.
   Future<void> setPro(bool value) async {
     await ref.read(mockEntitlementServiceProvider).setPro(value);
-    state = value;
   }
 }
 

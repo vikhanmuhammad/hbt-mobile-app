@@ -214,8 +214,118 @@ final class MockEntitlementServiceProvider
 String _$mockEntitlementServiceHash() =>
     r'a49706f1e794e7f1b9d7e667af9dbb9bb929e5b6';
 
+@ProviderFor(iapEntitlementService)
+final iapEntitlementServiceProvider = IapEntitlementServiceProvider._();
+
+final class IapEntitlementServiceProvider
+    extends
+        $FunctionalProvider<
+          IAPEntitlementService,
+          IAPEntitlementService,
+          IAPEntitlementService
+        >
+    with $Provider<IAPEntitlementService> {
+  IapEntitlementServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'iapEntitlementServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$iapEntitlementServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<IAPEntitlementService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  IAPEntitlementService create(Ref ref) {
+    return iapEntitlementService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(IAPEntitlementService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<IAPEntitlementService>(value),
+    );
+  }
+}
+
+String _$iapEntitlementServiceHash() =>
+    r'e8e3e7611397bc4e3081a89aa9acc08f01e4b226';
+
+@ProviderFor(localEntitlementService)
+final localEntitlementServiceProvider = LocalEntitlementServiceProvider._();
+
+final class LocalEntitlementServiceProvider
+    extends
+        $FunctionalProvider<
+          LocalEntitlementService,
+          LocalEntitlementService,
+          LocalEntitlementService
+        >
+    with $Provider<LocalEntitlementService> {
+  LocalEntitlementServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'localEntitlementServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$localEntitlementServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LocalEntitlementService> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  LocalEntitlementService create(Ref ref) {
+    return localEntitlementService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LocalEntitlementService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LocalEntitlementService>(value),
+    );
+  }
+}
+
+String _$localEntitlementServiceHash() =>
+    r'2c541fe214f115a5c6e85bc49a96f4e31f289b4f';
+
+/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
+/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
+/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
+/// di purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
+/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+
 @ProviderFor(entitlementService)
 final entitlementServiceProvider = EntitlementServiceProvider._();
+
+/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
+/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
+/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
+/// di purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
+/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
 
 final class EntitlementServiceProvider
     extends
@@ -225,6 +335,12 @@ final class EntitlementServiceProvider
           EntitlementService
         >
     with $Provider<EntitlementService> {
+  /// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
+  /// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
+  /// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
+  /// di purchase_service.dart, provider ini otomatis switch ke
+  /// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
+  /// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
   EntitlementServiceProvider._()
     : super(
         from: null,
@@ -260,7 +376,90 @@ final class EntitlementServiceProvider
 }
 
 String _$entitlementServiceHash() =>
-    r'cc1ab29d6d65e558447801a3de0e943231e76f02';
+    r'1078a6c6c0e5ddbaa69bb63161af533d43cd37ca';
+
+@ProviderFor(purchaseService)
+final purchaseServiceProvider = PurchaseServiceProvider._();
+
+final class PurchaseServiceProvider
+    extends
+        $FunctionalProvider<PurchaseService, PurchaseService, PurchaseService>
+    with $Provider<PurchaseService> {
+  PurchaseServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'purchaseServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$purchaseServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<PurchaseService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PurchaseService create(Ref ref) {
+    return purchaseService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PurchaseService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PurchaseService>(value),
+    );
+  }
+}
+
+String _$purchaseServiceHash() => r'40ff218eb7246cf961f39227119d65789b3c35dd';
+
+/// Purchase-flow errors (cancelled, failed, verification rejected, dsb) —
+/// diwatch dari UI yang memicu pembelian buat nampilin snackbar.
+
+@ProviderFor(purchaseErrors)
+final purchaseErrorsProvider = PurchaseErrorsProvider._();
+
+/// Purchase-flow errors (cancelled, failed, verification rejected, dsb) —
+/// diwatch dari UI yang memicu pembelian buat nampilin snackbar.
+
+final class PurchaseErrorsProvider
+    extends $FunctionalProvider<AsyncValue<String>, String, Stream<String>>
+    with $FutureModifier<String>, $StreamProvider<String> {
+  /// Purchase-flow errors (cancelled, failed, verification rejected, dsb) —
+  /// diwatch dari UI yang memicu pembelian buat nampilin snackbar.
+  PurchaseErrorsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'purchaseErrorsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$purchaseErrorsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<String> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<String> create(Ref ref) {
+    return purchaseErrors(ref);
+  }
+}
+
+String _$purchaseErrorsHash() => r'1ed2861f21720908ffa7696cb5a064963e8facb1';
 
 /// Status Pro reaktif — dipakai seluruh entry point Community (tab
 /// navigasi, deep link invite, dst). Toggle debug ada di Settings.
@@ -300,7 +499,7 @@ final class IsProProvider extends $NotifierProvider<IsPro, bool> {
   }
 }
 
-String _$isProHash() => r'93388a81a19cff4fac43f6518eda5e152cc66f6c';
+String _$isProHash() => r'ef90d814a5018f2e6eaecda08d302ad88bdf8fe1';
 
 /// Status Pro reaktif — dipakai seluruh entry point Community (tab
 /// navigasi, deep link invite, dst). Toggle debug ada di Settings.

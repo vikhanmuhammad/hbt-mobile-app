@@ -167,6 +167,20 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Share',
                 onTap: () => _shareApp(context),
               ),
+              const SizedBox(height: 10),
+              _NavTile(
+                icon: Icons.restore_rounded,
+                label: 'Restore Purchases',
+                onTap: () => _restorePurchases(context, ref),
+              ),
+              if (ref.watch(currentUidProvider) != null) ...[
+                const SizedBox(height: 10),
+                _NavTile(
+                  icon: Icons.person_remove_outlined,
+                  label: 'Delete Account',
+                  onTap: () => _deleteAccount(context, ref),
+                ),
+              ],
               const SizedBox(height: 24),
               Card(
                 child: Padding(
@@ -225,6 +239,91 @@ class SettingsScreen extends ConsumerWidget {
         subject: 'Habit Tracker',
       ),
     );
+  }
+
+  /// Re-syncs Pro entitlement from Play Billing without a new purchase —
+  /// required by Play Store policy, and covers reinstall/new-device cases.
+  /// Actual `isPro` update still flows through Cloud Functions verification,
+  /// not this call directly (see `IAPEntitlementService`), so the result
+  /// only shows up after that round-trip completes.
+  Future<void> _restorePurchases(BuildContext context, WidgetRef ref) async {
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in first to restore purchases.')),
+      );
+      return;
+    }
+    await ref.read(purchaseServiceProvider).restorePurchases(uid: uid);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Restoring purchases…')),
+      );
+    }
+  }
+
+  /// Play Store account-deletion policy: apps that let users create an
+  /// account (Google Sign-In here) must offer in-app deletion, not just
+  /// sign-out. Leaves every Community group first (best-effort — a group
+  /// where this user is the sole admin may reject it, ignored so account
+  /// deletion still proceeds) and drops the Pro entitlement doc, all while
+  /// still authenticated, then deletes the Firebase Auth account itself.
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes your Community account — group memberships, chat '
+          'history, and Pro entitlement tied to it. Your local habit data on this device '
+          'is not affected. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete Account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+
+    try {
+      await ref.read(authServiceProvider).deleteAccount(
+        beforeDelete: () async {
+          final repo = ref.read(communityRepositoryProvider);
+          final groups = await ref.read(myGroupsProvider.future);
+          for (final group in groups) {
+            try {
+              await repo.leaveGroup(groupId: group.id, uid: uid);
+            } catch (_) {
+              // Best-effort — e.g. sole admin of a group. Account deletion
+              // still proceeds either way.
+            }
+          }
+          await ref.read(firestoreProvider).collection('users').doc(uid).delete();
+        },
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account deleted.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete account: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _confirmResetDemo(BuildContext context, WidgetRef ref) async {

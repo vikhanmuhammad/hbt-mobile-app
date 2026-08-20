@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../../providers/community_providers.dart';
 
@@ -9,10 +10,10 @@ import '../../providers/community_providers.dart';
 /// Finance) — different from [showProRequiredDialog], which only blocks 1
 /// specific action (e.g. picking the Finance category, adding the 6th habit).
 /// Shows a blurred preview of what the unlocked feature looks like behind a
-/// frosted overlay, a short benefits list, and an "Upgrade to Pro" button.
-/// Real Play Store/App Store billing isn't wired up yet — the button just
-/// flips the local entitlement flag (see `EntitlementService`) — but no
-/// user-facing copy should say so; that's an internal implementation detail.
+/// frosted overlay, a short benefits list, and an "Upgrade to Pro" button
+/// that opens the real Play Billing purchase flow (`PurchaseService`) — Pro
+/// only unlocks once Cloud Functions verify the purchase server-side and
+/// update `users/{uid}` in Firestore, which [IAPEntitlementService] streams.
 class ProFeatureTeaser extends ConsumerWidget {
   const ProFeatureTeaser({
     super.key,
@@ -36,6 +37,12 @@ class ProFeatureTeaser extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    ref.listen(purchaseErrorsProvider, (previous, next) {
+      final message = next.asData?.value;
+      if (message != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      }
+    });
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -116,12 +123,98 @@ class ProFeatureTeaser extends ConsumerWidget {
   }
 
   Future<void> _upgrade(BuildContext context, WidgetRef ref) async {
-    ref.read(isProProvider.notifier).setPro(true);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pro unlocked — welcome aboard!')),
-      );
+    var uid = ref.read(currentUidProvider);
+    if (uid == null) {
+      // Purchasing requires an account (to attribute the purchase), but the
+      // Pro paywall is often the first thing a not-yet-signed-in user sees —
+      // sign them in here instead of dead-ending with an error, so "Upgrade
+      // to Pro" alone is enough to get through the whole flow.
+      try {
+        final user = await ref.read(authServiceProvider).signInWithGoogle();
+        uid = user?.uid;
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Sign-in failed: $e')),
+          );
+        }
+        return;
+      }
+      if (uid == null) return;
     }
+
+    final purchaseService = ref.read(purchaseServiceProvider);
+    List<ProductDetails> products;
+    try {
+      products = await purchaseService.queryProducts();
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not load subscription plans. Try again later.')),
+        );
+      }
+      return;
+    }
+    if (products.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No subscription plans available right now.')),
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+    final selected = await showModalBottomSheet<ProductDetails>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ProPlanSheet(products: products),
+    );
+    if (selected == null) return;
+
+    await purchaseService.buy(selected, uid: uid);
+  }
+}
+
+/// Bottom sheet listing the live subscription plans (title/price straight
+/// from Play Billing via [ProductDetails] — never hardcoded, Play Console is
+/// the source of truth for pricing).
+class _ProPlanSheet extends StatelessWidget {
+  const _ProPlanSheet({required this.products});
+
+  final List<ProductDetails> products;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Choose your plan', style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            for (final product in products)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(product),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: Column(
+                    children: [
+                      Text(product.title, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(product.price, style: theme.textTheme.bodyMedium),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

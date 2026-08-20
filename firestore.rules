@@ -109,5 +109,14 @@ service cloud.firestore {
         allow update, delete: if false;
       }
     }
+
+    // Pro entitlement status, verified server-side against the Play
+    // Developer API by Cloud Functions (verifyPurchase / onPlayRTDN) — the
+    // client can read its own status but never write it directly, so Pro
+    // can't be spoofed by writing to Firestore from the app.
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
   }
 }

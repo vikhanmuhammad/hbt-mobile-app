@@ -21,6 +21,7 @@ import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/dashed_border.dart';
+import '../../widgets/daily_progress_ring.dart';
 import '../../widgets/finance_preview_mock.dart';
 import '../../widgets/habit_curve_chart.dart';
 import '../../widgets/habit_icon.dart';
@@ -72,8 +73,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
 
   /// Total onboarding pages, matching the `PageView.children` list below
   /// 1:1 — drives the overall progress bar shown above every step. +1 for
-  /// the language pick step (point 4) at index 0.
-  int get _totalSteps => 1 + 1 + lifestyleQuestions.length + 1 + 1 + 1 + 1;
+  /// the language pick step (point 4) at index 0, +1 for the feature
+  /// highlight carousel at index 1.
+  int get _totalSteps => 1 + 1 + 1 + lifestyleQuestions.length + 1 + 1 + 1 + 1;
 
   @override
   Widget build(BuildContext context) {
@@ -129,10 +131,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   physics: const NeverScrollableScrollPhysics(),
                   children: [
                     _LanguagePickStep(onNext: () => _goTo(1)),
+                    _FeatureHighlightStep(onNext: () => _goTo(2)),
                     _PersonalInfoStep(
                       nameController: _nameController,
                       ageController: _ageController,
-                      onNext: () => _goTo(2),
+                      onNext: () => _goTo(3),
                     ),
                     for (var i = 0; i < lifestyleQuestions.length; i++)
                       _LifestyleQuestionStep(
@@ -145,13 +148,13 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                           () => _lifestyleAnswers[lifestyleQuestions[i].key] =
                               answer,
                         ),
-                        onBack: () => _goTo(i + 1),
-                        onNext: () => _goTo(i + 3),
-                        onSkip: () => _goTo(i + 3),
+                        onBack: () => _goTo(i + 2),
+                        onNext: () => _goTo(i + 4),
+                        onSkip: () => _goTo(i + 4),
                       ),
                     _EducationStep(
-                      onBack: () => _goTo(4),
-                      onNext: () => _goTo(6),
+                      onBack: () => _goTo(5),
+                      onNext: () => _goTo(7),
                     ),
                     _GoalPhrasePickStep(
                       selected: _selectedCategoryIds,
@@ -164,8 +167,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                       }),
                       onCategoriesChanged: (ids) =>
                           setState(() => _selectedCategoryIds.addAll(ids)),
-                      onBack: () => _goTo(5),
-                      onNext: () => _goTo(7),
+                      onBack: () => _goTo(6),
+                      onNext: () => _goTo(8),
                     ),
                     _RecommendationStep(
                       selectedCategoryIds: _selectedCategoryIds,
@@ -190,11 +193,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                           set.remove(template);
                         }
                       }),
-                      onBack: () => _goTo(6),
-                      onNext: () => _goTo(8),
+                      onBack: () => _goTo(7),
+                      onNext: () => _goTo(9),
                     ),
                     _SummaryStep(
-                      onBack: () => _goTo(7),
+                      onBack: () => _goTo(8),
                       onFinish: _completeOnboarding,
                       onRemoveHabit: _removeHabit,
                     ),
@@ -320,7 +323,10 @@ class _LanguagePickStep extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
         children: [
-          Text('Choose your language / Pilih bahasa', style: theme.textTheme.headlineMedium),
+          Text(
+            'Choose your language / Pilih bahasa',
+            style: theme.textTheme.headlineMedium,
+          ),
           const SizedBox(height: 10),
           Text(
             'This only changes the questions during setup — the rest of the app stays in '
@@ -332,13 +338,15 @@ class _LanguagePickStep extends ConsumerWidget {
           _OptionTile(
             label: 'English',
             selected: selected == OnboardingLang.en,
-            onTap: () => ref.read(introLanguageProvider.notifier).state = OnboardingLang.en,
+            onTap: () => ref.read(introLanguageProvider.notifier).state =
+                OnboardingLang.en,
           ),
           const SizedBox(height: 10),
           _OptionTile(
             label: 'Bahasa Indonesia',
             selected: selected == OnboardingLang.id,
-            onTap: () => ref.read(introLanguageProvider.notifier).state = OnboardingLang.id,
+            onTap: () => ref.read(introLanguageProvider.notifier).state =
+                OnboardingLang.id,
           ),
           const SizedBox(height: 28),
           SizedBox(
@@ -351,12 +359,826 @@ class _LanguagePickStep extends ConsumerWidget {
           ),
         ],
       ),
-      bottomButton: ElevatedButton(onPressed: onNext, child: const Text('Next / Lanjut')),
+      bottomButton: ElevatedButton(
+        onPressed: onNext,
+        child: const Text('Next / Lanjut'),
+      ),
     );
   }
 }
 
-/// Step 1 (no progress bar): name (required) + age (optional) + gender.
+/// Step 1: feature highlight carousel — a swipeable mini-carousel of 4
+/// slides pairing a headline with a small mock preview of a real app screen
+/// (quick logging, calendar glance, Community, streaks). Pure marketing, no
+/// data collected — like `_LanguagePickStep` there's no "Back"; "Skip" jumps
+/// straight past all 4 slides to Personal Info. Copy follows the language
+/// chosen in step 0 via `OnboardingStrings`.
+class _FeatureHighlightStep extends ConsumerStatefulWidget {
+  const _FeatureHighlightStep({required this.onNext});
+
+  final VoidCallback onNext;
+
+  @override
+  ConsumerState<_FeatureHighlightStep> createState() =>
+      _FeatureHighlightStepState();
+}
+
+class _FeatureHighlightStepState extends ConsumerState<_FeatureHighlightStep> {
+  final _introController = PageController();
+  int _introIndex = 0;
+
+  static const _mocks = [
+    _HabitDetailScreenMock(),
+    _CalendarScreenMock(),
+    _CommunityScreenMock(),
+    _HomeStreakScreenMock(),
+  ];
+
+  @override
+  void dispose() {
+    _introController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lang = OnboardingStrings(ref.watch(introLanguageProvider));
+    final titles = lang.introTitles;
+    final subtitles = lang.introSubtitles;
+    final isLast = _introIndex == _mocks.length - 1;
+
+    return _StepScaffold(
+      topBar: Align(
+        alignment: Alignment.centerRight,
+        child: TextButton(onPressed: widget.onNext, child: Text(lang.skip)),
+      ),
+      child: PageView.builder(
+        controller: _introController,
+        itemCount: _mocks.length,
+        onPageChanged: (i) => setState(() => _introIndex = i),
+        itemBuilder: (context, i) => _FeatureSlide(
+          title: titles[i],
+          subtitle: subtitles[i],
+          mock: _mocks[i],
+        ),
+      ),
+      bottomButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < _mocks.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: i == _introIndex ? 22 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: i == _introIndex
+                        ? theme.colorScheme.primary
+                        : theme.dividerColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              if (isLast) {
+                widget.onNext();
+              } else {
+                _introController.animateToPage(
+                  _introIndex + 1,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            },
+            child: Text(isLast ? lang.getStarted : lang.next),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One feature-highlight slide: headline + subtitle + mock preview, each
+/// fading/sliding in with a slight stagger (mirrors the reference video's
+/// entrance animation) — replays every time the slide scrolls into view.
+class _FeatureSlide extends StatelessWidget {
+  const _FeatureSlide({
+    required this.title,
+    required this.subtitle,
+    required this.mock,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget mock;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      children: [
+        FadeSlideIn(
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.headlineMedium,
+          ),
+        ),
+        const SizedBox(height: 10),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 80),
+          child: Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
+        const SizedBox(height: 32),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 160),
+          duration: const Duration(milliseconds: 450),
+          child: mock,
+        ),
+      ],
+    );
+  }
+}
+
+/// Wraps a mock screen so onboarding's feature highlights read as
+/// screenshots of the real app rather than isolated snippets — border +
+/// shadow + a small top notch, no OS chrome.
+class _PhoneFrame extends StatelessWidget {
+  const _PhoneFrame({required this.child});
+
+  final Widget child;
+
+  /// Fixed (not aspect-ratio-derived) so every slide's content — including
+  /// the tallest one (slide 1's quick-add chips) — reliably fits without
+  /// silently clipping in release mode, where overflow shows no debug
+  /// warning stripes.
+  static const _height = 460.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: SizedBox(
+        width: 300,
+        height: _height,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: theme.dividerColor, width: 6),
+            color: theme.scaffoldBackgroundColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned.fill(child: child),
+              Positioned(
+                top: 8,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    width: 60,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: theme.dividerColor,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Slide 1 mock: a screenshot-style recreation of the single-habit quick-log
+/// screen (§6.2's stepper/quick-add pattern). Plays a one-shot animation —
+/// the "+200" chip highlights, then the number and glass fill rise — as if
+/// the feature had just been tapped.
+class _HabitDetailScreenMock extends StatefulWidget {
+  const _HabitDetailScreenMock();
+
+  @override
+  State<_HabitDetailScreenMock> createState() => _HabitDetailScreenMockState();
+}
+
+class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
+  static const _goal = 2000;
+  int _value = 1200;
+  bool _chipActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      setState(() => _chipActive = true);
+    });
+    Future.delayed(const Duration(milliseconds: 750), () {
+      if (!mounted) return;
+      setState(() => _value = 1400);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _PhoneFrame(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 14,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+                const Spacer(),
+                const HabitIcon(
+                  icon: 'glass-water',
+                  size: 14,
+                  color: Colors.blue,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Drink Water',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.more_horiz_rounded,
+                  size: 16,
+                  color: theme.textTheme.bodySmall?.color,
+                ),
+              ],
+            ),
+            const Spacer(),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _value.toDouble()),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+              builder: (context, value, _) => RichText(
+                text: TextSpan(
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                  children: [
+                    TextSpan(text: '${value.round()}'),
+                    TextSpan(text: ' ml', style: theme.textTheme.titleSmall),
+                  ],
+                ),
+              ),
+            ),
+            Text('/$_goal ml', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 18),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: _value / _goal),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOut,
+              builder: (context, ratio, _) => Container(
+                width: 64,
+                height: 92,
+                clipBehavior: Clip.antiAlias,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.blue.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: FractionallySizedBox(
+                    heightFactor: ratio.clamp(0.0, 1.0),
+                    child: Container(
+                      color: Colors.blue.withValues(alpha: 0.55),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final amount in const ['+200', '+500', '+1000'])
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: AnimatedScale(
+                      scale: amount == '+200' && _chipActive ? 1.12 : 1.0,
+                      duration: const Duration(milliseconds: 250),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: amount == '+200' && _chipActive
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          amount,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: amount == '+200' && _chipActive
+                                ? Colors.white
+                                : theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Reused by slide 4's home mock: a `HabitCard`-style row showing the app's
+/// 2 progress states (§6.2) — partial fill for in-progress, solid +
+/// checkmark for done.
+class _MockHabitRow extends StatelessWidget {
+  const _MockHabitRow({
+    required this.icon,
+    required this.name,
+    required this.progressLabel,
+    required this.progress,
+    required this.color,
+    required this.done,
+  });
+
+  final String icon;
+  final String name;
+  final String progressLabel;
+  final double progress;
+  final Color color;
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 64,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: theme.cardColor),
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 700),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: value,
+                child: Container(
+                  color: color.withValues(alpha: done ? 0.28 : 0.16),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: HabitIcon(
+                        icon: icon,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(name, style: theme.textTheme.titleSmall),
+                        Text(progressLabel, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    done
+                        ? Icons.check_circle_rounded
+                        : Icons.chevron_right_rounded,
+                    color: done ? color : theme.textTheme.bodySmall?.color,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Slide 2 mock: a screenshot-style recreation of the History/Kalender
+/// screen (§7) — a week strip of dates plus the real `DailyProgressRing`.
+/// One-shot: the selected date and ring both animate to a new value once,
+/// as if a different date had just been tapped.
+class _CalendarScreenMock extends StatefulWidget {
+  const _CalendarScreenMock();
+
+  @override
+  State<_CalendarScreenMock> createState() => _CalendarScreenMockState();
+}
+
+class _CalendarScreenMockState extends State<_CalendarScreenMock> {
+  static const _labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  static const _dates = [16, 17, 18, 19, 20, 21, 22];
+  static const _filled = [true, true, true, true, false, false, false];
+
+  int _selected = 3;
+  int _done = 4;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _selected = 4;
+        _done = 6;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _PhoneFrame(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'August 2026',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                for (var i = 0; i < _labels.length; i++)
+                  _DateCell(
+                    label: _labels[i],
+                    date: _dates[i],
+                    selected: i == _selected,
+                    filled: _filled[i] || i == _selected,
+                  ),
+              ],
+            ),
+            const Spacer(),
+            Center(
+              child: DailyProgressRing(
+                done: _done,
+                total: 7,
+                size: 116,
+                centerSubLabel: 'habits done',
+              ),
+            ),
+            const Spacer(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DateCell extends StatelessWidget {
+  const _DateCell({
+    required this.label,
+    required this.date,
+    required this.selected,
+    required this.filled,
+  });
+
+  final String label;
+  final int date;
+  final bool selected;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        Text(label, style: theme.textTheme.labelSmall),
+        const SizedBox(height: 6),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          width: 30,
+          height: 30,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected
+                ? theme.colorScheme.primary
+                : filled
+                ? theme.colorScheme.primary.withValues(alpha: 0.18)
+                : Colors.transparent,
+            border: selected ? null : Border.all(color: theme.dividerColor),
+          ),
+          child: Text(
+            '$date',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: selected ? Colors.white : theme.textTheme.bodySmall?.color,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Slide 3 mock: a screenshot-style recreation of a Community group's
+/// leaderboard (§14). One-shot: "You"'s progress bar animates up once, as
+/// if progress had just synced in.
+class _CommunityScreenMock extends StatefulWidget {
+  const _CommunityScreenMock();
+
+  @override
+  State<_CommunityScreenMock> createState() => _CommunityScreenMockState();
+}
+
+class _CommunityScreenMockState extends State<_CommunityScreenMock> {
+  double _youProgress = 0.45;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() => _youProgress = 0.9);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final members = [
+      (name: 'You', color: theme.colorScheme.primary, progress: _youProgress),
+      (name: 'Alex', color: Colors.orange, progress: 0.72),
+      (name: 'Sam', color: Colors.teal, progress: 0.58),
+    ];
+    return _PhoneFrame(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                HabitIcon(
+                  icon: 'people-group',
+                  size: 14,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Study Group',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Reading — Weekly Leaderboard',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 22),
+            for (var i = 0; i < members.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _MemberRow(rank: i + 1, member: members[i]),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({required this.rank, required this.member});
+
+  final int rank;
+  final ({String name, Color color, double progress}) member;
+
+  static const _rankColors = [Colors.amber, Colors.blueGrey, Colors.brown];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _rankColors[rank - 1],
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '$rank',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: member.color,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                member.name[0],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(member.name, style: theme.textTheme.labelLarge),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: member.progress),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOut,
+            builder: (context, value, _) => LinearProgressIndicator(
+              value: value,
+              minHeight: 6,
+              backgroundColor: theme.dividerColor,
+              valueColor: AlwaysStoppedAnimation(member.color),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Slide 4 mock: a screenshot-style recreation of the Beranda flat-list
+/// (§6), reusing `_MockHabitRow`. One-shot: the top row flips from
+/// in-progress to done, with the header streak count ticking up, as if it
+/// had just been checked off.
+class _HomeStreakScreenMock extends StatefulWidget {
+  const _HomeStreakScreenMock();
+
+  @override
+  State<_HomeStreakScreenMock> createState() => _HomeStreakScreenMockState();
+}
+
+class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
+  bool _yogaDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 650), () {
+      if (!mounted) return;
+      setState(() => _yogaDone = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return _PhoneFrame(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'Today',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.local_fire_department_rounded,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _yogaDone ? '20' : '19',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _MockHabitRow(
+              icon: 'person-running',
+              name: 'Yoga',
+              progressLabel: _yogaDone ? '20 day streak' : '19 day streak',
+              progress: _yogaDone ? 1 : 0.85,
+              color: theme.colorScheme.primary,
+              done: _yogaDone,
+            ),
+            const SizedBox(height: 12),
+            const _MockHabitRow(
+              icon: 'glass-water',
+              name: 'Drink Water',
+              progressLabel: '6 day streak',
+              progress: 1,
+              color: Colors.blue,
+              done: true,
+            ),
+            const SizedBox(height: 12),
+            const _MockHabitRow(
+              icon: 'spa',
+              name: 'Meditation',
+              progressLabel: 'Not started',
+              progress: 0,
+              color: Colors.deepPurple,
+              done: false,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Step 2 (no progress bar): name (required) + age (optional) + gender.
 /// CLAUDE.md v3 §4.1 step 2. The gender dropdown replaces an earlier
 /// "Choose your goals" dropdown that was effectively dead — the real goal
 /// phrase selection happens later in `_GoalPhrasePickStep` (point 1).
@@ -381,7 +1203,9 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
   @override
   void initState() {
     super.initState();
-    _selectedGender = Gender.fromValue(ref.read(settingsRepositoryProvider).gender);
+    _selectedGender = Gender.fromValue(
+      ref.read(settingsRepositoryProvider).gender,
+    );
   }
 
   @override
@@ -399,7 +1223,9 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
           const SizedBox(height: 24),
           Text(
             lang.nameLabel,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           TextField(
@@ -410,7 +1236,9 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
           const SizedBox(height: 16),
           Text(
             lang.ageLabel,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           TextField(
@@ -421,7 +1249,9 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
           const SizedBox(height: 16),
           Text(
             lang.genderLabel,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           DropdownButtonFormField<Gender>(
@@ -513,7 +1343,8 @@ class _LifestyleQuestionStep extends StatelessWidget {
       builder: (context, ref, _) {
         final theme = Theme.of(context);
         final lang = OnboardingStrings(ref.watch(introLanguageProvider));
-        final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
+        final indonesian =
+            ref.watch(introLanguageProvider) == OnboardingLang.id;
         final options = question.optionsFor(indonesian);
         return _StepScaffold(
           topBar: Align(
@@ -523,7 +1354,10 @@ class _LifestyleQuestionStep extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
             children: [
-              Text(question.promptFor(indonesian), style: theme.textTheme.headlineMedium),
+              Text(
+                question.promptFor(indonesian),
+                style: theme.textTheme.headlineMedium,
+              ),
               const SizedBox(height: 20),
               for (var i = 0; i < options.length; i++)
                 Padding(
@@ -542,7 +1376,8 @@ class _LifestyleQuestionStep extends StatelessWidget {
                 height: 200,
                 width: double.infinity,
                 child: Undraw(
-                  illustration: _illustrations[(stepIndex - 1) % _illustrations.length],
+                  illustration:
+                      _illustrations[(stepIndex - 1) % _illustrations.length],
                   color: theme.colorScheme.primary,
                 ),
               ),
@@ -551,7 +1386,10 @@ class _LifestyleQuestionStep extends StatelessWidget {
           bottomButton: Row(
             children: [
               Expanded(
-                child: OutlinedButton(onPressed: onBack, child: Text(lang.back)),
+                child: OutlinedButton(
+                  onPressed: onBack,
+                  child: Text(lang.back),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -706,11 +1544,17 @@ class _EducationStep extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(_habitTips[i].icon, size: 18, color: theme.colorScheme.primary),
+                  Icon(
+                    _habitTips[i].icon,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      i < lang.habitTips.length ? lang.habitTips[i] : _habitTips[i].text,
+                      i < lang.habitTips.length
+                          ? lang.habitTips[i]
+                          : _habitTips[i].text,
                       style: theme.textTheme.bodyLarge,
                     ),
                   ),
@@ -765,15 +1609,9 @@ class _GoalPhrasePickStep extends ConsumerWidget {
         data: (categories) => ListView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
           children: [
-            Text(
-              lang.chooseHabitsTitle,
-              style: theme.textTheme.headlineSmall,
-            ),
+            Text(lang.chooseHabitsTitle, style: theme.textTheme.headlineSmall),
             const SizedBox(height: 6),
-            Text(
-              lang.pickOneOrMoreGoals,
-              style: theme.textTheme.bodyLarge,
-            ),
+            Text(lang.pickOneOrMoreGoals, style: theme.textTheme.bodyLarge),
             const SizedBox(height: 20),
             GridView.builder(
               shrinkWrap: true,
@@ -979,7 +1817,11 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
   /// user can't check more than 5 habits total during onboarding — mirrors
   /// the Add Habit flow's `_blockedByFreeHabitLimit`, which only covers
   /// habits added after onboarding via that screen.
-  void _handleToggle(int categoryId, HabitTemplate template, bool isCurrentlySelected) {
+  void _handleToggle(
+    int categoryId,
+    HabitTemplate template,
+    bool isCurrentlySelected,
+  ) {
     if (isCurrentlySelected || ref.read(isProProvider)) {
       widget.onToggleTemplate(categoryId, template);
       return;
@@ -987,15 +1829,22 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
 
     final activeHabits = ref.read(allActiveHabitsProvider).value ?? const [];
     final nonOnboardingActiveCount =
-        (activeHabits.length - widget.createdHabitIds.length).clamp(0, activeHabits.length);
-    final currentlySelectedCount =
-        widget.selectedTemplates.values.fold<int>(0, (sum, set) => sum + set.length);
+        (activeHabits.length - widget.createdHabitIds.length).clamp(
+          0,
+          activeHabits.length,
+        );
+    final currentlySelectedCount = widget.selectedTemplates.values.fold<int>(
+      0,
+      (sum, set) => sum + set.length,
+    );
     final wouldBeSelectedCount = currentlySelectedCount + 1;
 
-    if (nonOnboardingActiveCount + wouldBeSelectedCount > _onboardingFreeHabitLimit) {
+    if (nonOnboardingActiveCount + wouldBeSelectedCount >
+        _onboardingFreeHabitLimit) {
       showProRequiredDialog(
         context,
-        message: 'You\'ve reached the $_onboardingFreeHabitLimit active habit limit for '
+        message:
+            'You\'ve reached the $_onboardingFreeHabitLimit active habit limit for '
             'Free users. Upgrade to Pro to add unlimited habits.',
       );
       return;
@@ -1042,7 +1891,8 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                             builder: (_) => ProFeatureTeaser(
                               icon: Icons.workspace_premium_rounded,
                               title: 'Habit Tracker Pro',
-                              description: 'Unlock unlimited habits, the Finance tracker, and '
+                              description:
+                                  'Unlock unlimited habits, the Finance tracker, and '
                                   'Community leaderboards.',
                               benefits: const [
                                 'No limit on active habits (Free is capped at 5)',
@@ -1052,16 +1902,16 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                             ),
                           ),
                         ),
-                        icon: const Icon(Icons.workspace_premium_rounded, size: 16),
+                        icon: const Icon(
+                          Icons.workspace_premium_rounded,
+                          size: 16,
+                        ),
                         label: Text(lang.upgradeToPro),
                       ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  lang.checkHabitsYouWant,
-                  style: theme.textTheme.bodyLarge,
-                ),
+                Text(lang.checkHabitsYouWant, style: theme.textTheme.bodyLarge),
                 const SizedBox(height: 20),
                 for (final category in selectedCategories) ...[
                   Row(
@@ -1118,7 +1968,8 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                   'Daily spending trend chart so you can spot patterns early',
                                   'Per-habit breakdown to see exactly where your money goes',
                                 ],
-                                previewBuilder: (context) => const FinancePreviewMock(),
+                                previewBuilder: (context) =>
+                                    const FinancePreviewMock(),
                               ),
                             ),
                           ),
@@ -1169,7 +2020,11 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                                 'amount) are Pro-only. Upgrade to Pro to '
                                                 'start tracking them.',
                                           )
-                                        : () => _handleToggle(category.id, t, selectedSet.contains(t)),
+                                        : () => _handleToggle(
+                                            category.id,
+                                            t,
+                                            selectedSet.contains(t),
+                                          ),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 16,
@@ -1215,8 +2070,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   t.goalLabel,
-                                                  style:
-                                                      theme.textTheme.bodyMedium,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodyMedium,
                                                 ),
                                               ],
                                             ),
@@ -1400,7 +2256,9 @@ class _FinanceLockedPreview extends StatelessWidget {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.45)),
+              child: Container(
+                color: theme.scaffoldBackgroundColor.withValues(alpha: 0.45),
+              ),
             ),
           ),
           Positioned.fill(
@@ -1408,7 +2266,11 @@ class _FinanceLockedPreview extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_rounded, size: 28, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.lock_rounded,
+                    size: 28,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Finance tracking is a Pro feature',
@@ -1416,7 +2278,10 @@ class _FinanceLockedPreview extends StatelessWidget {
                     style: theme.textTheme.titleSmall,
                   ),
                   const SizedBox(height: 12),
-                  ElevatedButton(onPressed: onUpgrade, child: const Text('Upgrade to Pro')),
+                  ElevatedButton(
+                    onPressed: onUpgrade,
+                    child: const Text('Upgrade to Pro'),
+                  ),
                 ],
               ),
             ),
