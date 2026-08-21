@@ -38,6 +38,13 @@ const Map<String, String> goalPhraseDescriptions = {
   'Be Calm': 'Take care of your mind and reduce stress.',
   'Save Money': 'Track spending and grow your savings.',
   'Be Social': 'Stay connected with people who matter.',
+  'Keep Learning': 'Grow your knowledge and skills every day.',
+  'Sleep Well': 'Build a healthier, more consistent sleep routine.',
+  'Be Creative': 'Make space for imagination and self-expression.',
+  'Keep Home Tidy': 'Keep your living space clean and organized.',
+  'Grow My Career': 'Build momentum toward your professional goals.',
+  'Be Eco-Friendly': 'Live more sustainably, one habit at a time.',
+  'Practice Self-Care': 'Look after your wellbeing and recharge.',
 };
 
 String goalPhraseDescriptionFor(Category category) =>

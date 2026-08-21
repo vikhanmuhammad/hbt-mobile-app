@@ -55,6 +55,7 @@ const List<CuratedIcon> curatedHabitIcons = [
   CuratedIcon(key: 'book', icon: FontAwesomeIcons.book, group: 'Productivity'),
   CuratedIcon(key: 'graduation-cap', icon: FontAwesomeIcons.graduationCap, group: 'Productivity'),
   CuratedIcon(key: 'laptop', icon: FontAwesomeIcons.laptop, group: 'Productivity'),
+  CuratedIcon(key: 'briefcase', icon: FontAwesomeIcons.briefcase, group: 'Productivity'),
   CuratedIcon(key: 'clipboard-check', icon: FontAwesomeIcons.clipboardCheck, group: 'Productivity'),
   CuratedIcon(key: 'lightbulb', icon: FontAwesomeIcons.lightbulb, group: 'Productivity'),
   // General
@@ -62,6 +63,45 @@ const List<CuratedIcon> curatedHabitIcons = [
   CuratedIcon(key: 'house', icon: FontAwesomeIcons.house, group: 'General'),
   CuratedIcon(key: 'leaf', icon: FontAwesomeIcons.leaf, group: 'General'),
   CuratedIcon(key: 'calendar-check', icon: FontAwesomeIcons.calendarCheck, group: 'General'),
+  // Health (extra)
+  CuratedIcon(key: 'tooth', icon: FontAwesomeIcons.tooth, group: 'Health'),
+  CuratedIcon(key: 'utensils', icon: FontAwesomeIcons.utensils, group: 'Health'),
+  CuratedIcon(key: 'weight-scale', icon: FontAwesomeIcons.weightScale, group: 'Health'),
+  CuratedIcon(key: 'sun', icon: FontAwesomeIcons.sun, group: 'Health'),
+  CuratedIcon(key: 'bath', icon: FontAwesomeIcons.bath, group: 'Health'),
+  // Sports (extra)
+  CuratedIcon(key: 'futbol', icon: FontAwesomeIcons.futbol, group: 'Sports'),
+  CuratedIcon(key: 'basketball', icon: FontAwesomeIcons.basketball, group: 'Sports'),
+  CuratedIcon(key: 'person-hiking', icon: FontAwesomeIcons.personHiking, group: 'Sports'),
+  CuratedIcon(key: 'person-biking', icon: FontAwesomeIcons.personBiking, group: 'Sports'),
+  CuratedIcon(key: 'trophy', icon: FontAwesomeIcons.trophy, group: 'Sports'),
+  // Productivity (extra)
+  CuratedIcon(key: 'stopwatch', icon: FontAwesomeIcons.stopwatch, group: 'Productivity'),
+  CuratedIcon(key: 'alarm-clock', icon: FontAwesomeIcons.alarmClock, group: 'Productivity'),
+  CuratedIcon(key: 'clock', icon: FontAwesomeIcons.clock, group: 'Productivity'),
+  CuratedIcon(key: 'pencil', icon: FontAwesomeIcons.pencil, group: 'Productivity'),
+  CuratedIcon(key: 'book-open', icon: FontAwesomeIcons.bookOpen, group: 'Productivity'),
+  CuratedIcon(key: 'paper-plane', icon: FontAwesomeIcons.paperPlane, group: 'Productivity'),
+  CuratedIcon(key: 'envelope', icon: FontAwesomeIcons.envelope, group: 'Productivity'),
+  CuratedIcon(key: 'broom', icon: FontAwesomeIcons.broom, group: 'Productivity'),
+  CuratedIcon(key: 'mobile-screen-button', icon: FontAwesomeIcons.mobileScreenButton, group: 'Productivity'),
+  // Social (extra)
+  CuratedIcon(key: 'handshake', icon: FontAwesomeIcons.handshake, group: 'Social'),
+  CuratedIcon(key: 'face-smile', icon: FontAwesomeIcons.faceSmile, group: 'Social'),
+  // Finance (extra)
+  CuratedIcon(key: 'chart-line', icon: FontAwesomeIcons.chartLine, group: 'Finance'),
+  CuratedIcon(key: 'money-bill-wave', icon: FontAwesomeIcons.moneyBillWave, group: 'Finance'),
+  CuratedIcon(key: 'sack-dollar', icon: FontAwesomeIcons.sackDollar, group: 'Finance'),
+  CuratedIcon(key: 'hand-holding-dollar', icon: FontAwesomeIcons.handHoldingDollar, group: 'Finance'),
+  // Creative
+  CuratedIcon(key: 'music', icon: FontAwesomeIcons.music, group: 'Creative'),
+  CuratedIcon(key: 'paintbrush', icon: FontAwesomeIcons.paintbrush, group: 'Creative'),
+  CuratedIcon(key: 'palette', icon: FontAwesomeIcons.palette, group: 'Creative'),
+  CuratedIcon(key: 'camera', icon: FontAwesomeIcons.camera, group: 'Creative'),
+  // Home
+  CuratedIcon(key: 'seedling', icon: FontAwesomeIcons.seedling, group: 'Home'),
+  CuratedIcon(key: 'couch', icon: FontAwesomeIcons.couch, group: 'Home'),
+  CuratedIcon(key: 'droplet', icon: FontAwesomeIcons.droplet, group: 'Home'),
 ];
 
 final Map<String, FaIconData> habitIconMap = {

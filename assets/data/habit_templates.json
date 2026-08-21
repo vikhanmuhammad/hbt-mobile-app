@@ -15,7 +15,12 @@
         { "name": "Drink less caffeine", "icon": "mug-hot", "goalPeriod": "daily", "goalValue": 2, "goalUnit": "cup", "goalDirection": "atMost", "timeRange": "anytime" },
         { "name": "Eat less sugar", "icon": "candy-cane", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
         { "name": "Less carb", "icon": "bread-slice", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
-        { "name": "Deep breathing", "icon": "wind", "goalPeriod": "daily", "goalValue": 5, "goalUnit": "minute", "timeRange": "anytime" }
+        { "name": "Deep breathing", "icon": "wind", "goalPeriod": "daily", "goalValue": 5, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Take vitamins", "icon": "pills", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Brush teeth", "icon": "tooth", "goalPeriod": "daily", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Eat a healthy breakfast", "icon": "utensils", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Get morning sunlight", "icon": "sun", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "morning" },
+        { "name": "Track weight", "icon": "weight-scale", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" }
       ]
     },
     {
@@ -32,7 +37,11 @@
         { "name": "Swim", "icon": "person-swimming", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
         { "name": "Cycling", "icon": "bicycle", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" },
         { "name": "Workout", "icon": "dumbbell", "goalPeriod": "weekly", "goalValue": 4, "goalUnit": "x", "timeRange": "anytime" },
-        { "name": "Burn calories", "icon": "fire", "goalPeriod": "daily", "goalValue": 300, "goalUnit": "kcal", "timeRange": "anytime" }
+        { "name": "Burn calories", "icon": "fire", "goalPeriod": "daily", "goalValue": 300, "goalUnit": "kcal", "timeRange": "anytime" },
+        { "name": "Play football", "icon": "futbol", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "afternoon" },
+        { "name": "Play basketball", "icon": "basketball", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "afternoon" },
+        { "name": "Hike", "icon": "person-hiking", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Take the stairs", "icon": "person-walking", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
@@ -45,7 +54,14 @@
         { "name": "Read a book", "icon": "book", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
         { "name": "Learn a new skill", "icon": "graduation-cap", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" },
         { "name": "Review today", "icon": "clipboard-check", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
-        { "name": "Clear my mind", "icon": "lightbulb", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Clear my mind", "icon": "lightbulb", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Plan tomorrow", "icon": "clipboard-check", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Deep work session", "icon": "stopwatch", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "No phone first hour", "icon": "mobile-screen-button", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Inbox zero", "icon": "envelope", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Tidy desk", "icon": "broom", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Wake up early", "icon": "alarm-clock", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Time-block my calendar", "icon": "clock", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" }
       ]
     },
     {
@@ -57,7 +73,14 @@
       "habits": [
         { "name": "Meditate", "icon": "spa", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "morning" },
         { "name": "Journaling/Gratitude", "icon": "pen", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
-        { "name": "Breathe & relax", "icon": "wind", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Breathe & relax", "icon": "wind", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Digital detox hour", "icon": "mobile-screen-button", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Positive affirmations", "icon": "face-smile", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Listen to calming music", "icon": "music", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Take a warm bath", "icon": "bath", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Mindful walk", "icon": "person-walking", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Reflect & unplug", "icon": "brain", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Nap / rest", "icon": "bed", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "afternoon" }
       ]
     },
     {
@@ -69,7 +92,14 @@
       "habits": [
         { "name": "Track expenses", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
         { "name": "Limit daily spending", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
-        { "name": "Save money", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 100000, "goalUnit": "rupiah", "timeRange": "anytime" }
+        { "name": "Save money", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 100000, "goalUnit": "rupiah", "timeRange": "anytime" },
+        { "name": "No impulse buying", "icon": "wallet", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
+        { "name": "Review my budget", "icon": "chart-line", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Build an emergency fund", "icon": "sack-dollar", "goalPeriod": "monthly", "goalValue": 500000, "goalUnit": "rupiah", "timeRange": "anytime" },
+        { "name": "Pay bills on time", "icon": "money-bill-wave", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Invest regularly", "icon": "hand-holding-dollar", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Cook at home instead of eating out", "icon": "utensils", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Compare prices before buying", "icon": "coins", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     },
     {
@@ -79,7 +109,149 @@
       "icon": "people-group",
       "color": "#C97B7B",
       "habits": [
-        { "name": "Contact family/friends", "icon": "phone", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Contact family/friends", "icon": "phone", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Have a meal with someone", "icon": "utensils", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Compliment someone", "icon": "face-smile", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Join a community event", "icon": "people-group", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Send a thank-you message", "icon": "envelope", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Video call a loved one", "icon": "phone", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "evening" },
+        { "name": "Help a neighbor", "icon": "handshake", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Plan a hangout", "icon": "calendar-check", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Give a gift", "icon": "gift", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Practice active listening", "icon": "comments", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+      ]
+    },
+    {
+      "key": "learning",
+      "rawLabel": "Learning & Growth",
+      "defaultGoalPhrase": "Keep Learning",
+      "icon": "graduation-cap",
+      "color": "#3E7CB1",
+      "habits": [
+        { "name": "Read non-fiction", "icon": "book-open", "goalPeriod": "daily", "goalValue": 20, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Take an online course", "icon": "laptop", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Practice a language", "icon": "comments", "goalPeriod": "daily", "goalValue": 15, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Watch educational videos", "icon": "laptop", "goalPeriod": "daily", "goalValue": 15, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Write down what I learned", "icon": "pencil", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Practice coding", "icon": "laptop", "goalPeriod": "daily", "goalValue": 30, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Listen to a podcast", "icon": "music", "goalPeriod": "daily", "goalValue": 20, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Review flashcards", "icon": "clipboard-check", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Attend a workshop", "icon": "graduation-cap", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Teach someone something new", "icon": "handshake", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+      ]
+    },
+    {
+      "key": "sleep",
+      "rawLabel": "Sleep",
+      "defaultGoalPhrase": "Sleep Well",
+      "icon": "bed",
+      "color": "#5B6EAE",
+      "habits": [
+        { "name": "Sleep 7-8 hours", "icon": "bed", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Keep a consistent bedtime", "icon": "clock", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "No screens before bed", "icon": "mobile-screen-button", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Dim the lights at night", "icon": "moon", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Wake up without snoozing", "icon": "alarm-clock", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Avoid caffeine after 2pm", "icon": "mug-hot", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "afternoon" },
+        { "name": "Wind-down routine", "icon": "spa", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "night" },
+        { "name": "Nap responsibly", "icon": "bed", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "afternoon" },
+        { "name": "Track my sleep quality", "icon": "chart-line", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Read before bed instead of scrolling", "icon": "book", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
+      ]
+    },
+    {
+      "key": "creativity",
+      "rawLabel": "Creativity & Hobbies",
+      "defaultGoalPhrase": "Be Creative",
+      "icon": "palette",
+      "color": "#B0578D",
+      "habits": [
+        { "name": "Draw or sketch", "icon": "paintbrush", "goalPeriod": "daily", "goalValue": 15, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Write creatively", "icon": "pencil", "goalPeriod": "daily", "goalValue": 15, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Play an instrument", "icon": "music", "goalPeriod": "daily", "goalValue": 15, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Take a photo a day", "icon": "camera", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Try a new recipe", "icon": "utensils", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Brainstorm ideas", "icon": "lightbulb", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Work on a DIY project", "icon": "paintbrush", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Explore a new hobby", "icon": "star", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Color or paint", "icon": "palette", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Design something", "icon": "laptop", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+      ]
+    },
+    {
+      "key": "home",
+      "rawLabel": "Home & Organization",
+      "defaultGoalPhrase": "Keep Home Tidy",
+      "icon": "house",
+      "color": "#7C8B5E",
+      "habits": [
+        { "name": "Make the bed", "icon": "house", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Tidy up for 10 minutes", "icon": "broom", "goalPeriod": "daily", "goalValue": 10, "goalUnit": "minute", "timeRange": "anytime" },
+        { "name": "Do the dishes", "icon": "house", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Laundry day", "icon": "couch", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Declutter one area", "icon": "broom", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Water the plants", "icon": "seedling", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Deep clean", "icon": "broom", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Organize my workspace", "icon": "clipboard-check", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Meal prep", "icon": "utensils", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Take out the trash", "icon": "house", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+      ]
+    },
+    {
+      "key": "career",
+      "rawLabel": "Career & Work",
+      "defaultGoalPhrase": "Grow My Career",
+      "icon": "briefcase",
+      "color": "#375D81",
+      "habits": [
+        { "name": "Update resume/portfolio", "icon": "briefcase", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Network with a colleague", "icon": "handshake", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Learn a work skill", "icon": "graduation-cap", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Set weekly goals", "icon": "clipboard-check", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Ask for feedback", "icon": "comments", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Apply to a job/project", "icon": "paper-plane", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Track my achievements", "icon": "trophy", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Attend a meeting prepared", "icon": "briefcase", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Mentor someone", "icon": "handshake", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Review my career goals", "icon": "chart-line", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+      ]
+    },
+    {
+      "key": "environment",
+      "rawLabel": "Environment & Sustainability",
+      "defaultGoalPhrase": "Be Eco-Friendly",
+      "icon": "leaf",
+      "color": "#4F8F5B",
+      "habits": [
+        { "name": "Reduce plastic use", "icon": "leaf", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
+        { "name": "Recycle", "icon": "leaf", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Use a reusable bottle", "icon": "glass-water", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Save electricity", "icon": "lightbulb", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
+        { "name": "Walk/bike instead of driving", "icon": "person-biking", "goalPeriod": "weekly", "goalValue": 3, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Plant something", "icon": "seedling", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Reduce food waste", "icon": "carrot", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
+        { "name": "Save water", "icon": "droplet", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
+        { "name": "Buy local/second-hand", "icon": "coins", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Unplug unused devices", "icon": "mobile-screen-button", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" }
+      ]
+    },
+    {
+      "key": "selfcare",
+      "rawLabel": "Self-Care",
+      "defaultGoalPhrase": "Practice Self-Care",
+      "icon": "face-smile",
+      "color": "#A0648C",
+      "habits": [
+        { "name": "Skincare routine", "icon": "bath", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Take a mental health break", "icon": "couch", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Treat myself", "icon": "gift", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Say no to something draining", "icon": "face-smile", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Unplug for an hour", "icon": "mobile-screen-button", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "evening" },
+        { "name": "Do something just for fun", "icon": "star", "goalPeriod": "weekly", "goalValue": 2, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Practice gratitude", "icon": "pen", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "night" },
+        { "name": "Get a massage or self-massage", "icon": "spa", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
+        { "name": "Wear something that makes me feel good", "icon": "star", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "morning" },
+        { "name": "Rest without guilt", "icon": "couch", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
       ]
     }
   ]
