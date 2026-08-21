@@ -310,22 +310,28 @@ final class LocalEntitlementServiceProvider
 String _$localEntitlementServiceHash() =>
     r'2c541fe214f115a5c6e85bc49a96f4e31f289b4f';
 
-/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
-/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
-/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
-/// di purchase_service.dart, provider ini otomatis switch ke
-/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
-/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+/// Source of truth Pro di semua build. Di debug build, pakai
+/// [MockEntitlementService] supaya toggle "Pro Mode" di Settings
+/// (`kDebugMode`-gated) beneran mengubah status Pro yang dibaca seluruh app —
+/// jadi fitur Pro/Community bisa ditest tanpa Play Billing sama sekali.
+/// Di release build: sampai Firebase project upgrade ke Blaze dan Cloud
+/// Functions ter-deploy, pakai [LocalEntitlementService] (client-side);
+/// sesudahnya tinggal `kUseServerPurchaseVerification = true` di
+/// purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified).
 
 @ProviderFor(entitlementService)
 final entitlementServiceProvider = EntitlementServiceProvider._();
 
-/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
-/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
-/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
-/// di purchase_service.dart, provider ini otomatis switch ke
-/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
-/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+/// Source of truth Pro di semua build. Di debug build, pakai
+/// [MockEntitlementService] supaya toggle "Pro Mode" di Settings
+/// (`kDebugMode`-gated) beneran mengubah status Pro yang dibaca seluruh app —
+/// jadi fitur Pro/Community bisa ditest tanpa Play Billing sama sekali.
+/// Di release build: sampai Firebase project upgrade ke Blaze dan Cloud
+/// Functions ter-deploy, pakai [LocalEntitlementService] (client-side);
+/// sesudahnya tinggal `kUseServerPurchaseVerification = true` di
+/// purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified).
 
 final class EntitlementServiceProvider
     extends
@@ -335,12 +341,15 @@ final class EntitlementServiceProvider
           EntitlementService
         >
     with $Provider<EntitlementService> {
-  /// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
-  /// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
-  /// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
-  /// di purchase_service.dart, provider ini otomatis switch ke
-  /// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
-  /// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+  /// Source of truth Pro di semua build. Di debug build, pakai
+  /// [MockEntitlementService] supaya toggle "Pro Mode" di Settings
+  /// (`kDebugMode`-gated) beneran mengubah status Pro yang dibaca seluruh app —
+  /// jadi fitur Pro/Community bisa ditest tanpa Play Billing sama sekali.
+  /// Di release build: sampai Firebase project upgrade ke Blaze dan Cloud
+  /// Functions ter-deploy, pakai [LocalEntitlementService] (client-side);
+  /// sesudahnya tinggal `kUseServerPurchaseVerification = true` di
+  /// purchase_service.dart, provider ini otomatis switch ke
+  /// [IAPEntitlementService] (server-verified).
   EntitlementServiceProvider._()
     : super(
         from: null,
@@ -376,7 +385,7 @@ final class EntitlementServiceProvider
 }
 
 String _$entitlementServiceHash() =>
-    r'1078a6c6c0e5ddbaa69bb63161af533d43cd37ca';
+    r'5576c0e60997728075a85429fb1214c864ce2a10';
 
 @ProviderFor(purchaseService)
 final purchaseServiceProvider = PurchaseServiceProvider._();

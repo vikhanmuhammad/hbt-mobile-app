@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -68,16 +69,22 @@ LocalEntitlementService localEntitlementService(Ref ref) {
   return service;
 }
 
-/// Source of truth Pro di semua build. Sampai Firebase project upgrade ke
-/// Blaze dan Cloud Functions ter-deploy, pakai [LocalEntitlementService]
-/// (client-side); sesudahnya tinggal `kUseServerPurchaseVerification = true`
-/// di purchase_service.dart, provider ini otomatis switch ke
-/// [IAPEntitlementService] (server-verified). `MockEntitlementService` tetap
-/// ada tapi cuma dipakai lewat toggle debug di Settings (`kDebugMode`-gated).
+/// Source of truth Pro di semua build. Di debug build, pakai
+/// [MockEntitlementService] supaya toggle "Pro Mode" di Settings
+/// (`kDebugMode`-gated) beneran mengubah status Pro yang dibaca seluruh app —
+/// jadi fitur Pro/Community bisa ditest tanpa Play Billing sama sekali.
+/// Di release build: sampai Firebase project upgrade ke Blaze dan Cloud
+/// Functions ter-deploy, pakai [LocalEntitlementService] (client-side);
+/// sesudahnya tinggal `kUseServerPurchaseVerification = true` di
+/// purchase_service.dart, provider ini otomatis switch ke
+/// [IAPEntitlementService] (server-verified).
 @Riverpod(keepAlive: true)
-EntitlementService entitlementService(Ref ref) => kUseServerPurchaseVerification
-    ? ref.watch(iapEntitlementServiceProvider)
-    : ref.watch(localEntitlementServiceProvider);
+EntitlementService entitlementService(Ref ref) {
+  if (kDebugMode) return ref.watch(mockEntitlementServiceProvider);
+  return kUseServerPurchaseVerification
+      ? ref.watch(iapEntitlementServiceProvider)
+      : ref.watch(localEntitlementServiceProvider);
+}
 
 @Riverpod(keepAlive: true)
 PurchaseService purchaseService(Ref ref) {

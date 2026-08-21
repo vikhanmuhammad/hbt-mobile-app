@@ -220,7 +220,7 @@ class SettingsScreen extends ConsumerWidget {
     final uri = Uri(
       scheme: 'mailto',
       path: _supportEmail,
-      query: 'subject=${Uri.encodeComponent('Habit Tracker Support')}',
+      query: 'subject=${Uri.encodeComponent('Daily Habits Support')}',
     );
     final launched = await launchUrl(uri);
     if (!launched && context.mounted) {
@@ -235,8 +235,8 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _shareApp(BuildContext context) async {
     await SharePlus.instance.share(
       ShareParams(
-        text: "I'm building better habits with Habit Tracker — join me!",
-        subject: 'Habit Tracker',
+        text: "I'm building better habits with Daily Habits — join me!",
+        subject: 'Daily Habits',
       ),
     );
   }

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Habbit Tracker App</string>
+	<string>Daily Habits</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,13 +28,13 @@
 	<true/>
 	<!-- Point 10 — Health/Calendar sync (opt-in via Settings). -->
 	<key>NSHealthShareUsageDescription</key>
-	<string>Habit Tracker reads your step count to automatically fill in step-based habits.</string>
+	<string>Daily Habits reads your step count to automatically fill in step-based habits.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Habit Tracker can write habit progress (like steps) back to the Health app.</string>
+	<string>Daily Habits can write habit progress (like steps) back to the Health app.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Habit Tracker can add your habit reminders to your Calendar.</string>
+	<string>Daily Habits can add your habit reminders to your Calendar.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Habit Tracker can add your habit reminders to your Calendar.</string>
+	<string>Daily Habits can add your habit reminders to your Calendar.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

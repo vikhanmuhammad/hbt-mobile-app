@@ -38,7 +38,7 @@ class HabitTrackerApp extends ConsumerWidget {
     final themeMode = ref.watch(appThemeModeProvider);
     final accent = ref.watch(activePaletteProvider).accent;
     return MaterialApp(
-      title: 'Habit Tracker',
+      title: 'Daily Habits',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(accent: accent),
       darkTheme: AppTheme.dark(accent: accent),

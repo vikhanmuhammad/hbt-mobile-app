@@ -1890,7 +1890,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                           MaterialPageRoute(
                             builder: (_) => ProFeatureTeaser(
                               icon: Icons.workspace_premium_rounded,
-                              title: 'Habit Tracker Pro',
+                              title: 'Daily Habits Pro',
                               description:
                                   'Unlock unlimited habits, the Finance tracker, and '
                                   'Community leaderboards.',
