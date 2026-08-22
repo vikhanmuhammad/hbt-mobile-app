@@ -11,9 +11,11 @@ part 'settings_providers.g.dart';
 class AppThemeMode extends _$AppThemeMode {
   @override
   ThemeMode build() {
+    // Belum pernah diubah manual dari Settings (fresh install) => selalu
+    // light, bukan ikut tema sistem — supaya tampilan awal aplikasi
+    // konsisten terlepas dari tema device.
     final enabled = ref.watch(settingsRepositoryProvider).darkModeEnabled;
-    if (enabled == null) return ThemeMode.system;
-    return enabled ? ThemeMode.dark : ThemeMode.light;
+    return (enabled ?? false) ? ThemeMode.dark : ThemeMode.light;
   }
 
   Future<void> toggleDark(bool enabled) async {
