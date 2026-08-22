@@ -1,3 +1,4 @@
+import '../../domain/habit_schedule.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/models/finance_summary.dart';
 import '../../domain/models/habit_log.dart';
@@ -44,9 +45,30 @@ class FinanceRepository {
       final habitLogs = logsByHabit[habit.id] ?? const <HabitLog>[];
       final totalValue =
           habitLogs.fold<int>(0, (sum, l) => sum + l.progressValue);
-      final achievedDays =
-          habitLogs.where((l) => habit.isAchieved(l.progressValue)).length;
-      final totalTarget = habit.goalValue * habitLogs.length;
+
+      // Target dihitung dari berapa banyak instance goalPeriod habit ini
+      // sendiri (hari/minggu/bulan) yang tercakup dalam jendela [start,
+      // endInclusive] — bukan dari `habitLogs.length` (jumlah hari yang
+      // kebetulan ada log). Itu penting supaya habit weekly/monthly dilihat
+      // benar walau jendela tampilan Finance (Daily/Weekly/Monthly toggle)
+      // tidak sama dengan goalPeriod-nya sendiri — mis. habit weekly dilihat
+      // dalam tampilan Monthly seharusnya dibandingkan ke goalValue dikali
+      // jumlah minggu dalam bulan itu, bukan dikali jumlah hari yang dicatat.
+      final periodCount = countPeriodsOverlapping(habit.goalPeriod, start, endInclusive);
+      final totalTarget = habit.goalValue * periodCount;
+
+      // "Achieved" juga dihitung per-instance periode (jumlah progress di
+      // dalam periode itu dibandingkan ke goalValue), bukan per hari log —
+      // satu hari log sendirian jarang mencapai/melanggar target penuh satu
+      // minggu/bulan, jadi menilai per hari akan salah menghitung.
+      final sumByPeriod = <DateTime, int>{};
+      for (final log in habitLogs) {
+        final key = periodBoundsFor(habit.goalPeriod, log.date).$1;
+        sumByPeriod[key] = (sumByPeriod[key] ?? 0) + log.progressValue;
+      }
+      final loggedPeriods = sumByPeriod.length;
+      final achievedPeriods =
+          sumByPeriod.values.where(habit.isAchieved).length;
 
       if (habit.goalDirection == GoalDirection.atMost) {
         totalExpense += totalValue;
@@ -60,8 +82,8 @@ class FinanceRepository {
         habit: habit,
         totalValue: totalValue,
         totalTarget: totalTarget,
-        loggedDays: habitLogs.length,
-        achievedDays: achievedDays,
+        loggedPeriods: loggedPeriods,
+        achievedPeriods: achievedPeriods,
       ));
     }
     habitStats.sort((a, b) => b.totalValue.compareTo(a.totalValue));

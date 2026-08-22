@@ -531,7 +531,7 @@ class _HabitFinanceRow extends StatelessWidget {
     final overBudget = isAtMost && stat.totalValue > stat.totalTarget;
     final ratio = isAtMost
         ? (stat.totalTarget == 0 ? 0.0 : (stat.totalValue / stat.totalTarget).clamp(0, 1).toDouble())
-        : (stat.loggedDays == 0 ? 0.0 : stat.achievedDays / stat.loggedDays);
+        : (stat.loggedPeriods == 0 ? 0.0 : stat.achievedPeriods / stat.loggedPeriods);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
