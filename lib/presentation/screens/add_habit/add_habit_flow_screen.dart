@@ -37,10 +37,18 @@ Future<void> openAddHabitFlow(BuildContext context) {
 }
 
 /// Open the flow directly at the edit form for an existing habit (from Home
-/// Edit Mode or Settings) — after finishing, just pop back to the caller's screen.
-Future<void> openEditHabitFlow(BuildContext context, Habit habit) {
+/// Edit Mode or Settings) — after finishing, just pop back to the caller's
+/// screen. Pass [lockGoalFields] true when the habit is linked to a
+/// Community Group Habit (see `AddHabitFlowScreen.lockGoalFields`).
+Future<void> openEditHabitFlow(
+  BuildContext context,
+  Habit habit, {
+  bool lockGoalFields = false,
+}) {
   return Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => AddHabitFlowScreen(editingHabit: habit)),
+    MaterialPageRoute(
+      builder: (_) => AddHabitFlowScreen(editingHabit: habit, lockGoalFields: lockGoalFields),
+    ),
   );
 }
 
@@ -62,29 +70,21 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
     this.initialCategoryId,
     this.editingHabit,
     this.startAtNewCategory = false,
-    this.prefillName,
-    this.prefillIcon,
-    this.prefillUnit,
-    this.onHabitSaved,
+    this.lockGoalFields = false,
   });
 
   final int? initialCategoryId;
   final Habit? editingHabit;
   final bool startAtNewCategory;
 
-  /// Pre-fills the habit form and jumps straight to it (skipping the goal
-  /// phrase/template browse steps) — used when "adopting" a Community Group
-  /// Habit into your own habit list (see `group_detail_screen.dart`'s
-  /// leaderboard "Add to My Habits" action). The user still picks a goal
-  /// phrase via the in-form dropdown before saving.
-  final String? prefillName;
-  final String? prefillIcon;
-  final String? prefillUnit;
-
-  /// Called with the new habit's id right after it's successfully created
-  /// (not called when editing an existing habit) — used to auto-link the
-  /// new habit back to the Group Habit it was adopted from.
-  final Future<void> Function(int habitId)? onHabitSaved;
+  /// When editing a habit that's linked to a Community Group Habit, locks
+  /// every field except Reminder — name, icon, goal phrase/period/value/
+  /// unit/direction, task days, time range, and start/end date all stay
+  /// exactly what the Group Habit was published/adopted with, so tracking
+  /// against the shared leaderboard target never silently drifts out of
+  /// sync from one device's local edit. Unlink from Community first to
+  /// change any of those.
+  final bool lockGoalFields;
 
   @override
   ConsumerState<AddHabitFlowScreen> createState() => _AddHabitFlowScreenState();
@@ -128,13 +128,6 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       _stepStack = [3];
     } else if (widget.startAtNewCategory) {
       _stepStack = [4];
-    } else if (widget.prefillName != null) {
-      _resetFormDraft(
-        name: widget.prefillName,
-        icon: widget.prefillIcon,
-        goalUnit: widget.prefillUnit,
-      );
-      _stepStack = [3];
     } else if (widget.initialCategoryId != null) {
       _categoryId = widget.initialCategoryId;
       _stepStack = [2];
@@ -230,6 +223,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     String? goalUnit,
     TimeRange? timeRange,
     GoalDirection? goalDirection,
+    DateTime? startDate,
   }) {
     _nameController.text = name ?? '';
     _habitIcon = icon ?? defaultHabitIconKey;
@@ -241,7 +235,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _timeRange = timeRange ?? TimeRange.anytime;
     _reminderEnabled = false;
     _reminderTime = const TimeOfDay(hour: 8, minute: 0);
-    _startDate = today();
+    _startDate = startDate ?? today();
     _endDate = null;
   }
 
@@ -658,6 +652,15 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (widget.lockGoalFields) ...[
+          const _CommunityLockedNotice(),
+          const SizedBox(height: 16),
+        ],
+        _LockableSection(
+          locked: widget.lockGoalFields,
+          child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         _FieldLabel('Habit Name'),
         const SizedBox(height: 6),
         TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Habit name')),
@@ -876,6 +879,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               ),
           ],
         ),
+        ], // end Column children (locked section)
+          ), // end Column (locked section)
+        ), // end _LockableSection
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -914,7 +920,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        Row(
+        _LockableSection(
+          locked: widget.lockGoalFields,
+          child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
@@ -983,6 +991,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             ),
           ],
         ),
+        ), // end _LockableSection (start/end date)
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitHabitForm,
@@ -1059,7 +1068,6 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         if (created != null) {
           await _tryScheduleNotification(created);
         }
-        if (widget.onHabitSaved != null) await widget.onHabitSaved!(id);
       }
 
       await _finishAndReturn(
@@ -1274,6 +1282,58 @@ class _RoundIconButton extends StatelessWidget {
           height: 32,
           child: Icon(icon, size: iconSize),
         ),
+      ),
+    );
+  }
+}
+
+/// Dims and disables (via `IgnorePointer`) [child] when [locked] — used for
+/// every field group except Reminder when editing a habit that's linked to
+/// Community (see `AddHabitFlowScreen.lockGoalFields`).
+class _LockableSection extends StatelessWidget {
+  const _LockableSection({required this.locked, required this.child});
+
+  final bool locked;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!locked) return child;
+    return IgnorePointer(
+      child: Opacity(opacity: 0.45, child: child),
+    );
+  }
+}
+
+/// Explains why most fields below are locked — shown when editing a habit
+/// linked to a Community Group Habit.
+class _CommunityLockedNotice extends StatelessWidget {
+  const _CommunityLockedNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.groups_rounded, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'This habit is linked to a Community group, so its target and '
+              'schedule stay locked to match everyone tracking it. Unlink it '
+              'from the group\'s Habits tab first to change them. Reminder '
+              'settings are still yours to change.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
       ),
     );
   }

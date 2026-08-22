@@ -255,7 +255,11 @@ class _HabitList extends ConsumerWidget {
             accentColor: _accentFor(item.habit.categoryId),
             isEditMode: true,
             onTap: null,
-            onEdit: () => openEditHabitFlow(context, item.habit),
+            onEdit: () => openEditHabitFlow(
+              context,
+              item.habit,
+              lockGoalFields: linkedHabitIds.contains(item.habit.id),
+            ),
             onDelete: () => _confirmDeactivate(context, ref, item),
             dragHandle: ReorderableDragStartListener(
               index: index,
@@ -297,7 +301,7 @@ class _HabitList extends ConsumerWidget {
         await repo.setProgress(habit: habit, date: selectedDate, progressValue: value);
       }
       _invalidateSummaries(ref);
-      unawaited(syncCommunityHabit(ref, habit.id));
+      unawaited(syncCommunityHabit(ref, habit.id, selectedDate));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save progress: $e')));

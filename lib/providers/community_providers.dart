@@ -7,7 +7,9 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../data/repositories/community/community_repository.dart';
+import '../data/repositories/community/habit_log_backup_repository.dart';
 import '../data/repositories/habit_group_link_repository.dart';
+import '../data/repositories/habit_log_repository.dart';
 import '../domain/models/community/app_group.dart';
 import '../domain/models/community/chat_message.dart';
 import '../domain/models/community/group_habit.dart';
@@ -141,24 +143,32 @@ HabitGroupLinkRepository habitGroupLinkRepository(Ref ref) {
 }
 
 @riverpod
+HabitLogBackupRepository habitLogBackupRepository(Ref ref) {
+  return HabitLogBackupRepository(ref.watch(firestoreProvider));
+}
+
+@riverpod
 CommunitySyncService communitySyncService(Ref ref) {
   return CommunitySyncService(
     linkRepository: ref.watch(habitGroupLinkRepositoryProvider),
     habitRepository: ref.watch(habitRepositoryProvider),
     habitLogRepository: ref.watch(habitLogRepositoryProvider),
     communityRepository: ref.watch(communityRepositoryProvider),
+    habitLogBackupRepository: ref.watch(habitLogBackupRepositoryProvider),
   );
 }
 
-/// Dipanggil dari layar Beranda/Dashboard setelah progress habit berhasil
-/// disimpan — fire-and-forget, no-op kalau habit tidak linked ke Group Habit
-/// manapun atau user belum sign-in Community sama sekali.
-Future<void> syncCommunityHabit(WidgetRef ref, int habitId) async {
+/// Dipanggil dari layar Beranda/Dashboard setelah progress habit di
+/// [date] berhasil disimpan — fire-and-forget, no-op kalau habit tidak
+/// linked ke Group Habit manapun atau user belum sign-in Community sama
+/// sekali.
+Future<void> syncCommunityHabit(WidgetRef ref, int habitId, DateTime date) async {
   final user = ref.read(authStateProvider).value;
   if (user == null) return;
   try {
     await ref.read(communitySyncServiceProvider).syncHabit(
           habitId: habitId,
+          date: date,
           uid: user.uid,
           displayName: user.displayName ?? user.email ?? 'User',
           avatarIcon: null,
@@ -167,6 +177,83 @@ Future<void> syncCommunityHabit(WidgetRef ref, int habitId) async {
     // Sync Community bersifat best-effort (mis. offline) — jangan ganggu
     // alur tracking harian yang sudah tersimpan lokal.
   }
+}
+
+/// Dipanggil sekali tepat setelah `HabitGroupLinkRepository.link` sukses
+/// untuk sebuah habit yang SUDAH punya riwayat lokal (link/publish habit
+/// lama ke Community — beda dari habit yang baru dibuat lewat "Add to My
+/// Habits"/adopt, yang memang belum ada apa-apanya untuk di-backfill) —
+/// langsung push leaderboard & backup seluruh riwayat, bukan menunggu
+/// update progress berikutnya. Best-effort/no-op kalau user belum sign-in.
+///
+/// Takes the already-resolved [syncService]/[uid]/[displayName] instead of
+/// a `WidgetRef` — the caller (a list row in the Habits tab) gets torn down
+/// the moment `link()` succeeds (the habit moves from "Community Habits" to
+/// "Linked", rebuilding that list), so reading providers via `ref` *after*
+/// that point throws "used ref after widget unmounted". Resolving
+/// everything up front, before the state-changing `link()` call, sidesteps
+/// that entirely.
+Future<void> backfillCommunityHabitLink({
+  required CommunitySyncService syncService,
+  required String uid,
+  required String displayName,
+  required int habitId,
+  required int linkId,
+  required String groupId,
+  required String groupHabitId,
+}) async {
+  try {
+    await syncService.backfillOnLink(
+      habitId: habitId,
+      linkId: linkId,
+      groupId: groupId,
+      groupHabitId: groupHabitId,
+      uid: uid,
+      displayName: displayName,
+      avatarIcon: null,
+    );
+  } catch (_) {
+    // Backfill bersifat best-effort — jangan gagalkan alur link karena ini.
+  }
+}
+
+/// Restore log harian yang di-backup (`HabitLogBackupRepository`) ke habit
+/// lokal [habitId] yang baru dibuat — dipanggil sekali tepat setelah "Add to
+/// My Habits"/adopt membuat & me-link habit baru ke [groupHabitId] (lihat
+/// `group_detail_screen.dart`), supaya reconnect pasca uninstall tidak
+/// meninggalkan histori harian kosong sama sekali.
+///
+/// Beda dari [syncCommunityHabit]/[backfillCommunityHabitLink] (yang
+/// sengaja diam-diam best-effort), ini SENGAJA tidak menelan error — caller
+/// perlu tahu apakah restore benar-benar menemukan sesuatu atau gagal
+/// (mis. permission-denied di rules), supaya "0 hari terpulihkan" bisa
+/// dibedakan dari "gagal cek backup sama sekali" alih-alih diam-diam
+/// terlihat sama seperti "memang belum pernah ada backup".
+///
+/// Same reasoning as [backfillCommunityHabitLink] for taking already-
+/// resolved repositories instead of a `WidgetRef`: this runs right after
+/// `link()`, by which point the calling row's `ref` may already be
+/// unmounted — reading providers here (rather than before `link()`) was
+/// exactly what caused restore to silently crash.
+///
+/// Returns jumlah log yang berhasil dipulihkan.
+Future<int> restoreCommunityHabitBackup({
+  required HabitLogBackupRepository backupRepository,
+  required HabitLogRepository logRepository,
+  required int habitId,
+  required String uid,
+  required String groupHabitId,
+}) async {
+  final logs = await backupRepository.fetchAll(uid: uid, groupHabitId: groupHabitId);
+  for (final log in logs) {
+    await logRepository.restoreLog(
+      habitId: habitId,
+      date: log.date,
+      progressValue: log.progressValue,
+      isDone: log.isDone,
+    );
+  }
+  return logs.length;
 }
 
 // ---------------------------------------------------------------------
