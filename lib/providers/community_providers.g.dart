@@ -674,6 +674,54 @@ final class HabitGroupLinkRepositoryProvider
 String _$habitGroupLinkRepositoryHash() =>
     r'335583709d630ef5cdacbdbad59608ccb7ce62e8';
 
+@ProviderFor(habitLogBackupRepository)
+final habitLogBackupRepositoryProvider = HabitLogBackupRepositoryProvider._();
+
+final class HabitLogBackupRepositoryProvider
+    extends
+        $FunctionalProvider<
+          HabitLogBackupRepository,
+          HabitLogBackupRepository,
+          HabitLogBackupRepository
+        >
+    with $Provider<HabitLogBackupRepository> {
+  HabitLogBackupRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'habitLogBackupRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$habitLogBackupRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<HabitLogBackupRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  HabitLogBackupRepository create(Ref ref) {
+    return habitLogBackupRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(HabitLogBackupRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<HabitLogBackupRepository>(value),
+    );
+  }
+}
+
+String _$habitLogBackupRepositoryHash() =>
+    r'4b143d3996ea44df665b9eb6181028dfbf4cb59a';
+
 @ProviderFor(communitySyncService)
 final communitySyncServiceProvider = CommunitySyncServiceProvider._();
 
@@ -720,7 +768,7 @@ final class CommunitySyncServiceProvider
 }
 
 String _$communitySyncServiceHash() =>
-    r'193143bf07506f9a31044d88270156ace436ce3f';
+    r'847b162b7f484d845e7bcd90a40e6d0d592b4356';
 
 @ProviderFor(myGroups)
 final myGroupsProvider = MyGroupsProvider._();

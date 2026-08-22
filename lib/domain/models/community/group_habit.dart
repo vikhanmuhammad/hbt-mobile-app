@@ -15,6 +15,7 @@ class GroupHabit {
     required this.createdAt,
     this.goalValue,
     this.goalPeriod,
+    this.goalDirection,
   });
 
   final String id;
@@ -35,4 +36,10 @@ class GroupHabit {
   /// guessing. `goalPeriod` stores the raw `GoalPeriod` enum name.
   final int? goalValue;
   final String? goalPeriod;
+
+  /// Raw `GoalDirection` enum name (atLeast/atMost) this Group Habit was
+  /// published with. Nullable for the same reason as [goalPeriod] — Group
+  /// Habits published before this field existed don't have it; treat null
+  /// as "unknown" (matching/adopt logic never guesses a direction).
+  final String? goalDirection;
 }

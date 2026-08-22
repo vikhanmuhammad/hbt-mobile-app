@@ -71,6 +71,26 @@ class HabitLogRepository {
     );
   }
 
+  /// Menulis log historis mentah — dipakai saat restore backup Community
+  /// (`HabitLogBackupRepository`) setelah reconnect pasca uninstall.
+  /// `isDone` dipakai apa adanya dari nilai yang di-backup, bukan dihitung
+  /// ulang lewat `Habit.isAchieved`, supaya tetap akurat walau habit yang
+  /// baru dibuat ulang punya `goalDirection` berbeda dari aslinya (Group
+  /// Habit belum menyimpan field itu).
+  Future<void> restoreLog({
+    required int habitId,
+    required DateTime date,
+    required int progressValue,
+    required bool isDone,
+  }) async {
+    await _db.habitLogDao.upsertProgress(
+      habitId: habitId,
+      date: date,
+      progressValue: progressValue,
+      isDone: isDone,
+    );
+  }
+
   Future<void> incrementProgress({
     required Habit habit,
     required DateTime date,

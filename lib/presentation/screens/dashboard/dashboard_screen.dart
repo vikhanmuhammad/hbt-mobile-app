@@ -606,7 +606,7 @@ class _DayDetailSheet extends ConsumerWidget {
       ref.invalidate(daySummaryProvider);
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeSummaryForPeriodProvider);
-      unawaited(syncCommunityHabit(ref, item.habit.id));
+      unawaited(syncCommunityHabit(ref, item.habit.id, date));
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

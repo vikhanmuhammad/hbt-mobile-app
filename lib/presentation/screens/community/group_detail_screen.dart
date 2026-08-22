@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,17 +9,23 @@ import '../../../domain/models/community/chat_message.dart';
 import '../../../domain/models/community/group_habit.dart';
 import '../../../domain/models/community/group_member.dart';
 import '../../../domain/models/community/leaderboard_entry.dart';
+import '../../../domain/models/category.dart';
 import '../../../domain/models/community_enums.dart';
+import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
+import '../../../domain/models/habit_template.dart';
+import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
+import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/habit_icon.dart';
+import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/segmented_pill_toggle.dart';
-import '../add_habit/add_habit_flow_screen.dart';
 
 class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -446,9 +454,17 @@ GroupHabit? findMatchingGroupHabit(List<GroupHabit> candidates, Habit local) {
   final normalizedName = _normalizeHabitName(local.name);
   for (final gh in candidates) {
     if (_normalizeHabitName(gh.name) != normalizedName) continue;
+    // goalValue/goalPeriod have always been required for a match — no way
+    // to confirm the target without them, so a Group Habit published
+    // before they were tracked never matches (safer than guessing). But
+    // goalDirection is newer than both: a Group Habit published before it
+    // existed still has real goalValue/goalPeriod, so only compare
+    // goalDirection when it's actually present, instead of also rejecting
+    // that older (but otherwise perfectly identifiable) match outright.
     if (gh.goalValue == null || gh.goalPeriod == null) continue;
     if (gh.goalValue != local.goalValue) continue;
     if (gh.goalPeriod != local.goalPeriod.name) continue;
+    if (gh.goalDirection != null && gh.goalDirection != local.goalDirection.name) continue;
     if (gh.unit.trim().toLowerCase() != local.goalUnit.trim().toLowerCase()) continue;
     return gh;
   }
@@ -466,6 +482,9 @@ Habit? _findMatchingLocalHabit(List<Habit> candidates, GroupHabit groupHabit) {
     if (_normalizeHabitName(h.name) != normalizedName) continue;
     if (h.goalValue != groupHabit.goalValue) continue;
     if (h.goalPeriod.name != groupHabit.goalPeriod) continue;
+    if (groupHabit.goalDirection != null && h.goalDirection.name != groupHabit.goalDirection) {
+      continue;
+    }
     if (h.goalUnit.trim().toLowerCase() != groupHabit.unit.trim().toLowerCase()) continue;
     return h;
   }
@@ -536,6 +555,11 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
   Future<void> _publishOrLink() async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
+    // Resolved up front: this row gets torn down (moves out of "Your
+    // Habits" into "Linked") the moment `link()` below succeeds, so
+    // `ref.read(...)` after that point risks "used ref after unmounted".
+    final user = ref.read(authStateProvider).value;
+    final syncService = ref.read(communitySyncServiceProvider);
     setState(() => _working = true);
     try {
       final match = widget.matchingGroupHabit;
@@ -550,14 +574,30 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
                 createdBy: uid,
                 goalValue: widget.habit.goalValue,
                 goalPeriod: widget.habit.goalPeriod.name,
+                goalDirection: widget.habit.goalDirection.name,
               ))
               .id;
-      await ref.read(habitGroupLinkRepositoryProvider).link(
+      final linkId = await ref.read(habitGroupLinkRepositoryProvider).link(
             habitId: widget.habit.id,
             groupId: widget.groupId,
             groupHabitId: groupHabitId,
             uid: uid,
           );
+      // This habit may already have a local history (it's being
+      // linked/published, not freshly created) — push it to the
+      // leaderboard and back it up right away instead of waiting for the
+      // next progress update.
+      if (user != null) {
+        unawaited(backfillCommunityHabitLink(
+          syncService: syncService,
+          uid: user.uid,
+          displayName: user.displayName ?? user.email ?? 'User',
+          habitId: widget.habit.id,
+          linkId: linkId,
+          groupId: widget.groupId,
+          groupHabitId: groupHabitId,
+        ));
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link: $e')));
@@ -1063,48 +1103,219 @@ class _LeaderboardTile extends ConsumerWidget {
 /// name/unit/icon, and auto-links the newly created habit back to it on
 /// save. Shared by the Habits tab's "Community Habits" section and the
 /// Leaderboard tab's per-row "Add to My Habits" action.
+/// Guesses a goal phrase (category) to pre-fill for an adopted Group
+/// Habit, so the user doesn't have to pick one manually before saving
+/// (`AddHabitFlowScreen`'s "Goal Phrase" dropdown is otherwise required).
+/// Group Habits don't carry a category id (categories are per-device, not
+/// shared over Firestore), so this is a best-effort guess, in order:
+/// 1. A rupiah-unit habit always goes under the Finance goal phrase.
+/// 2. If the name matches a built-in habit template (`habit_templates.json`),
+///    use that template's own goal phrase.
+/// 3. Otherwise just fall back to the first available category — the user
+///    can still change it afterwards, this only saves them a forced stop.
+/// Returns null only if the device has no categories at all yet.
+Future<int?> _guessCategoryId(WidgetRef ref, GroupHabit groupHabit) async {
+  final categories = ref.read(categoriesProvider).value ?? const <Category>[];
+  if (categories.isEmpty) return null;
+
+  if (groupHabit.unit.trim().toLowerCase() == 'rupiah') {
+    for (final c in categories) {
+      if (isFinanceCategory(c)) return c.id;
+    }
+  }
+
+  final normalizedName = groupHabit.name.trim().toLowerCase();
+  List<CategoryTemplate> categoryTemplates = const [];
+  try {
+    categoryTemplates = await ref.read(habitTemplatesProvider.future);
+  } catch (_) {
+    // Best-effort guess only — fall through to the plain default below.
+  }
+  for (final template in categoryTemplates) {
+    final matchesTemplate =
+        template.habits.any((h) => h.name.trim().toLowerCase() == normalizedName);
+    if (!matchesTemplate) continue;
+    for (final c in categories) {
+      if (c.name == template.defaultGoalPhrase) return c.id;
+    }
+  }
+
+  return categories.first.id;
+}
+
 Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit groupHabit) async {
+  // Everything this function needs from `ref`/`context` is resolved right
+  // here, before any `await` — this specific row gets torn down the moment
+  // `link()` succeeds (the habit moves from "Community Habits" to
+  // "Linked", rebuilding that list), so reading providers or `context`
+  // *after* that point risks "used ref/context after unmounted" — which is
+  // exactly what silently broke restore before. Nothing below this block
+  // touches `ref` or `context` again.
+  final messenger = ScaffoldMessenger.of(context);
   final uid = ref.read(currentUidProvider);
   if (uid == null) return;
-
+  final user = ref.read(authStateProvider).value;
+  final syncService = ref.read(communitySyncServiceProvider);
+  final backupRepository = ref.read(habitLogBackupRepositoryProvider);
+  final logRepository = ref.read(habitLogRepositoryProvider);
+  final linkRepository = ref.read(habitGroupLinkRepositoryProvider);
+  final habitRepository = ref.read(habitRepositoryProvider);
+  final categories = ref.read(categoriesProvider).value ?? const <Category>[];
+  final isPro = ref.read(isProProvider);
   final localHabits = ref.read(allActiveHabitsProvider).value ?? const <Habit>[];
+
   final existingMatch = _findMatchingLocalHabit(localHabits, groupHabit);
   if (existingMatch != null) {
     try {
-      await ref.read(habitGroupLinkRepositoryProvider).link(
-            habitId: existingMatch.id,
-            groupId: groupHabit.groupId,
-            groupHabitId: groupHabit.id,
-            uid: uid,
-          );
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Linked your existing "${existingMatch.name}" habit')),
-        );
+      final linkId = await linkRepository.link(
+        habitId: existingMatch.id,
+        groupId: groupHabit.groupId,
+        groupHabitId: groupHabit.id,
+        uid: uid,
+      );
+      // Same as `_YourHabitRowState._publishOrLink` — this existing local
+      // habit may already have history, so push/backup it right away.
+      if (user != null) {
+        unawaited(backfillCommunityHabitLink(
+          syncService: syncService,
+          uid: user.uid,
+          displayName: user.displayName ?? user.email ?? 'User',
+          habitId: existingMatch.id,
+          linkId: linkId,
+          groupId: groupHabit.groupId,
+          groupHabitId: groupHabit.id,
+        ));
       }
+      messenger.showSnackBar(
+        SnackBar(content: Text('Linked your existing "${existingMatch.name}" habit')),
+      );
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link: $e')));
-      }
+      messenger.showSnackBar(SnackBar(content: Text('Failed to link: $e')));
     }
     return;
   }
 
-  await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => AddHabitFlowScreen(
-        prefillName: groupHabit.name,
-        prefillIcon: groupHabit.icon,
-        prefillUnit: groupHabit.unit,
-        onHabitSaved: (habitId) => ref.read(habitGroupLinkRepositoryProvider).link(
-              habitId: habitId,
-              groupId: groupHabit.groupId,
-              groupHabitId: groupHabit.id,
-              uid: uid,
-            ),
+  // No matching local habit — create one directly from a short confirm
+  // dialog instead of routing through the (editable) Habit Form. Letting
+  // the user edit target/period/etc. here would risk it silently drifting
+  // out of sync with what everyone else in the group is tracking against;
+  // the resulting habit can still be fine-tuned afterwards (subject to the
+  // same locked-fields-while-linked rule as any other linked habit).
+  final guessedCategoryId = await _guessCategoryId(ref, groupHabit);
+  if (guessedCategoryId == null) {
+    messenger.showSnackBar(const SnackBar(content: Text('No goal phrase available yet')));
+    return;
+  }
+
+  final goalPeriod =
+      groupHabit.goalPeriod != null ? GoalPeriod.fromValue(groupHabit.goalPeriod!) : GoalPeriod.daily;
+  final goalValue = groupHabit.goalValue ?? 1;
+  final goalDirection = groupHabit.goalDirection != null
+      ? GoalDirection.fromValue(groupHabit.goalDirection!)
+      : GoalDirection.atLeast;
+  final goalUnit = groupHabit.unit.trim().isEmpty ? 'x' : groupHabit.unit.trim();
+
+  final isFinance = categories.any((c) => c.id == guessedCategoryId && isFinanceCategory(c));
+  if (isFinance && !isPro) {
+    if (context.mounted) {
+      await showProRequiredDialog(
+        context,
+        message: 'The Finance category (Save Money) is Pro-only. Upgrade to Pro '
+            'to manage finance habits & see your savings summary.',
+      );
+    }
+    return;
+  }
+  if (!isPro) {
+    final activeHabits = await habitRepository.getAllActive();
+    // Keep in sync with `_freeActiveHabitLimit` in add_habit_flow_screen.dart.
+    if (activeHabits.length >= 5) {
+      if (context.mounted) {
+        await showProRequiredDialog(
+          context,
+          message: 'You\'ve reached the 5 active habit limit for Free users. '
+              'Upgrade to Pro to add unlimited habits.',
+        );
+      }
+      return;
+    }
+  }
+
+  if (!context.mounted) return;
+  final targetLabel = goalUnit == 'x' ? '${goalValue}x' : '$goalValue $goalUnit';
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Add to your habits?'),
+      content: Text(
+        '"${groupHabit.name}" ($targetLabel · ${goalPeriod.label}) will be added to your '
+        'habit list, tracked exactly as published in this group.',
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(dialogContext).pop(true),
+          child: const Text('Add'),
+        ),
+      ],
     ),
   );
+  if (confirmed != true) return;
+
+  try {
+    final habitId = await habitRepository.createHabit(
+      categoryId: guessedCategoryId,
+      name: groupHabit.name,
+      icon: groupHabit.icon,
+      goalPeriod: goalPeriod,
+      goalValue: goalValue,
+      goalUnit: goalUnit,
+      goalDirection: goalDirection,
+      taskDays: const [allDaysKey],
+      timeRange: TimeRange.anytime,
+      reminderEnabled: false,
+      // Backdated to when the Group Habit was first published, not
+      // today — so reconnecting after an uninstall doesn't hide the
+      // habit from every day before the reconnect.
+      startDate: groupHabit.createdAt,
+    );
+    await linkRepository.link(
+      habitId: habitId,
+      groupId: groupHabit.groupId,
+      groupHabitId: groupHabit.id,
+      uid: uid,
+    );
+
+    // Pulls back any daily progress previously backed up for this Group
+    // Habit under this account, so a reconnect after uninstall isn't left
+    // with an empty history for the days before today. Kept separate from
+    // the create+link try/catch above: a restore failure shouldn't look
+    // like the whole "Add to My Habits" action failed (the habit itself
+    // was created and linked fine either way) — but it also shouldn't be
+    // silently swallowed, since that's exactly what made a previous restore
+    // bug invisible.
+    String restoreMessage;
+    try {
+      final restoredCount = await restoreCommunityHabitBackup(
+        backupRepository: backupRepository,
+        logRepository: logRepository,
+        habitId: habitId,
+        uid: uid,
+        groupHabitId: groupHabit.id,
+      );
+      restoreMessage = restoredCount > 0
+          ? 'Added "${groupHabit.name}" — restored $restoredCount day(s) of history'
+          : 'Added "${groupHabit.name}" to your habits';
+    } catch (e) {
+      restoreMessage = 'Added "${groupHabit.name}", but restoring past history failed: $e';
+    }
+    messenger.showSnackBar(SnackBar(content: Text(restoreMessage)));
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Failed to add habit: $e')));
+  }
 }
 
 /// Admin-only: removes a habit from the community — deletes the Group

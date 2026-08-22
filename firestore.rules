@@ -117,6 +117,16 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;
       allow write: if false;
+
+      // Privat per-akun: backup log harian habit yang terhubung ke
+      // Community, dipakai untuk restore histori kalau user reconnect lagi
+      // ke Group Habit yang sama pasca uninstall. Beda dari
+      // `groupHabits/{id}/leaderboard/{uid}` (agregat, dibagikan ke sesama
+      // member) — ini cuma bisa dibaca/ditulis oleh pemiliknya sendiri,
+      // tidak pernah dibagikan ke member Group lain.
+      match /linkedHabitLogs/{groupHabitId}/entries/{entryId} {
+        allow read, write: if isSignedIn() && request.auth.uid == uid;
+      }
     }
   }
 }

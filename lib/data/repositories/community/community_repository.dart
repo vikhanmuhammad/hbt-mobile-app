@@ -221,6 +221,7 @@ class CommunityRepository {
     required String createdBy,
     required int goalValue,
     required String goalPeriod,
+    required String goalDirection,
   }) async {
     final now = DateTime.now();
     final ref = _groups.doc(groupId).collection('groupHabits').doc();
@@ -233,6 +234,7 @@ class CommunityRepository {
       'createdAt': Timestamp.fromDate(now),
       'goalValue': goalValue,
       'goalPeriod': goalPeriod,
+      'goalDirection': goalDirection,
     });
     return GroupHabit(
       id: ref.id,
@@ -245,6 +247,7 @@ class CommunityRepository {
       createdAt: now,
       goalValue: goalValue,
       goalPeriod: goalPeriod,
+      goalDirection: goalDirection,
     );
   }
 
@@ -390,6 +393,7 @@ class CommunityRepository {
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       goalValue: (data['goalValue'] as num?)?.toInt(),
       goalPeriod: data['goalPeriod'] as String?,
+      goalDirection: data['goalDirection'] as String?,
     );
   }
 

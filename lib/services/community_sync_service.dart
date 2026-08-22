@@ -1,4 +1,5 @@
 import '../data/repositories/community/community_repository.dart';
+import '../data/repositories/community/habit_log_backup_repository.dart';
 import '../data/repositories/habit_group_link_repository.dart';
 import '../data/repositories/habit_log_repository.dart';
 import '../data/repositories/habit_repository.dart';
@@ -20,21 +21,30 @@ class CommunitySyncService {
     required HabitRepository habitRepository,
     required HabitLogRepository habitLogRepository,
     required CommunityRepository communityRepository,
+    required HabitLogBackupRepository habitLogBackupRepository,
   })  : _linkRepository = linkRepository,
         _habitRepository = habitRepository,
         _habitLogRepository = habitLogRepository,
-        _communityRepository = communityRepository;
+        _communityRepository = communityRepository,
+        _habitLogBackupRepository = habitLogBackupRepository;
 
   final HabitGroupLinkRepository _linkRepository;
   final HabitRepository _habitRepository;
   final HabitLogRepository _habitLogRepository;
   final CommunityRepository _communityRepository;
+  final HabitLogBackupRepository _habitLogBackupRepository;
 
   /// Dipanggil (fire-and-forget, tidak boleh blokir alur tracking harian)
   /// setelah `HabitLogRepository.setProgress` sukses untuk habit manapun —
-  /// no-op kalau habit itu tidak sedang linked ke Group Habit apapun.
+  /// no-op kalau habit itu tidak sedang linked ke Group Habit apapun. Selain
+  /// push agregat (streak/progress periode) ke leaderboard, juga membackup
+  /// log HARI [date] itu sendiri ke `HabitLogBackupRepository` — privat per
+  /// akun, dipakai buat restore histori kalau user reconnect lagi ke Group
+  /// Habit yang sama pasca uninstall (lihat `restoreCommunityHabitBackup`).
+  /// Habit yang tidak linked tetap tidak pernah punya backup apapun.
   Future<void> syncHabit({
     required int habitId,
+    required DateTime date,
     required String uid,
     required String displayName,
     String? avatarIcon,
@@ -49,6 +59,14 @@ class CommunitySyncService {
     final streak = _computeStreak(habit, logs);
     final progressValue = _computePeriodProgress(habit, logs);
 
+    HabitLog? logForDate;
+    for (final log in logs) {
+      if (isSameDay(log.date, date)) {
+        logForDate = log;
+        break;
+      }
+    }
+
     for (final link in links) {
       await _communityRepository.upsertLeaderboardEntry(
         groupId: link.groupId,
@@ -59,8 +77,62 @@ class CommunitySyncService {
         streak: streak,
         progressValue: progressValue,
       );
+      await _habitLogBackupRepository.upsertLog(
+        uid: uid,
+        groupHabitId: link.groupHabitId,
+        date: date,
+        progressValue: logForDate?.progressValue ?? 0,
+        isDone: logForDate?.isDone ?? false,
+      );
       await _linkRepository.markSynced(link.id, DateTime.now());
     }
+  }
+
+  /// Dipanggil sekali tepat setelah user link/publish sebuah habit LAMA
+  /// (yang sudah punya riwayat lokal) ke sebuah Group Habit — beda dari
+  /// [syncHabit] yang jalan tiap ada progress baru dan cuma membackup log
+  /// hari itu saja, method ini langsung: (1) push leaderboard entry supaya
+  /// user langsung kelihatan tanpa menunggu update progress berikutnya, dan
+  /// (2) membackup SELURUH riwayat log lokal habit itu sekaligus, supaya
+  /// kalau nanti reconnect pasca uninstall, histori dari sebelum tanggal
+  /// link pun ikut bisa dipulihkan (bukan cuma dari tanggal link ke depan).
+  Future<void> backfillOnLink({
+    required int habitId,
+    required int linkId,
+    required String groupId,
+    required String groupHabitId,
+    required String uid,
+    required String displayName,
+    String? avatarIcon,
+  }) async {
+    final habit = await _habitRepository.getById(habitId);
+    if (habit == null) return;
+
+    final logs = await _habitLogRepository.getLogsForHabit(habitId);
+    final streak = _computeStreak(habit, logs);
+    final progressValue = _computePeriodProgress(habit, logs);
+
+    await _communityRepository.upsertLeaderboardEntry(
+      groupId: groupId,
+      groupHabitId: groupHabitId,
+      uid: uid,
+      displayName: displayName,
+      avatarIcon: avatarIcon,
+      streak: streak,
+      progressValue: progressValue,
+    );
+
+    for (final log in logs) {
+      await _habitLogBackupRepository.upsertLog(
+        uid: uid,
+        groupHabitId: groupHabitId,
+        date: log.date,
+        progressValue: log.progressValue,
+        isDone: log.isDone,
+      );
+    }
+
+    await _linkRepository.markSynced(linkId, DateTime.now());
   }
 
   /// Hari berturut-turut (mundur dari hari ini) di mana habit terjadwal
