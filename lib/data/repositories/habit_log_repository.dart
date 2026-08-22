@@ -24,6 +24,12 @@ class HabitLogRepository {
     return rows.map(mapHabitLog).toList();
   }
 
+  Stream<List<HabitLog>> watchLogsInRange(DateTime start, DateTime end) {
+    return _db.habitLogDao
+        .watchLogsInRange(start, end)
+        .map((rows) => rows.map(mapHabitLog).toList());
+  }
+
   Future<List<HabitLog>> getLogsForHabit(int habitId) async {
     final rows = await _db.habitLogDao.getLogsForHabit(habitId);
     return rows.map(mapHabitLog).toList();

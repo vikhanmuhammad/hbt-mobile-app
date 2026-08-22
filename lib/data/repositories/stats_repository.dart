@@ -26,32 +26,31 @@ class StatsRepository {
     final habitById = {for (final h in habits) h.id: h};
     final trackedDays = <DateTime>{};
     var totalLogs = 0;
-    var doneLogs = 0;
+    var doneLogs = 0.0;
 
-    final habitTotals = <int, (int total, int done)>{};
-    final categoryTotals = <int, (int total, int done)>{};
-    final monthTotals = <DateTime, (int total, int done)>{};
+    final habitTotals = <int, (int total, double done)>{};
+    final categoryTotals = <int, (int total, double done)>{};
+    final monthTotals = <DateTime, (int total, double done)>{};
 
     for (final log in logs) {
       final habit = habitById[log.habitId];
       if (habit == null) continue;
 
+      final credit = habit.progressCredit(log.progressValue);
+
       trackedDays.add(DateTime(log.date.year, log.date.month, log.date.day));
       totalLogs++;
-      if (log.isDone) doneLogs++;
+      doneLogs += credit;
 
-      final habitPrev = habitTotals[habit.id] ?? (0, 0);
-      habitTotals[habit.id] =
-          (habitPrev.$1 + 1, habitPrev.$2 + (log.isDone ? 1 : 0));
+      final habitPrev = habitTotals[habit.id] ?? (0, 0.0);
+      habitTotals[habit.id] = (habitPrev.$1 + 1, habitPrev.$2 + credit);
 
-      final catPrev = categoryTotals[habit.categoryId] ?? (0, 0);
-      categoryTotals[habit.categoryId] =
-          (catPrev.$1 + 1, catPrev.$2 + (log.isDone ? 1 : 0));
+      final catPrev = categoryTotals[habit.categoryId] ?? (0, 0.0);
+      categoryTotals[habit.categoryId] = (catPrev.$1 + 1, catPrev.$2 + credit);
 
       final monthKey = DateTime(log.date.year, log.date.month);
-      final monthPrev = monthTotals[monthKey] ?? (0, 0);
-      monthTotals[monthKey] =
-          (monthPrev.$1 + 1, monthPrev.$2 + (log.isDone ? 1 : 0));
+      final monthPrev = monthTotals[monthKey] ?? (0, 0.0);
+      monthTotals[monthKey] = (monthPrev.$1 + 1, monthPrev.$2 + credit);
     }
 
     final habitStats = habitTotals.entries
@@ -121,13 +120,13 @@ class StatsRepository {
         !day.isAfter(lastDay);
         day = day.add(const Duration(days: 1))) {
       var total = 0;
-      var done = 0;
+      var done = 0.0;
       for (final habit in habits) {
         if (!isHabitActiveOn(habit, day)) continue;
         total++;
         final key = '${habit.id}_${day.year}-${day.month}-${day.day}';
         final log = logByHabitDate[key];
-        if (log != null && log.isDone) done++;
+        if (log != null) done += habit.progressCredit(log.progressValue);
       }
       summaries.add(DaySummary(date: day, totalCount: total, doneCount: done));
     }
@@ -141,12 +140,12 @@ class StatsRepository {
     final logByHabit = {for (final log in logs) log.habitId: log};
 
     var total = 0;
-    var done = 0;
+    var done = 0.0;
     for (final habit in habits) {
       if (!isHabitActiveOn(habit, date)) continue;
       total++;
       final log = logByHabit[habit.id];
-      if (log != null && log.isDone) done++;
+      if (log != null) done += habit.progressCredit(log.progressValue);
     }
     return DaySummary(date: date, totalCount: total, doneCount: done);
   }

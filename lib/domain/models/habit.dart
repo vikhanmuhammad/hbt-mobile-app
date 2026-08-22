@@ -65,4 +65,16 @@ class Habit {
   bool isAchieved(int progressValue) => goalDirection == GoalDirection.atMost
       ? progressValue <= goalValue
       : progressValue >= goalValue;
+
+  /// Kontribusi [progressValue] terhadap goal, 0.0-1.0 — dipakai stats/
+  /// Dashboard supaya habit yang belum tercapai (mis. 4 dari target 10)
+  /// tetap tercatat sebagian, bukan cuma dihitung kalau sudah `isAchieved`
+  /// penuh. Untuk `atMost` (batas maksimum) tetap biner: progres di bawah
+  /// limit tidak punya "porsi" yang natural untuk dihitung parsial.
+  double progressCredit(int progressValue) {
+    if (goalDirection == GoalDirection.atMost || goalValue <= 0) {
+      return isAchieved(progressValue) ? 1.0 : 0.0;
+    }
+    return (progressValue / goalValue).clamp(0.0, 1.0);
+  }
 }

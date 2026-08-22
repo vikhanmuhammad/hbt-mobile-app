@@ -84,6 +84,85 @@ final class LogsForDateFamily extends $Family
   String toString() => r'logsForDateProvider';
 }
 
+@ProviderFor(logsInRange)
+final logsInRangeProvider = LogsInRangeFamily._();
+
+final class LogsInRangeProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<HabitLog>>,
+          List<HabitLog>,
+          Stream<List<HabitLog>>
+        >
+    with $FutureModifier<List<HabitLog>>, $StreamProvider<List<HabitLog>> {
+  LogsInRangeProvider._({
+    required LogsInRangeFamily super.from,
+    required (DateTime, DateTime) super.argument,
+  }) : super(
+         retry: null,
+         name: r'logsInRangeProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$logsInRangeHash();
+
+  @override
+  String toString() {
+    return r'logsInRangeProvider'
+        ''
+        '$argument';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<HabitLog>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<HabitLog>> create(Ref ref) {
+    final argument = this.argument as (DateTime, DateTime);
+    return logsInRange(ref, argument.$1, argument.$2);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LogsInRangeProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$logsInRangeHash() => r'4efa643ea2b2ff1a4f451c316f73977451d701c9';
+
+final class LogsInRangeFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+          Stream<List<HabitLog>>,
+          (DateTime, DateTime)
+        > {
+  LogsInRangeFamily._()
+    : super(
+        retry: null,
+        name: r'logsInRangeProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  LogsInRangeProvider call(DateTime start, DateTime end) =>
+      LogsInRangeProvider._(argument: (start, end), from: this);
+
+  @override
+  String toString() => r'logsInRangeProvider';
+}
+
 /// Semua habit aktif ditagih pada [date] (flat, lintas goal phrase), dengan
 /// progress-nya. Dipakai di Beranda (flat list, CLAUDE.md v3 §6.1) dan
 /// Riwayat/Kalender (detail hari, untuk backfill).
@@ -160,7 +239,7 @@ final class HabitsWithProgressForDateProvider
 }
 
 String _$habitsWithProgressForDateHash() =>
-    r'e346ec388d0271555df80731924cd37b26f234cc';
+    r'd6233993c50fd6a611931ece334c4573eaad35e6';
 
 /// Semua habit aktif ditagih pada [date] (flat, lintas goal phrase), dengan
 /// progress-nya. Dipakai di Beranda (flat list, CLAUDE.md v3 §6.1) dan
