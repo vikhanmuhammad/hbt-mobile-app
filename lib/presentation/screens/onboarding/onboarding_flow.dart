@@ -276,33 +276,72 @@ class _StepScaffold extends StatelessWidget {
     required this.child,
     required this.bottomButton,
     this.topBar,
+    this.background,
   });
 
   final Widget child;
   final Widget bottomButton;
   final Widget? topBar;
 
+  /// Undraw artwork painted behind the step's content — anchored to the
+  /// bottom of the content column (where the form/question content leaves
+  /// empty space) so it reads as page background texture rather than a
+  /// discrete "added" illustration competing with the content on top of it.
+  final UndrawIllustration? background;
+
   @override
   Widget build(BuildContext context) {
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
-    return Center(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Column(
-          children: [
-            if (topBar != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                child: topBar,
+    final theme = Theme.of(context);
+    return Stack(
+      children: [
+        if (background != null)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      child: SizedBox(
+                        height: 300,
+                        width: double.infinity,
+                        child: Opacity(
+                          opacity: 0.18,
+                          child: Undraw(
+                            illustration: background!,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            Expanded(child: child),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: bottomButton,
             ),
-          ],
+          ),
+        Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: Column(
+              children: [
+                if (topBar != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: topBar,
+                  ),
+                Expanded(child: child),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                  child: bottomButton,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -1214,6 +1253,7 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
     final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
     return _StepScaffold(
+      background: UndrawIllustration.sharedGoals,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
@@ -1267,8 +1307,6 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
               ref.read(settingsRepositoryProvider).setGender(value.name);
             },
           ),
-          const SizedBox(height: 28),
-          const _GoalsIllustration(),
         ],
       ),
       bottomButton: AnimatedBuilder(
@@ -1279,27 +1317,6 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
               : widget.onNext,
           child: Text(lang.next),
         ),
-      ),
-    );
-  }
-}
-
-/// Static undraw.co illustration ("Shared goals" — depicts more than one
-/// person, so it doesn't read as gender-specific) shown below the goal
-/// dropdown on the name/age step — fills the otherwise-empty space at the
-/// bottom. A still image, not an animation. Real undraw.co artwork via the
-/// `flutter_undraw` package (bundled SVG asset, no network fetch at runtime).
-class _GoalsIllustration extends StatelessWidget {
-  const _GoalsIllustration();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 260,
-      width: double.infinity,
-      child: Undraw(
-        illustration: UndrawIllustration.sharedGoals,
-        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -1347,6 +1364,7 @@ class _LifestyleQuestionStep extends StatelessWidget {
             ref.watch(introLanguageProvider) == OnboardingLang.id;
         final options = question.optionsFor(indonesian);
         return _StepScaffold(
+          background: _illustrations[(stepIndex - 1) % _illustrations.length],
           topBar: Align(
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: onSkip, child: Text(lang.skip)),
@@ -1371,16 +1389,6 @@ class _LifestyleQuestionStep extends StatelessWidget {
                     onTap: () => onSelect(question.options[i]),
                   ),
                 ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 200,
-                width: double.infinity,
-                child: Undraw(
-                  illustration:
-                      _illustrations[(stepIndex - 1) % _illustrations.length],
-                  color: theme.colorScheme.primary,
-                ),
-              ),
             ],
           ),
           bottomButton: Row(

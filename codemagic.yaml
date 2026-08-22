@@ -1,0 +1,64 @@
+workflows:
+  ios-testflight:
+    name: iOS - TestFlight
+    max_build_duration: 60
+    integrations:
+      # Name of the App Store Connect API key integration you create in
+      # Codemagic Team settings > Integrations > App Store Connect. Codemagic
+      # uses it both for automatic code signing (no .p12/.mobileprovision
+      # needed) and for uploading the build to TestFlight.
+      app_store_connect: codemagic_asc_api_key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.habtrack.habittracker
+      vars:
+        BUNDLE_ID: "com.habtrack.habittracker"
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+      groups:
+        # Create this group in Codemagic (Team settings > Environment
+        # variables > add group "firebase_ios"), containing one encrypted
+        # FILE variable named GOOGLE_SERVICE_INFO_PLIST holding the contents
+        # of ios/Runner/GoogleService-Info.plist (this file is gitignored,
+        # never commit it).
+        - firebase_ios
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Restore GoogleService-Info.plist
+        script: |
+          echo $GOOGLE_SERVICE_INFO_PLIST | base64 --decode > ios/Runner/GoogleService-Info.plist
+      - name: Get Flutter packages
+        script: |
+          flutter packages pub get
+      - name: Install CocoaPods dependencies
+        script: |
+          find . -name "Podfile" -maxdepth 2 -execdir pod install \;
+      - name: Set up code signing
+        script: |
+          xcode-project use-profiles
+      - name: Flutter build ipa
+        script: |
+          flutter build ipa --release \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      # Codemagic account email(s) to notify with build status.
+      email:
+        recipients:
+          - muhammadvikhanmuharram@gmail.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Flip to true once you're ready to submit for App Store review
+        # straight from CI (needs App Store review information filled in
+        # App Store Connect first).
+        submit_to_app_store: false
