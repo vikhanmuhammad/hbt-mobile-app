@@ -30,12 +30,7 @@ class SettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final themeMode = ref.watch(appThemeModeProvider);
-    // When never manually set, themeMode == ThemeMode.system — the app
-    // already renders dark if the device is dark, but the switch still
-    // needs to show that effective status, not just check == ThemeMode.dark.
-    final isDarkEffective = themeMode == ThemeMode.dark ||
-        (themeMode == ThemeMode.system &&
-            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    final isDarkEffective = themeMode == ThemeMode.dark;
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
 
     final profile = ref.watch(userProfileStreamProvider).value;
