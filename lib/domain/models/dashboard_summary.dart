@@ -10,7 +10,11 @@ class HabitStat {
 
   final Habit habit;
   final int totalLogs;
-  final int doneLogs;
+
+  /// Jumlah kredit progress (lihat `Habit.progressCredit`), bukan cuma
+  /// hitungan hari yang goal-nya sudah 100% tercapai — habit yang baru
+  /// mencapai sebagian tetap menyumbang porsinya di sini.
+  final double doneLogs;
 
   double get successRate => totalLogs == 0 ? 0 : doneLogs / totalLogs;
 }
@@ -24,7 +28,7 @@ class CategoryStat {
 
   final Category category;
   final int totalLogs;
-  final int doneLogs;
+  final double doneLogs;
 
   double get successRate => totalLogs == 0 ? 0 : doneLogs / totalLogs;
 }
@@ -39,7 +43,7 @@ class MonthlyStat {
   /// Tanggal 1 di bulan terkait, cuma dipakai sebagai kunci/label.
   final DateTime month;
   final int totalLogs;
-  final int doneLogs;
+  final double doneLogs;
 
   double get successRate => totalLogs == 0 ? 0 : doneLogs / totalLogs;
 }
@@ -56,7 +60,7 @@ class DashboardSummary {
 
   final int totalDaysTracked;
   final int totalLogs;
-  final int doneLogs;
+  final double doneLogs;
   final List<CategoryStat> categoryStats;
   final List<HabitStat> habitStats;
   final List<MonthlyStat> monthlyStats;
@@ -66,7 +70,7 @@ class DashboardSummary {
   static const empty = DashboardSummary(
     totalDaysTracked: 0,
     totalLogs: 0,
-    doneLogs: 0,
+    doneLogs: 0.0,
     categoryStats: [],
     habitStats: [],
     monthlyStats: [],

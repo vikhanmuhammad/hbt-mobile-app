@@ -32,6 +32,16 @@ class HabitLogDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  Stream<List<HabitLog>> watchLogsInRange(DateTime start, DateTime end) {
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day);
+    return (select(habitLogs)
+          ..where((l) =>
+              l.date.isBiggerOrEqualValue(startDay) &
+              l.date.isSmallerOrEqualValue(endDay)))
+        .watch();
+  }
+
   Future<List<HabitLog>> getLogsForHabit(int habitId) {
     return (select(habitLogs)..where((l) => l.habitId.equals(habitId))).get();
   }

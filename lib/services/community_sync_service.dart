@@ -4,7 +4,6 @@ import '../data/repositories/habit_log_repository.dart';
 import '../data/repositories/habit_repository.dart';
 import '../domain/date_utils.dart';
 import '../domain/habit_schedule.dart';
-import '../domain/models/enums.dart';
 import '../domain/models/habit.dart';
 import '../domain/models/habit_log.dart';
 
@@ -87,20 +86,7 @@ class CommunitySyncService {
   /// Akumulasi progressValue dalam periode berjalan sesuai `goalPeriod`
   /// habit (hari ini / minggu ini Senin-Minggu / bulan ini).
   int _computePeriodProgress(Habit habit, List<HabitLog> logs) {
-    final now = today();
-    DateTime start;
-    DateTime end;
-    switch (habit.goalPeriod) {
-      case GoalPeriod.daily:
-        start = now;
-        end = now;
-      case GoalPeriod.weekly:
-        start = now.subtract(Duration(days: now.weekday - 1));
-        end = start.add(const Duration(days: 6));
-      case GoalPeriod.monthly:
-        start = DateTime(now.year, now.month, 1);
-        end = DateTime(now.year, now.month + 1, 0);
-    }
+    final (start, end) = periodBoundsFor(habit.goalPeriod, today());
     return logs
         .where((l) =>
             !dateOnly(l.date).isBefore(start) && !dateOnly(l.date).isAfter(end))
