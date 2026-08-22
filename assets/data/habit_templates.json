@@ -90,16 +90,10 @@
       "icon": "credit-card",
       "color": "#4A82B0",
       "habits": [
-        { "name": "Track expenses", "icon": "receipt", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
+        { "name": "Track expenses", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
         { "name": "Limit daily spending", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
         { "name": "Save money", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 100000, "goalUnit": "rupiah", "timeRange": "anytime" },
-        { "name": "No impulse buying", "icon": "wallet", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "goalDirection": "atMost", "timeRange": "anytime" },
-        { "name": "Review my budget", "icon": "chart-line", "goalPeriod": "weekly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
-        { "name": "Build an emergency fund", "icon": "sack-dollar", "goalPeriod": "monthly", "goalValue": 500000, "goalUnit": "rupiah", "timeRange": "anytime" },
-        { "name": "Pay bills on time", "icon": "money-bill-wave", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
-        { "name": "Invest regularly", "icon": "hand-holding-dollar", "goalPeriod": "monthly", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
-        { "name": "Cook at home instead of eating out", "icon": "utensils", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" },
-        { "name": "Compare prices before buying", "icon": "coins", "goalPeriod": "daily", "goalValue": 1, "goalUnit": "x", "timeRange": "anytime" }
+        { "name": "Build an emergency fund", "icon": "sack-dollar", "goalPeriod": "monthly", "goalValue": 500000, "goalUnit": "rupiah", "timeRange": "anytime" }
       ]
     },
     {

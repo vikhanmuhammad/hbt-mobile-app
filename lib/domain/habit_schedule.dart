@@ -34,3 +34,18 @@ bool isHabitActiveOn(Habit habit, DateTime date) {
       return (DateTime(day.year, day.month, 1), DateTime(day.year, day.month + 1, 0));
   }
 }
+
+/// How many distinct instances of a habit's own [period] overlap the
+/// [start]-[end] window (inclusive) at all — e.g. a `weekly` habit viewed
+/// over a whole calendar month typically overlaps 4-6 weeks. Used to scale
+/// a habit's target fairly against a window that isn't its own period (mis.
+/// Finance's Daily/Weekly/Monthly view toggle vs. each habit's own
+/// goalPeriod), instead of confusing "period count" with "how many days
+/// happened to have a log".
+int countPeriodsOverlapping(GoalPeriod period, DateTime start, DateTime end) {
+  final starts = <DateTime>{};
+  for (var day = dateOnly(start); !day.isAfter(dateOnly(end)); day = day.add(const Duration(days: 1))) {
+    starts.add(periodBoundsFor(period, day).$1);
+  }
+  return starts.length;
+}

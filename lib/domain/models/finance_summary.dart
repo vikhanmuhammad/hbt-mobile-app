@@ -14,26 +14,36 @@ class BudgetPace {
   final double actualRatio;
 }
 
-/// Agregat satu habit keuangan (bersatuan rupiah) dalam suatu periode.
-/// `totalTarget` = goalValue * loggedDays — dasar bandingan buat progress bar
-/// (bukan target penuh sebulan, supaya adil untuk periode yang baru berjalan
-/// sebagian atau habit yang baru dibuat di tengah bulan).
+/// Agregat satu habit keuangan (bersatuan rupiah) dalam suatu window Finance
+/// (Daily/Weekly/Monthly view). `totalTarget` = goalValue * jumlah instance
+/// goalPeriod habit ini sendiri yang tercakup window itu (lihat
+/// `countPeriodsOverlapping`) — bukan goalValue * jumlah hari yang kebetulan
+/// ada log, supaya habit weekly/monthly tetap dibandingkan ke kelipatan
+/// goalPeriod-nya sendiri walau window Finance yang dipilih beda (mis. habit
+/// weekly dilihat di tampilan Monthly dibandingkan ke goalValue x jumlah
+/// minggu dalam bulan itu, bukan x jumlah hari yang dicatat).
 class FinanceHabitStat {
   const FinanceHabitStat({
     required this.habit,
     required this.totalValue,
     required this.totalTarget,
-    required this.loggedDays,
-    required this.achievedDays,
+    required this.loggedPeriods,
+    required this.achievedPeriods,
   });
 
   final Habit habit;
   final int totalValue;
   final int totalTarget;
-  final int loggedDays;
-  final int achievedDays;
 
-  double get successRate => loggedDays == 0 ? 0 : achievedDays / loggedDays;
+  /// Banyak instance goalPeriod habit ini yang punya minimal satu log di
+  /// dalam window (mis. 3 dari 4 minggu di bulan itu ada progress-nya).
+  final int loggedPeriods;
+
+  /// Dari [loggedPeriods] itu, berapa yang goalValue-nya tercapai (dihitung
+  /// dari total progress dalam periode itu, bukan dari satu log harian).
+  final int achievedPeriods;
+
+  double get successRate => loggedPeriods == 0 ? 0 : achievedPeriods / loggedPeriods;
 }
 
 /// Total pengeluaran (habit `atMost`) pada satu tanggal — dasar tren harian.
@@ -66,16 +76,17 @@ class FinanceSummary {
   /// Jumlah yang dihabiskan (sum progressValue) dari habit `atMost`.
   final int totalExpense;
 
-  /// Jumlah batas/anggaran (sum goalValue*loggedDays) dari habit `atMost`.
+  /// Jumlah batas/anggaran (sum goalValue*periodCount, lihat
+  /// [FinanceHabitStat.totalTarget]) dari habit `atMost`.
   final int totalBudget;
 
   /// Jumlah yang disetor (sum progressValue) dari habit `atLeast` rupiah,
   /// mis. habit "Nabung" yang dibuat bersatuan rupiah.
   final int totalSavingsDeposit;
 
-  /// Target tabungan (sum goalValue*loggedDays) dari habit `atLeast` rupiah —
-  /// dasar bandingan progress "Rp X / Rp Y saved", sama seperti [totalBudget]
-  /// untuk habit `atMost`.
+  /// Target tabungan (sum goalValue*periodCount) dari habit `atLeast`
+  /// rupiah — dasar bandingan progress "Rp X / Rp Y saved", sama seperti
+  /// [totalBudget] untuk habit `atMost`.
   final int totalSavingsTarget;
 
   final List<FinanceHabitStat> habitStats;
