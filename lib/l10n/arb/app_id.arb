@@ -326,5 +326,9 @@
   "navDashboard": "Dashboard",
   "navCommunity": "Community",
   "navFinance": "Keuangan",
-  "navSettings": "Pengaturan"
+  "navSettings": "Pengaturan",
+
+  "addHabitCustomizeBeforeAdding": "Sesuaikan sebelum menambahkan",
+  "addHabitAddSelected": "{count, plural, other{Tambah {count} Habit}}",
+  "addHabitAddedMultiple": "{count} habit ditambahkan"
 }

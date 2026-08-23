@@ -440,5 +440,15 @@
   "navDashboard": "Dashboard",
   "navCommunity": "Community",
   "navFinance": "Finance",
-  "navSettings": "Settings"
+  "navSettings": "Settings",
+
+  "addHabitCustomizeBeforeAdding": "Customize before adding",
+  "addHabitAddSelected": "{count, plural, =1{Add 1 Habit} other{Add {count} Habits}}",
+  "@addHabitAddSelected": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "addHabitAddedMultiple": "{count} habits added",
+  "@addHabitAddedMultiple": {
+    "placeholders": { "count": { "type": "int" } }
+  }
 }

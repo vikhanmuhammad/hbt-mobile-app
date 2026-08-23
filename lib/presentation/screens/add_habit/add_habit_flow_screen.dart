@@ -22,7 +22,6 @@ import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
-import '../../widgets/pill_button.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
@@ -97,6 +96,14 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   late List<int> _stepStack;
   int? _categoryId;
   bool _saving = false;
+
+  // Step 2 multi-select state — templates picked from the recommendation
+  // list, added together via "Add N Habits" instead of one at a time. Each
+  // entry carries its own categoryId (not just the template) so the user
+  // can switch goal phrases via the chip row without losing selections
+  // already made under a different one — every entry still gets created
+  // under the goal phrase it was actually picked from.
+  final Set<({int categoryId, HabitTemplate template})> _selectedTemplates = {};
 
   // Step 3 form state.
   final _nameController = TextEditingController();
@@ -287,8 +294,12 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   /// Finance category (Save Money) is Pro-only — checked at the category
   /// pick point (step 1) AND at the submit point (step 3 has its own goal
   /// phrase dropdown that can change _categoryId without going through step 1 again).
-  Future<bool> _blockedByFinanceGate() async {
-    if (!_categoryIdIsFinance(_categoryId) || ref.read(isProProvider)) return false;
+  /// [categoryId] defaults to the current draft's category; Step 2's
+  /// multi-select batch passes each distinct category among the selected
+  /// entries, since a batch can span goal phrases other than the one
+  /// currently on screen.
+  Future<bool> _blockedByFinanceGate([int? categoryId]) async {
+    if (!_categoryIdIsFinance(categoryId ?? _categoryId) || ref.read(isProProvider)) return false;
     await showProRequiredDialog(
       context,
       message: AppLocalizations.of(context)!.addHabitFinanceProOnly,
@@ -297,11 +308,14 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   }
 
   /// Free users are capped at 5 active habits — only relevant when creating
-  /// a new habit, not when editing an existing one.
-  Future<bool> _blockedByFreeHabitLimit() async {
+  /// new habit(s), not when editing an existing one. [additional] is how
+  /// many new habits this action would add (>1 for the Step 2 multi-select
+  /// "Add N Habits" batch) — blocked when the batch would push the total
+  /// past the cap, not just when already at/over it.
+  Future<bool> _blockedByFreeHabitLimit({int additional = 1}) async {
     if (ref.read(isProProvider)) return false;
     final activeHabits = await ref.read(habitRepositoryProvider).getAllActive();
-    if (activeHabits.length < _freeActiveHabitLimit) return false;
+    if (activeHabits.length + additional <= _freeActiveHabitLimit) return false;
     if (mounted) {
       await showProRequiredDialog(
         context,
@@ -344,6 +358,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     final l10n = AppLocalizations.of(context)!;
     final isTablet = MediaQuery.sizeOf(context).width >= 900;
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
+    final showSelectionBar = _step == 2 && _selectedTemplates.isNotEmpty;
 
     return Scaffold(
       // Step 1 (Pick Goal Phrase) gets a grayer backdrop than the app default
@@ -352,40 +367,85 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ? (theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt)
           : theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: FadeSlideIn(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(isTablet ? 44 : 16, isTablet ? 32 : 20, isTablet ? 44 : 16, 40),
-              children: [
-                Row(
-                  children: [
-                    if (_showBack)
-                      _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: _back)
-                    else
-                      const SizedBox(width: 32),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(_titleFor(l10n), style: theme.textTheme.titleLarge),
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: FadeSlideIn(
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      isTablet ? 44 : 16,
+                      isTablet ? 32 : 20,
+                      isTablet ? 44 : 16,
+                      40,
                     ),
-                    _RoundIconButton(
-                      icon: Icons.close_rounded,
-                      iconSize: 14,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                    children: [
+                      Row(
+                        children: [
+                          if (_showBack)
+                            _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: _back)
+                          else
+                            const SizedBox(width: 32),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(_titleFor(l10n), style: theme.textTheme.titleLarge),
+                          ),
+                          _RoundIconButton(
+                            icon: Icons.close_rounded,
+                            iconSize: 14,
+                            onTap: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      switch (_step) {
+                        1 => _buildStep1(),
+                        2 => _buildStep2(),
+                        3 => _buildStep3(),
+                        4 => _buildStep4(),
+                        _ => const SizedBox.shrink(),
+                      },
+                    ],
+                  ),
+                  ),
                 ),
-                const SizedBox(height: 22),
-                switch (_step) {
-                  1 => _buildStep1(),
-                  2 => _buildStep2(),
-                  3 => _buildStep3(),
-                  4 => _buildStep4(),
-                  _ => const SizedBox.shrink(),
-                },
-              ],
+              ),
             ),
+            if (showSelectionBar) _buildSelectionBar(context, l10n, maxWidth),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pinned bar below the Step 2 list (a sibling in the outer `Column`, not
+  /// inside the scrolling `ListView`) — appears once at least 1 template is
+  /// selected, showing the "Add N Habits" batch action so it's always
+  /// reachable without scrolling down. The outer `SafeArea` in `build()`
+  /// already keeps this clear of the system nav bar, so no extra one here.
+  Widget _buildSelectionBar(BuildContext context, AppLocalizations l10n, double maxWidth) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: ElevatedButton(
+              onPressed: _saving ? null : _addSelectedTemplates,
+              child: Text(l10n.addHabitAddSelected(_selectedTemplates.length)),
             ),
           ),
         ),
@@ -527,6 +587,41 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Lets the user hop between goal phrases without leaving
+                // Step 2 (and without losing selections made under a
+                // different one — see `_selectedTemplates`'s doc comment).
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final c = categories[index];
+                      final isCurrent = c.id == _categoryId;
+                      final chipColor = AppColors.categoryColorFromHex(c.colorHex, index);
+                      return ChoiceChip(
+                        label: Text(c.displayName(lang)),
+                        selected: isCurrent,
+                        onSelected: (_) {
+                          if (isCurrent) return;
+                          if (isFinanceCategory(c) && !ref.read(isProProvider)) {
+                            showProRequiredDialog(context, message: l10n.addHabitFinanceProOnly);
+                            return;
+                          }
+                          setState(() => _categoryId = c.id);
+                        },
+                        selectedColor: chipColor.withValues(alpha: 0.18),
+                        side: isCurrent ? BorderSide(color: chipColor) : BorderSide.none,
+                        labelStyle: TextStyle(
+                          color: isCurrent ? chipColor : theme.textTheme.bodySmall?.color,
+                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Container(
@@ -551,34 +646,65 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                     child: Text(l10n.addHabitNoRecommendations, style: theme.textTheme.bodySmall),
                   ),
                 for (final t in templates)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => _openFormForTemplate(t),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(t.displayName(lang), style: theme.textTheme.titleMedium),
-                                  const SizedBox(height: 2),
-                                  Text(t.goalLabel(lang), style: theme.textTheme.bodyMedium),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          PrimaryPillButton(
-                            label: l10n.addHabitAdd,
-                            onPressed: _saving ? null : () => _quickAddTemplate(t),
-                          ),
-                        ],
+                  Builder(builder: (context) {
+                    final entry = (categoryId: _categoryId!, template: t);
+                    final selected = _selectedTemplates.contains(entry);
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      color: selected ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: selected
+                            ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
+                            : BorderSide.none,
                       ),
-                    ),
-                  ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => setState(() {
+                          if (!_selectedTemplates.remove(entry)) _selectedTemplates.add(entry);
+                        }),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(t.displayName(lang), style: theme.textTheme.titleMedium),
+                                    const SizedBox(height: 2),
+                                    Text(t.goalLabel(lang), style: theme.textTheme.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              IconButton(
+                                tooltip: l10n.addHabitCustomizeBeforeAdding,
+                                icon: const Icon(Icons.tune_rounded, size: 20),
+                                onPressed: () => _openFormForTemplate(t),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: selected ? theme.colorScheme.primary : Colors.transparent,
+                                  border: Border.all(
+                                    color: selected ? theme.colorScheme.primary : theme.dividerColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: selected
+                                    ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 const SizedBox(height: 4),
                 DashedBorder(
                   borderRadius: 14,
@@ -625,34 +751,54 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     });
   }
 
-  Future<void> _quickAddTemplate(HabitTemplate template) async {
-    if (_categoryId == null) return;
+  /// Creates every habit in [_selectedTemplates] at once (Step 2 multi-select
+  /// — replaces the old "Add" pill that saved 1 template and immediately
+  /// popped the screen). Entries can span more than 1 goal phrase (the chip
+  /// row lets the user switch category without losing earlier picks), so
+  /// each is created under its own `categoryId`, and the Finance Pro-gate is
+  /// checked once per distinct category in the batch rather than just the
+  /// one currently on screen. Free-tier gate is checked against the whole
+  /// batch up front so it doesn't fail partway through and leave a mix of
+  /// created/not-created habits.
+  Future<void> _addSelectedTemplates() async {
+    if (_selectedTemplates.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
-    if (await _blockedByFinanceGate() || await _blockedByFreeHabitLimit()) return;
+    final entries = List<({int categoryId, HabitTemplate template})>.from(_selectedTemplates);
+    for (final categoryId in entries.map((e) => e.categoryId).toSet()) {
+      if (await _blockedByFinanceGate(categoryId)) return;
+    }
+    if (await _blockedByFreeHabitLimit(additional: entries.length)) return;
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
-      final id = await repo.createHabit(
-        categoryId: _categoryId!,
-        name: template.name,
-        nameId: template.nameId,
-        isCustom: false,
-        templateKey: template.key,
-        icon: template.icon,
-        goalPeriod: template.goalPeriod,
-        goalValue: template.goalValue,
-        goalUnit: template.goalUnit,
-        goalDirection: template.goalDirection,
-        taskDays: const [allDaysKey],
-        timeRange: template.timeRange,
-        reminderEnabled: false,
-        startDate: today(),
-      );
-      final created = await repo.getById(id);
-      if (created != null) {
-        await _tryScheduleNotification(created);
+      for (final entry in entries) {
+        final template = entry.template;
+        final id = await repo.createHabit(
+          categoryId: entry.categoryId,
+          name: template.name,
+          nameId: template.nameId,
+          isCustom: false,
+          templateKey: template.key,
+          icon: template.icon,
+          goalPeriod: template.goalPeriod,
+          goalValue: template.goalValue,
+          goalUnit: template.goalUnit,
+          goalDirection: template.goalDirection,
+          taskDays: const [allDaysKey],
+          timeRange: template.timeRange,
+          reminderEnabled: false,
+          startDate: today(),
+        );
+        final created = await repo.getById(id);
+        if (created != null) {
+          await _tryScheduleNotification(created);
+        }
       }
-      await _finishAndReturn(toastMessage: l10n.addHabitAdded);
+      await _finishAndReturn(
+        toastMessage: entries.length == 1
+            ? l10n.addHabitAdded
+            : l10n.addHabitAddedMultiple(entries.length),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

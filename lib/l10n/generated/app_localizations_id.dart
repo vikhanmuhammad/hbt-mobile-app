@@ -39,8 +39,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsDarkMode => 'Mode gelap';
 
   @override
-  String get settingsSectionHealthCalendarSync =>
-      'Sinkronisasi Kesehatan & Kalender';
+  String get settingsSectionHealthCalendarSync => 'Sinkronisasi Kesehatan & Kalender';
 
   @override
   String get settingsSectionProAccess => 'Akses Pro';
@@ -70,8 +69,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsDeleteAccount => 'Hapus Akun';
 
   @override
-  String get settingsAboutBody =>
-      'Berdasarkan riset Phillippa Lally dkk. (UCL): sebuah habit baru butuh rata-rata 66 hari pengulangan untuk menjadi otomatis. Fokus pada konsistensi, bukan kesempurnaan.\n\nSepenuhnya offline. Semua rekomendasi berasal dari data statis di aplikasi, tanpa akun atau sinkronisasi cloud.';
+  String get settingsAboutBody => 'Berdasarkan riset Phillippa Lally dkk. (UCL): sebuah habit baru butuh rata-rata 66 hari pengulangan untuk menjadi otomatis. Fokus pada konsistensi, bukan kesempurnaan.\n\nSepenuhnya offline. Semua rekomendasi berasal dari data statis di aplikasi, tanpa akun atau sinkronisasi cloud.';
 
   @override
   String get settingsReplayOnboarding => 'Ulangi alur onboarding';
@@ -82,12 +80,10 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get settingsShareText =>
-      'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung!';
+  String get settingsShareText => 'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung!';
 
   @override
-  String get settingsSignInFirstToRestore =>
-      'Masuk akun dulu untuk memulihkan pembelian.';
+  String get settingsSignInFirstToRestore => 'Masuk akun dulu untuk memulihkan pembelian.';
 
   @override
   String get settingsRestoringPurchases => 'Memulihkan pembelian…';
@@ -96,8 +92,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsDeleteAccountTitle => 'Hapus akun?';
 
   @override
-  String get settingsDeleteAccountBody =>
-      'Ini akan menghapus permanen akun Community Anda — keanggotaan grup, riwayat chat, dan hak akses Pro yang terkait. Data habit lokal di perangkat ini tidak terpengaruh. Tindakan ini tidak bisa dibatalkan.';
+  String get settingsDeleteAccountBody => 'Ini akan menghapus permanen akun Community Anda — keanggotaan grup, riwayat chat, dan hak akses Pro yang terkait. Data habit lokal di perangkat ini tidak terpengaruh. Tindakan ini tidak bisa dibatalkan.';
 
   @override
   String get settingsAccountDeleted => 'Akun terhapus.';
@@ -111,8 +106,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get settingsDeleteAllDataTitle => 'Hapus semua data?';
 
   @override
-  String get settingsDeleteAllDataBody =>
-      'Semua kategori, habit, dan riwayat progres akan dihapus permanen, lalu aplikasi kembali ke alur onboarding dari awal. Tindakan ini tidak bisa dibatalkan.';
+  String get settingsDeleteAllDataBody => 'Semua kategori, habit, dan riwayat progres akan dihapus permanen, lalu aplikasi kembali ke alur onboarding dari awal. Tindakan ini tidak bisa dibatalkan.';
 
   @override
   String get settingsDeleteAll => 'Hapus Semua';
@@ -154,8 +148,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeNoHabitsScheduledYet => 'Belum ada habit terjadwal';
 
   @override
-  String get homeEmptyStateHint =>
-      'Ketuk tombol Add Habit di kiri bawah untuk menambahkan habit pertama Anda hari ini.';
+  String get homeEmptyStateHint => 'Ketuk tombol Add Habit di kiri bawah untuk menambahkan habit pertama Anda hari ini.';
 
   @override
   String get commonByHabit => 'Per Habit';
@@ -167,20 +160,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeProFeatureTitle => 'Keuangan — Fitur Pro';
 
   @override
-  String get financeProFeatureDescription =>
-      'Lacak pengeluaran, tabungan, dan habit menabung dalam satu rangkuman bulanan. Upgrade ke Pro untuk membuka fitur ini.';
+  String get financeProFeatureDescription => 'Lacak pengeluaran, tabungan, dan habit menabung dalam satu rangkuman bulanan. Upgrade ke Pro untuk membuka fitur ini.';
 
   @override
-  String get financeProBenefit1 =>
-      'Total pengeluaran & tabungan bulanan dari semua habit keuangan Anda';
+  String get financeProBenefit1 => 'Total pengeluaran & tabungan bulanan dari semua habit keuangan Anda';
 
   @override
-  String get financeProBenefit2 =>
-      'Grafik tren pengeluaran harian supaya pola terlihat lebih awal';
+  String get financeProBenefit2 => 'Grafik tren pengeluaran harian supaya pola terlihat lebih awal';
 
   @override
-  String get financeProBenefit3 =>
-      'Rincian per habit untuk melihat persis ke mana uang Anda pergi';
+  String get financeProBenefit3 => 'Rincian per habit untuk melihat persis ke mana uang Anda pergi';
 
   @override
   String get financePeriodDaily => 'Harian';
@@ -200,8 +189,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeNoFinanceHabitsYet => 'Belum ada habit keuangan';
 
   @override
-  String get financeEmptyHint =>
-      'Tambahkan habit bersatuan Rupiah (mis. batas pengeluaran harian di \"Menabung\") untuk mulai melihat rangkuman di sini.';
+  String get financeEmptyHint => 'Tambahkan habit bersatuan Rupiah (mis. batas pengeluaran harian di \"Menabung\") untuk mulai melihat rangkuman di sini.';
 
   @override
   String get financeTotalSpending => 'Total Pengeluaran';
@@ -255,8 +243,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get dashboardAll => 'Semua';
 
   @override
-  String get dashboardNoHabitsScheduledToday =>
-      'Tidak ada habit terjadwal hari ini.';
+  String get dashboardNoHabitsScheduledToday => 'Tidak ada habit terjadwal hari ini.';
 
   @override
   String dashboardFailedToUpdateProgress(String error) {
@@ -272,8 +259,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get dashboardNoDataToShowYet => 'Belum ada data untuk ditampilkan';
 
   @override
-  String get dashboardEmptyHint =>
-      'Mulai centang habit hari ini supaya dashboard mulai terisi.';
+  String get dashboardEmptyHint => 'Mulai centang habit hari ini supaya dashboard mulai terisi.';
 
   @override
   String dashboardDaysTracked(int count) {
@@ -281,8 +267,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get dashboardOverallAvgSuccessRate =>
-      'Rata-rata tingkat keberhasilan keseluruhan';
+  String get dashboardOverallAvgSuccessRate => 'Rata-rata tingkat keberhasilan keseluruhan';
 
   @override
   String get dashboardMonthlyTrend => 'Tren Bulanan';
@@ -299,8 +284,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitCreateNewGoal => 'Buat Goal Baru';
 
   @override
-  String get addHabitFinanceProOnly =>
-      'Kategori Keuangan (Menabung) khusus Pro. Upgrade ke Pro untuk mengelola habit keuangan & melihat rangkuman tabungan.';
+  String get addHabitFinanceProOnly => 'Kategori Keuangan (Menabung) khusus Pro. Upgrade ke Pro untuk mengelola habit keuangan & melihat rangkuman tabungan.';
 
   @override
   String addHabitFreeLimitMessage(int limit) {
@@ -308,8 +292,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get addHabitNoRecommendations =>
-      'Belum ada rekomendasi untuk kategori ini.';
+  String get addHabitNoRecommendations => 'Belum ada rekomendasi untuk kategori ini.';
 
   @override
   String get addHabitAdd => 'Tambah';
@@ -350,8 +333,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitHintNameId => 'Nama (Indonesia)';
 
   @override
-  String get addHabitLockedNameNotice =>
-      'Bawaan aplikasi — nama tidak bisa diubah.';
+  String get addHabitLockedNameNotice => 'Bawaan aplikasi — nama tidak bisa diubah.';
 
   @override
   String get addHabitFieldIcon => 'Ikon';
@@ -411,8 +393,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitSaveHabit => 'Simpan Habit';
 
   @override
-  String get addHabitNameRequired =>
-      'Nama habit (Inggris & Indonesia) wajib diisi';
+  String get addHabitNameRequired => 'Nama habit (Inggris & Indonesia) wajib diisi';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pilih goal phrase dulu';
@@ -444,8 +425,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitCreateGoal => 'Buat Goal';
 
   @override
-  String get addHabitCatNameRequired =>
-      'Nama goal phrase (Inggris & Indonesia) wajib diisi';
+  String get addHabitCatNameRequired => 'Nama goal phrase (Inggris & Indonesia) wajib diisi';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -453,8 +433,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get addHabitCommunityLockedNotice =>
-      'Habit ini tertaut ke grup Community, jadi target dan jadwalnya terkunci supaya sama dengan semua orang yang melacaknya. Lepas tautan dari tab Habits grup dulu untuk mengubahnya. Pengaturan Pengingat tetap bisa Anda ubah.';
+  String get addHabitCommunityLockedNotice => 'Habit ini tertaut ke grup Community, jadi target dan jadwalnya terkunci supaya sama dengan semua orang yang melacaknya. Lepas tautan dari tab Habits grup dulu untuk mengubahnya. Pengaturan Pengingat tetap bisa Anda ubah.';
 
   @override
   String get unitNoUnit => 'Tanpa satuan';
@@ -490,20 +469,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get communityProFeatureTitle => 'Community — Fitur Pro';
 
   @override
-  String get communityProFeatureDescription =>
-      'Buat/gabung grup habit dengan teman, saling bersaing lewat leaderboard, dan chat secara real-time. Upgrade ke Pro untuk membuka fitur ini.';
+  String get communityProFeatureDescription => 'Buat/gabung grup habit dengan teman, saling bersaing lewat leaderboard, dan chat secara real-time. Upgrade ke Pro untuk membuka fitur ini.';
 
   @override
-  String get communityProBenefit1 =>
-      'Buat atau gabung grup habit tanpa batas bersama teman dan keluarga';
+  String get communityProBenefit1 => 'Buat atau gabung grup habit tanpa batas bersama teman dan keluarga';
 
   @override
-  String get communityProBenefit2 =>
-      'Bersaing di leaderboard real-time supaya tetap termotivasi bersama';
+  String get communityProBenefit2 => 'Bersaing di leaderboard real-time supaya tetap termotivasi bersama';
 
   @override
-  String get communityProBenefit3 =>
-      'Chat grup untuk saling menyemangati dan menjaga komitmen';
+  String get communityProBenefit3 => 'Chat grup untuk saling menyemangati dan menjaga komitmen';
 
   @override
   String get communityTitle => 'Community';
@@ -523,8 +498,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get communitySignInTitle => 'Masuk untuk Melanjutkan';
 
   @override
-  String get communitySignInBody =>
-      'Community membutuhkan akun supaya progres Anda bisa dibagikan ke grup.';
+  String get communitySignInBody => 'Community membutuhkan akun supaya progres Anda bisa dibagikan ke grup.';
 
   @override
   String get communitySignInWithGoogle => 'Masuk dengan Google';
@@ -543,15 +517,13 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get communityNoGroupsYet =>
-      'Belum ada grup. Buat grup baru atau gabung dengan kode undangan dari teman.';
+  String get communityNoGroupsYet => 'Belum ada grup. Buat grup baru atau gabung dengan kode undangan dari teman.';
 
   @override
   String get communityLogOutTitle => 'Keluar dari Community?';
 
   @override
-  String get communityLogOutBody =>
-      'Anda perlu masuk lagi untuk melihat atau menyinkronkan grup Anda. Data habit lokal Anda tidak terpengaruh.';
+  String get communityLogOutBody => 'Anda perlu masuk lagi untuk melihat atau menyinkronkan grup Anda. Data habit lokal Anda tidak terpengaruh.';
 
   @override
   String get communityLogOutConfirm => 'Keluar';
@@ -580,8 +552,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get joinGroupInviteCodeHint => 'mis. A1B2C3D4';
 
   @override
-  String get joinGroupAskMember =>
-      'Minta kode undangan dari anggota grup yang sudah ada.';
+  String get joinGroupAskMember => 'Minta kode undangan dari anggota grup yang sudah ada.';
 
   @override
   String get joinGroupInviteCodeNotFound => 'Kode undangan tidak ditemukan';
@@ -620,12 +591,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get groupPromoteAdminFirstTitle => 'Jadikan admin lain dulu';
 
   @override
-  String get groupPromoteAdminFirstBody =>
-      'Anda satu-satunya admin di grup ini. Jadikan anggota lain admin dulu sebelum keluar, atau hapus grup ini saja.';
+  String get groupPromoteAdminFirstBody => 'Anda satu-satunya admin di grup ini. Jadikan anggota lain admin dulu sebelum keluar, atau hapus grup ini saja.';
 
   @override
-  String get groupLeaveOnlyMemberBody =>
-      'Anda satu-satunya anggota — keluar berarti Anda perlu kode undangan untuk bergabung lagi nanti. Hapus grup saja jika ingin menghilangkannya untuk selamanya.';
+  String get groupLeaveOnlyMemberBody => 'Anda satu-satunya anggota — keluar berarti Anda perlu kode undangan untuk bergabung lagi nanti. Hapus grup saja jika ingin menghilangkannya untuk selamanya.';
 
   @override
   String groupLeaveNeedInviteBody(String name) {
@@ -693,8 +662,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get groupNoHabitsYetBody =>
-      'Anda belum punya habit — tambahkan dulu dari Home, lalu kembali ke sini untuk mengaktifkannya bersama grup.';
+  String get groupNoHabitsYetBody => 'Anda belum punya habit — tambahkan dulu dari Home, lalu kembali ke sini untuk mengaktifkannya bersama grup.';
 
   @override
   String get groupYourHabits => 'Habit Anda';
@@ -706,12 +674,10 @@ class AppLocalizationsId extends AppLocalizations {
   String get groupLinked => 'Tertaut';
 
   @override
-  String get groupAlreadyTrackedViaOther =>
-      'Sudah dilacak di grup ini lewat habit Anda yang lain';
+  String get groupAlreadyTrackedViaOther => 'Sudah dilacak di grup ini lewat habit Anda yang lain';
 
   @override
-  String get groupMatchesExisting =>
-      'Cocok dengan habit komunitas yang sudah ada';
+  String get groupMatchesExisting => 'Cocok dengan habit komunitas yang sudah ada';
 
   @override
   String get groupLinkAction => 'Tautkan';
@@ -728,8 +694,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get groupRemoveFromCommunity => 'Hapus dari komunitas';
 
   @override
-  String get groupReconnectBefore =>
-      'Pernah Anda lacak sebelumnya — sambungkan lagi untuk melanjutkan';
+  String get groupReconnectBefore => 'Pernah Anda lacak sebelumnya — sambungkan lagi untuk melanjutkan';
 
   @override
   String get groupReconnectAction => 'Sambungkan Lagi';
@@ -751,8 +716,7 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get groupNoLeaderboardYetBody =>
-      'Belum ada habit. Buka tab Habits dan publikasikan salah satu habit Anda untuk memulai leaderboard pertama.';
+  String get groupNoLeaderboardYetBody => 'Belum ada habit. Buka tab Habits dan publikasikan salah satu habit Anda untuk memulai leaderboard pertama.';
 
   @override
   String get leaderboardStreak => 'Streak';
@@ -891,29 +855,25 @@ class AppLocalizationsId extends AppLocalizations {
   String get faqQ1 => 'Kenapa aplikasi ini sepenuhnya offline?';
 
   @override
-  String get faqA1 =>
-      'Supaya data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet. Tanpa akun, tanpa server, tanpa pelacakan.';
+  String get faqA1 => 'Supaya data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet. Tanpa akun, tanpa server, tanpa pelacakan.';
 
   @override
   String get faqQ2 => 'Bagaimana data saya disimpan dan apakah aman?';
 
   @override
-  String get faqA2 =>
-      'Semua data (kategori, habit, riwayat progres, profil) disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun.';
+  String get faqA2 => 'Semua data (kategori, habit, riwayat progres, profil) disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun.';
 
   @override
   String get faqQ3 => 'Bagaimana kalau saya ganti HP? Apakah data ikut pindah?';
 
   @override
-  String get faqA3 =>
-      'Karena tidak ada sinkronisasi cloud, data tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru.';
+  String get faqA3 => 'Karena tidak ada sinkronisasi cloud, data tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru.';
 
   @override
   String get faqQ4 => 'Apakah saya perlu masuk atau daftar akun?';
 
   @override
-  String get faqA4 =>
-      'Tidak. Aplikasi ini sama sekali tidak punya sistem akun — buka dan langsung pakai.';
+  String get faqA4 => 'Tidak. Aplikasi ini sama sekali tidak punya sistem akun — buka dan langsung pakai.';
 
   @override
   String get usageTipsTitle => 'Tips Penggunaan';
@@ -922,29 +882,25 @@ class AppLocalizationsId extends AppLocalizations {
   String get usageTip1Title => 'Gunakan Pengingat';
 
   @override
-  String get usageTip1Body =>
-      'Saat menambah atau mengedit habit, aktifkan toggle Reminder dan atur waktunya. Aplikasi akan mengirim notifikasi lokal pada waktu itu di hari-hari aktif habit tersebut.';
+  String get usageTip1Body => 'Saat menambah atau mengedit habit, aktifkan toggle Reminder dan atur waktunya. Aplikasi akan mengirim notifikasi lokal pada waktu itu di hari-hari aktif habit tersebut.';
 
   @override
   String get usageTip2Title => 'Isi Progres yang Terlewat';
 
   @override
-  String get usageTip2Body =>
-      'Dari tab Dashboard, ketuk tanggal lalu di kalender untuk melihat detail habit hari itu. Anda masih bisa menandai/mengubah progres untuk hari-hari sebelumnya dari sana.';
+  String get usageTip2Body => 'Dari tab Dashboard, ketuk tanggal lalu di kalender untuk melihat detail habit hari itu. Anda masih bisa menandai/mengubah progres untuk hari-hari sebelumnya dari sana.';
 
   @override
   String get usageTip3Title => 'Ganti Tema';
 
   @override
-  String get usageTip3Body =>
-      'Buka Settings > Personalize untuk memilih salah satu dari 5 palet warna. Perubahan langsung berlaku di seluruh aplikasi.';
+  String get usageTip3Body => 'Buka Settings > Personalize untuk memilih salah satu dari 5 palet warna. Perubahan langsung berlaku di seluruh aplikasi.';
 
   @override
   String get usageTip4Title => 'Gunakan Mode Edit';
 
   @override
-  String get usageTip4Body =>
-      'Ketuk tombol pensil di kanan bawah Home untuk masuk Mode Edit — dari sana Anda bisa mengurutkan ulang (seret), mengedit, atau menonaktifkan habit. Ketuk tombol centang atau \"Selesai\" untuk keluar.';
+  String get usageTip4Body => 'Ketuk tombol pensil di kanan bawah Home untuk masuk Mode Edit — dari sana Anda bisa mengurutkan ulang (seret), mengedit, atau menonaktifkan habit. Ketuk tombol centang atau \"Selesai\" untuk keluar.';
 
   @override
   String get profileTitle => 'Profil';
@@ -959,8 +915,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get profileChangePhoto => 'Ganti foto';
 
   @override
-  String get profilePhotoNotAvailable =>
-      'Foto profil belum tersedia di versi ini';
+  String get profilePhotoNotAvailable => 'Foto profil belum tersedia di versi ini';
 
   @override
   String get profileNameLabel => 'Nama';
@@ -984,8 +939,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get personalizeTitle => 'Personalize';
 
   @override
-  String get personalizeDescription =>
-      'Pilih tema warna yang paling Anda suka. Warna ini dipakai untuk tombol, cincin progres, dan aksen di seluruh aplikasi.';
+  String get personalizeDescription => 'Pilih tema warna yang paling Anda suka. Warna ini dipakai untuk tombol, cincin progres, dan aksen di seluruh aplikasi.';
 
   @override
   String get healthSyncStepsLabel => 'Sinkronkan langkah dari aplikasi Health';
@@ -1025,12 +979,10 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get proFeatureCouldNotLoadPlans =>
-      'Gagal memuat paket langganan. Coba lagi nanti.';
+  String get proFeatureCouldNotLoadPlans => 'Gagal memuat paket langganan. Coba lagi nanti.';
 
   @override
-  String get proFeatureNoPlansAvailable =>
-      'Belum ada paket langganan yang tersedia saat ini.';
+  String get proFeatureNoPlansAvailable => 'Belum ada paket langganan yang tersedia saat ini.';
 
   @override
   String get proFeatureChooseYourPlan => 'Pilih paket Anda';
@@ -1068,8 +1020,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeTitle => 'Keuangan';
 
   @override
-  String get onboardingFinanceProFeature =>
-      'Pelacakan keuangan adalah fitur Pro';
+  String get onboardingFinanceProFeature => 'Pelacakan keuangan adalah fitur Pro';
 
   @override
   String get onboardingCancelHabit => 'Batalkan habit ini';
@@ -1088,4 +1039,22 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get navSettings => 'Pengaturan';
+
+  @override
+  String get addHabitCustomizeBeforeAdding => 'Sesuaikan sebelum menambahkan';
+
+  @override
+  String addHabitAddSelected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Tambah $count Habit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String addHabitAddedMultiple(int count) {
+    return '$count habit ditambahkan';
+  }
 }
