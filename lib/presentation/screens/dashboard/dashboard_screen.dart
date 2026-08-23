@@ -4,14 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/dashboard_summary.dart';
 import '../../../domain/models/habit_with_progress.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/habit_providers.dart';
 import '../../../providers/progress_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
@@ -33,6 +36,7 @@ class DashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final month = ref.watch(selectedDashboardMonthProvider);
     final selectedDate = ref.watch(selectedDashboardDateProvider);
     final summariesAsync = ref.watch(monthSummariesProvider(month));
@@ -50,7 +54,7 @@ class DashboardScreen extends ConsumerWidget {
             padding: EdgeInsets.all(24),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, st) => Text('Failed to load calendar: $e'),
+          error: (e, st) => Text(l10n.dashboardFailedToLoadCalendar('$e')),
           data: (summaries) => MonthlyCalendarGrid(
             month: month,
             summaries: summaries,
@@ -73,7 +77,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
       error: (e, st) => Padding(
         padding: const EdgeInsets.all(24),
-        child: Text('Failed to load dashboard: $e'),
+        child: Text(l10n.dashboardFailedToLoadDashboard('$e')),
       ),
       data: (summary) {
         if (summary.totalLogs == 0) return const _EmptyDashboard();
@@ -236,7 +240,9 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final hintColor = _scrollHintColor(theme);
+    final lang = ref.watch(appLanguageProvider);
     final habits = ref.watch(allActiveHabitsProvider).value ?? const [];
     final categories = ref.watch(categoriesProvider).value ?? const [];
     final selected = ref.watch(selectedDashboardHabitIdsProvider);
@@ -264,7 +270,7 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
       children: [
         Row(
           children: [
-            Text('Filter Habit', style: theme.textTheme.titleSmall),
+            Text(l10n.dashboardFilterHabit, style: theme.textTheme.titleSmall),
             const SizedBox(width: 10),
             if (isScrollable)
               Row(
@@ -272,7 +278,7 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
                   Icon(Icons.swipe_rounded, size: 16, color: hintColor),
                   const SizedBox(width: 4),
                   Text(
-                    'Swipe to see more',
+                    l10n.dashboardSwipeToSeeMore,
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: hintColor,
                       fontWeight: FontWeight.w600,
@@ -301,7 +307,7 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
                   scrollDirection: Axis.horizontal,
                   children: [
                     _FilterChip(
-                      label: 'All',
+                      label: l10n.dashboardAll,
                       selected: selected.isEmpty,
                       color: theme.colorScheme.primary,
                       child: const Icon(
@@ -319,7 +325,7 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
                     ),
                     for (final habit in habits)
                       _FilterChip(
-                        label: habit.name,
+                        label: habit.displayName(lang),
                         selected: selected.contains(habit.id),
                         color:
                             colorByCategory[habit.categoryId] ?? AppColors.gold,
@@ -479,6 +485,8 @@ class _DayDetailSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final items = ref.watch(habitsWithProgressForDateProvider(date));
     final categories = ref.watch(categoriesProvider).value ?? const [];
     final colorByCategory = {
@@ -521,7 +529,7 @@ class _DayDetailSheet extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    _formatDate(date),
+                    _formatDate(date, lang, l10n),
                     style: theme.textTheme.titleLarge,
                   ),
                 ),
@@ -540,7 +548,7 @@ class _DayDetailSheet extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.only(bottom: 24),
                 child: Text(
-                  'No habits scheduled today.',
+                  l10n.dashboardNoHabitsScheduledToday,
                   style: theme.textTheme.bodySmall,
                 ),
               )
@@ -572,7 +580,7 @@ class _DayDetailSheet extends ConsumerWidget {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                item.habit.name,
+                                item.habit.displayName(lang),
                                 style: theme.textTheme.bodyMedium,
                               ),
                             ),
@@ -610,16 +618,18 @@ class _DayDetailSheet extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update progress: $e')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.dashboardFailedToUpdateProgress('$e')),
+          ),
         );
       }
     }
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime date, AppLang lang, AppLocalizations l10n) {
     final isToday = isSameDay(date, today());
-    final label = formatFullDate(date);
-    return isToday ? '$label (Today)' : label;
+    final label = formatFullDate(date, lang);
+    return isToday ? l10n.dashboardDateToday(label) : label;
   }
 }
 
@@ -668,10 +678,10 @@ class _EmptyDashboard extends StatelessWidget {
               color: Theme.of(context).disabledColor,
             ),
             const SizedBox(height: 16),
-            const Text('No data to show yet'),
+            Text(AppLocalizations.of(context)!.dashboardNoDataToShowYet),
             const SizedBox(height: 8),
-            const Text(
-              'Start checking off habits today to get the dashboard filled in.',
+            Text(
+              AppLocalizations.of(context)!.dashboardEmptyHint,
               textAlign: TextAlign.center,
             ),
           ],
@@ -707,12 +717,12 @@ class _SummaryHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${summary.totalDaysTracked} days tracked',
+                    AppLocalizations.of(context)!.dashboardDaysTracked(summary.totalDaysTracked),
                     style: theme.textTheme.titleLarge,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Overall average success rate',
+                    AppLocalizations.of(context)!.dashboardOverallAvgSuccessRate,
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -733,6 +743,7 @@ class _CategoryBreakdown extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     final categories = ref.watch(categoriesProvider).value ?? [];
     final indexById = {
       for (var i = 0; i < categories.length; i++) categories[i].id: i,
@@ -744,13 +755,13 @@ class _CategoryBreakdown extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('By Category', style: theme.textTheme.titleMedium),
+            Text(AppLocalizations.of(context)!.commonByCategory, style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.categoryStats)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _ProgressRow(
-                  label: stat.category.name,
+                  label: stat.category.displayName(lang),
                   ratio: stat.successRate,
                   color: AppColors.categoryColorFromHex(
                     stat.category.colorHex,
@@ -766,27 +777,28 @@ class _CategoryBreakdown extends ConsumerWidget {
   }
 }
 
-class _HabitBreakdown extends StatelessWidget {
+class _HabitBreakdown extends ConsumerWidget {
   const _HabitBreakdown({required this.summary});
 
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('By Habit', style: theme.textTheme.titleMedium),
+            Text(AppLocalizations.of(context)!.commonByHabit, style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.habitStats)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: _ProgressRow(
-                  label: stat.habit.name,
+                  label: stat.habit.displayName(lang),
                   ratio: stat.successRate,
                   color: theme.colorScheme.primary,
                 ),
@@ -798,29 +810,15 @@ class _HabitBreakdown extends StatelessWidget {
   }
 }
 
-class _MonthlyTrend extends StatelessWidget {
+class _MonthlyTrend extends ConsumerWidget {
   const _MonthlyTrend({required this.summary});
 
   final DashboardSummary summary;
 
-  static const _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     final points = summary.monthlyStats.length > 6
         ? summary.monthlyStats.sublist(summary.monthlyStats.length - 6)
         : summary.monthlyStats;
@@ -831,7 +829,7 @@ class _MonthlyTrend extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Monthly Trend', style: theme.textTheme.titleMedium),
+            Text(AppLocalizations.of(context)!.dashboardMonthlyTrend, style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
               height: 160,
@@ -877,7 +875,7 @@ class _MonthlyTrend extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              _months[point.month.month - 1],
+                              monthShortName(point.month.month, lang),
                               style: theme.textTheme.labelSmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),

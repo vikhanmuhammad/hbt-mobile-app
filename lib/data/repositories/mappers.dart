@@ -16,6 +16,8 @@ domain.Category mapCategory(db.Category row) => domain.Category(
       isDefault: row.isDefault,
       isArchived: row.isArchived,
       createdAt: row.createdAt,
+      nameId: row.nameId,
+      templateKey: row.templateKey,
     );
 
 domain.Habit mapHabit(db.Habit row) => domain.Habit(
@@ -37,6 +39,9 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       isActive: row.isActive,
       sortOrder: row.sortOrder,
       createdAt: row.createdAt,
+      nameId: row.nameId,
+      isCustom: row.isCustom,
+      templateKey: row.templateKey,
     );
 
 domain.HabitLog mapHabitLog(db.HabitLog row) => domain.HabitLog(

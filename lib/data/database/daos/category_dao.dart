@@ -49,6 +49,22 @@ class CategoryDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Dipakai oleh routine backfill dwibahasa sekali-jalan (lihat
+  /// `CategoryRepository.backfillTemplateProvenance`) — isi `nameId`/
+  /// `templateKey` kategori bawaan lama tanpa menyentuh field lain.
+  Future<void> setTemplateProvenance(
+    int id, {
+    required String nameId,
+    required String templateKey,
+  }) async {
+    await (update(categories)..where((c) => c.id.equals(id))).write(
+      CategoriesCompanion(
+        nameId: Value(nameId),
+        templateKey: Value(templateKey),
+      ),
+    );
+  }
+
   /// Kategori bawaan hanya bisa disembunyikan (soft archive), tidak dihapus.
   /// Kategori custom bisa dihapus permanen kalau tidak ada habit terkait.
   Future<void> archiveCategory(int id) async {

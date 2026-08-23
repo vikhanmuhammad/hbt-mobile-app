@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/community/app_group.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
@@ -35,15 +36,15 @@ class _ProTeaser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return ProFeatureTeaser(
       icon: Icons.groups_rounded,
-      title: 'Community — Pro Feature',
-      description: 'Create/join habit groups with friends, compete via leaderboards, and chat '
-          'in real-time. Upgrade to Pro to unlock this feature.',
-      benefits: const [
-        'Create or join unlimited habit groups with friends and family',
-        'Compete on real-time leaderboards to stay motivated together',
-        'Group chat to cheer each other on and stay accountable',
+      title: l10n.communityProFeatureTitle,
+      description: l10n.communityProFeatureDescription,
+      benefits: [
+        l10n.communityProBenefit1,
+        l10n.communityProBenefit2,
+        l10n.communityProBenefit3,
       ],
       previewBuilder: (context) => const _CommunityPreviewMock(),
     );
@@ -65,13 +66,23 @@ class _CommunityPreviewMock extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Community', style: theme.textTheme.titleLarge),
+              Text(AppLocalizations.of(context)!.communityTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: FilledButton(onPressed: null, child: const Text('+ Create Group'))),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: null,
+                      child: Text(AppLocalizations.of(context)!.communityCreateGroup),
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(child: OutlinedButton(onPressed: null, child: const Text('Join via Code'))),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: null,
+                      child: Text(AppLocalizations.of(context)!.communityJoinViaCode),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -100,7 +111,10 @@ class _CommunityPreviewMock extends StatelessWidget {
                                 Text(entry.$1,
                                     style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
                                 const SizedBox(height: 2),
-                                Text('${entry.$2} members', style: theme.textTheme.bodySmall),
+                                Text(
+                                  AppLocalizations.of(context)!.communityMembersCount(entry.$2),
+                                  style: theme.textTheme.bodySmall,
+                                ),
                               ],
                             ),
                           ),
@@ -135,7 +149,7 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to sign in: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.communityFailedToSignIn('$e'))),
         );
       }
     } finally {
@@ -146,6 +160,7 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
         child: Padding(
@@ -155,10 +170,10 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
             children: [
               Icon(Icons.groups_rounded, size: 64, color: theme.colorScheme.primary),
               const SizedBox(height: 20),
-              Text('Sign In to Continue', style: theme.textTheme.titleLarge),
+              Text(l10n.communitySignInTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               Text(
-                'Community requires an account so your progress can be shared to a group.',
+                l10n.communitySignInBody,
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
@@ -168,7 +183,7 @@ class _CommunitySignInPromptState extends ConsumerState<_CommunitySignInPrompt> 
                   : FilledButton.icon(
                       onPressed: _signIn,
                       icon: const Icon(Icons.login_rounded),
-                      label: const Text('Sign in with Google'),
+                      label: Text(l10n.communitySignInWithGoogle),
                     ),
             ],
           ),
@@ -184,6 +199,7 @@ class _GroupListView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final groupsAsync = ref.watch(myGroupsProvider);
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final maxWidth = isTablet ? 880.0 : 640.0;
@@ -201,9 +217,9 @@ class _GroupListView extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Community', style: theme.textTheme.titleLarge),
+                    Text(l10n.communityTitle, style: theme.textTheme.titleLarge),
                     IconButton(
-                      tooltip: 'Log out',
+                      tooltip: l10n.communityLogOut,
                       onPressed: () => _confirmLogout(context, ref),
                       icon: const Icon(Icons.logout_rounded),
                     ),
@@ -214,7 +230,7 @@ class _GroupListView extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: PrimaryPillButton(
-                        label: '+ Create Group',
+                        label: l10n.communityCreateGroup,
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
                         ),
@@ -226,7 +242,7 @@ class _GroupListView extends ConsumerWidget {
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const JoinGroupScreen()),
                         ),
-                        child: const Text('Join via Code'),
+                        child: Text(l10n.communityJoinViaCode),
                       ),
                     ),
                   ],
@@ -235,7 +251,7 @@ class _GroupListView extends ConsumerWidget {
                 Expanded(
                   child: groupsAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (e, st) => Center(child: Text('Failed to load groups: $e')),
+                    error: (e, st) => Center(child: Text(l10n.communityFailedToLoadGroups('$e'))),
                     data: (groups) {
                       return RefreshIndicator(
                         onRefresh: () async {
@@ -254,8 +270,7 @@ class _GroupListView extends ConsumerWidget {
                                     height: MediaQuery.sizeOf(context).height * 0.5,
                                     child: Center(
                                       child: Text(
-                                        'No groups yet. Create a new group or join with an invite code '
-                                        'from a friend.',
+                                        l10n.communityNoGroupsYet,
                                         style: theme.textTheme.bodyMedium,
                                         textAlign: TextAlign.center,
                                       ),
@@ -286,17 +301,18 @@ class _GroupListView extends ConsumerWidget {
   }
 
   Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Log out of Community?'),
-        content: const Text(
-          'You\'ll need to sign in again to see or sync your groups. Your local habit '
-          'data is not affected.',
-        ),
+        title: Text(l10n.communityLogOutTitle),
+        content: Text(l10n.communityLogOutBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Log Out')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.communityLogOutConfirm),
+          ),
         ],
       ),
     );
@@ -336,7 +352,10 @@ class _GroupTile extends StatelessWidget {
                   children: [
                     Text(group.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
-                    Text('${group.members.length} members', style: theme.textTheme.bodySmall),
+                    Text(
+                      AppLocalizations.of(context)!.communityMembersCount(group.members.length),
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),

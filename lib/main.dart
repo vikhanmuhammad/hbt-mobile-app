@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'domain/language.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'presentation/screens/onboarding/onboarding_flow.dart';
 import 'presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'presentation/theme/app_theme.dart';
@@ -37,12 +40,21 @@ class HabitTrackerApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(appThemeModeProvider);
     final accent = ref.watch(activePaletteProvider).accent;
+    final language = ref.watch(appLanguageProvider);
     return MaterialApp(
       title: 'Daily Habits',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(accent: accent),
       darkTheme: AppTheme.dark(accent: accent),
       themeMode: themeMode,
+      locale: Locale(language == AppLang.id ? 'id' : 'en'),
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       // Many fixed-size elements throughout the app (bottom nav bar, circular
       // icon badges, checkboxes, category tiles) are sized for roughly 1x
       // text scale and don't grow to match. Without a ceiling, an elder user
@@ -96,6 +108,17 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
+
+    // Backfill dwibahasa sekali-jalan (CLAUDE.md §Bahasa) — cocokkan
+    // habit/kategori bawaan lama (dari instalasi sebelum fitur ini ada) ke
+    // template, supaya title-nya terkunci & terisi nameId tanpa perlu
+    // migrasi data yang merusak. Dijaga flag supaya cuma jalan sekali.
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    if (!settingsRepo.templateBackfillDone) {
+      await ref.read(habitRepositoryProvider).backfillTemplateProvenance(templates);
+      await ref.read(categoryRepositoryProvider).backfillTemplateProvenance(templates);
+      await settingsRepo.setTemplateBackfillDone(true);
+    }
 
     // Warm the profile stream (which `activePaletteProvider` derives the
     // personalized accent color from) before the splash screen is dismissed

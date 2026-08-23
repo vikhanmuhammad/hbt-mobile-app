@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/generated/app_localizations.dart';
+
 /// Static mock of the real Finance summary screen (dummy numbers, not live
 /// data) — used both as the blurred backdrop behind the Finance
 /// `ProFeatureTeaser` paywall and, wrapped in a blur, behind the onboarding
@@ -11,12 +13,13 @@ class FinancePreviewMock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
           children: [
-            Text('Finance', style: theme.textTheme.titleLarge),
+            Text(l10n.financeTitle, style: theme.textTheme.titleLarge),
             const SizedBox(height: 20),
             Card(
               child: Padding(
@@ -24,7 +27,7 @@ class FinancePreviewMock extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total Spending', style: theme.textTheme.bodyMedium),
+                    Text(l10n.financeTotalSpending, style: theme.textTheme.bodyMedium),
                     const SizedBox(height: 6),
                     Text('Rp 850.000', style: theme.textTheme.headlineMedium),
                     const SizedBox(height: 12),
@@ -52,7 +55,7 @@ class FinancePreviewMock extends StatelessWidget {
                         children: [
                           Icon(Icons.savings_rounded, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(height: 10),
-                          Text('Total Saved', style: theme.textTheme.labelSmall),
+                          Text(l10n.financeTotalSaved, style: theme.textTheme.labelSmall),
                           const SizedBox(height: 4),
                           Text('Rp 1.200.000',
                               style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
@@ -71,7 +74,7 @@ class FinancePreviewMock extends StatelessWidget {
                         children: [
                           Icon(Icons.account_balance_wallet_rounded, size: 20, color: theme.colorScheme.primary),
                           const SizedBox(height: 10),
-                          Text('Total Deposited', style: theme.textTheme.labelSmall),
+                          Text(l10n.financeTotalDeposited, style: theme.textTheme.labelSmall),
                           const SizedBox(height: 4),
                           Text('Rp 2.000.000',
                               style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),

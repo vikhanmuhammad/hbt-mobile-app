@@ -215,6 +215,7 @@ class CommunityRepository {
   Future<GroupHabit> createGroupHabit({
     required String groupId,
     required String name,
+    String? nameId,
     required String unit,
     String? icon,
     required LeaderboardMode leaderboardMode,
@@ -227,6 +228,7 @@ class CommunityRepository {
     final ref = _groups.doc(groupId).collection('groupHabits').doc();
     await ref.set({
       'name': name,
+      'nameId': nameId,
       'unit': unit,
       'icon': icon,
       'leaderboardMode': leaderboardMode.name,
@@ -240,6 +242,7 @@ class CommunityRepository {
       id: ref.id,
       groupId: groupId,
       name: name,
+      nameId: nameId,
       unit: unit,
       icon: icon,
       leaderboardMode: leaderboardMode,
@@ -385,6 +388,7 @@ class CommunityRepository {
       id: doc.id,
       groupId: doc.reference.parent.parent!.id,
       name: data['name'] as String? ?? '',
+      nameId: data['nameId'] as String?,
       unit: data['unit'] as String? ?? '',
       icon: data['icon'] as String?,
       leaderboardMode:

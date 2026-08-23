@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/settings_providers.dart';
 import '../../theme/app_palettes.dart';
 import '../../widgets/animations/fade_slide_in.dart';
@@ -14,10 +15,11 @@ class PersonalizeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final active = ref.watch(activePaletteProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Personalize')),
+      appBar: AppBar(title: Text(l10n.personalizeTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -26,8 +28,7 @@ class PersonalizeScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(24),
             children: [
               Text(
-                'Pick the color theme you like best. This color is used for buttons, '
-                'progress rings, and accents throughout the app.',
+                l10n.personalizeDescription,
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 20),

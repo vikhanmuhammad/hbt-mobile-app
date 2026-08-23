@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/ui_state_providers.dart';
 import '../screens/add_habit/add_habit_flow_screen.dart';
 import '../screens/community/community_entry_screen.dart';
@@ -57,13 +58,13 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
 
   // Community sits in the middle slot (index 2 of 5) so it's the centered
   // destination in the bottom nav bar.
-  static const _destinations = [
-    (icon: Icons.home_rounded, label: 'Home'),
-    (icon: Icons.bar_chart_rounded, label: 'Dashboard'),
-    (icon: Icons.groups_rounded, label: 'Community'),
-    (icon: Icons.account_balance_wallet_rounded, label: 'Finance'),
-    (icon: Icons.settings_rounded, label: 'Settings'),
-  ];
+  List<({IconData icon, String label})> _destinations(AppLocalizations l10n) => [
+        (icon: Icons.home_rounded, label: l10n.navHome),
+        (icon: Icons.bar_chart_rounded, label: l10n.navDashboard),
+        (icon: Icons.groups_rounded, label: l10n.navCommunity),
+        (icon: Icons.account_balance_wallet_rounded, label: l10n.navFinance),
+        (icon: Icons.settings_rounded, label: l10n.navSettings),
+      ];
 
   static final _screenBuilders = <Widget Function()>[
     () => const HomeScreen(),
@@ -75,6 +76,8 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final destinations = _destinations(l10n);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     final body = FadeTransition(
@@ -100,7 +103,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
                 labelType: NavigationRailLabelType.all,
                 leading: const SizedBox(height: 12),
                 destinations: [
-                  for (final d in _destinations)
+                  for (final d in destinations)
                     NavigationRailDestination(
                       icon: Icon(d.icon),
                       label: FittedBox(
@@ -137,7 +140,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
           selectedIndex: _index,
           onDestinationSelected: _onDestinationSelected,
           destinations: [
-            for (final d in _destinations)
+            for (final d in destinations)
               NavigationDestination(icon: Icon(d.icon), label: d.label),
           ],
         ),

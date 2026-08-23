@@ -2,6 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../domain/language.dart';
 import '../domain/models/enums.dart';
 import '../domain/models/habit.dart';
 import '../domain/models/task_days.dart';
@@ -45,7 +46,7 @@ class NotificationService {
 
   /// Reschedule the reminder for 1 habit: cancel the old one, then create a
   /// new notification following reminderTime + taskDays if the reminder is enabled.
-  Future<void> rescheduleForHabit(Habit habit) async {
+  Future<void> rescheduleForHabit(Habit habit, {AppLang lang = AppLang.en}) async {
     await cancelForHabit(habit.id);
     if (!habit.reminderEnabled ||
         habit.reminderTime == null ||
@@ -74,7 +75,7 @@ class NotificationService {
     if (TaskDays.isEveryDay(days)) {
       await _scheduleDaily(
         id: _notificationId(habit.id, 7),
-        title: habit.name,
+        title: habit.displayName(lang),
         hour: hour,
         minute: minute,
         details: details,
@@ -87,7 +88,7 @@ class NotificationService {
       if (weekdayIndex == -1) continue;
       await _scheduleWeekly(
         id: _notificationId(habit.id, weekdayIndex),
-        title: habit.name,
+        title: habit.displayName(lang),
         hour: hour,
         minute: minute,
         isoWeekday: weekdayIndex + 1,

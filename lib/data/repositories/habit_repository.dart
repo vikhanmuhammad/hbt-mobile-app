@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart';
+import '../../domain/models/habit_template.dart';
 import '../../domain/models/task_days.dart';
 import '../database/app_database.dart' as db;
 import 'mappers.dart';
@@ -41,6 +42,7 @@ class HabitRepository {
   Future<int> createHabit({
     required int categoryId,
     required String name,
+    String? nameId,
     String? description,
     String? icon,
     required GoalPeriod goalPeriod,
@@ -54,11 +56,14 @@ class HabitRepository {
     required DateTime startDate,
     DateTime? endDate,
     int sortOrder = 0,
+    bool isCustom = true,
+    String? templateKey,
   }) {
     return _db.habitDao.insertHabit(
       db.HabitsCompanion.insert(
         categoryId: categoryId,
         name: name,
+        nameId: Value(nameId),
         description: Value(description),
         icon: Value(icon),
         goalPeriod: goalPeriod.name,
@@ -72,6 +77,8 @@ class HabitRepository {
         startDate: startDate,
         endDate: Value(endDate),
         sortOrder: Value(sortOrder),
+        isCustom: Value(isCustom),
+        templateKey: Value(templateKey),
       ),
     );
   }
@@ -82,6 +89,7 @@ class HabitRepository {
         id: Value(habit.id),
         categoryId: Value(habit.categoryId),
         name: Value(habit.name),
+        nameId: Value(habit.nameId),
         description: Value(habit.description),
         icon: Value(habit.icon),
         goalPeriod: Value(habit.goalPeriod.name),
@@ -97,9 +105,40 @@ class HabitRepository {
         isActive: Value(habit.isActive),
         sortOrder: Value(habit.sortOrder),
         createdAt: Value(habit.createdAt),
+        isCustom: Value(habit.isCustom),
+        templateKey: Value(habit.templateKey),
       ),
     );
   }
+
+  /// Routine backfill sekali-jalan (dipicu dari `AppBootstrap`, dijaga oleh
+  /// `SettingsRepository.templateBackfillDone`): cocokkan habit lama yang
+  /// belum punya `templateKey` ke 131 template bawaan lewat `name` (persis,
+  /// case-insensitive/trim) — kalau cocok, kunci sebagai bawaan
+  /// (`isCustom=false`) dan isi `nameId`/`templateKey`. Habit yang tidak
+  /// cocok (custom asli, atau pernah di-rename) dibiarkan `isCustom=true`
+  /// (default aman dari migrasi) supaya tetap bisa diedit user.
+  Future<void> backfillTemplateProvenance(List<CategoryTemplate> categoryTemplates) async {
+    final byNormalizedName = <String, HabitTemplate>{
+      for (final category in categoryTemplates)
+        for (final template in category.habits) _normalize(template.name): template,
+    };
+
+    final rows = await _db.habitDao.getAll();
+    for (final row in rows) {
+      if (row.templateKey != null) continue;
+      final match = byNormalizedName[_normalize(row.name)];
+      if (match == null) continue;
+      await _db.habitDao.setTemplateProvenance(
+        row.id,
+        isCustom: false,
+        nameId: match.nameId,
+        templateKey: match.key,
+      );
+    }
+  }
+
+  String _normalize(String value) => value.trim().toLowerCase();
 
   Future<void> setActive(int habitId, bool isActive) =>
       _db.habitDao.setActive(habitId, isActive);

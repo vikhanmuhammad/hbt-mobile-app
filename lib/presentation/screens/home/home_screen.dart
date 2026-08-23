@@ -7,11 +7,13 @@ import '../../../domain/date_utils.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit_with_progress.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/progress_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
@@ -32,6 +34,8 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final isWide = MediaQuery.sizeOf(context).width >= 900;
     final selectedDate = ref.watch(selectedHomeDateProvider);
@@ -67,7 +71,7 @@ class HomeScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
-                        '${monthFullNames[month.month - 1]} ${month.year}',
+                        '${monthFullName(month.month, lang)} ${month.year}',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: theme.colorScheme.primary,
@@ -83,12 +87,12 @@ class HomeScreen extends ConsumerWidget {
                 if (isEditMode)
                   TextButton(
                     onPressed: () => ref.read(homeEditModeProvider.notifier).state = false,
-                    child: const Text('Done'),
+                    child: Text(l10n.homeDone),
                   )
                 else
                   TextButton(
                     onPressed: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
-                    child: const Text('Today'),
+                    child: Text(l10n.homeToday),
                   ),
               ],
             ),
@@ -203,7 +207,7 @@ class _HabitList extends ConsumerWidget {
         return ListView(
           padding: padding,
           children: [
-            const _HomeSectionLabel('My Habits'),
+            _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
             const SizedBox(height: 8),
             for (var i = 0; i < localItems.length; i++)
               Padding(
@@ -211,7 +215,7 @@ class _HabitList extends ConsumerWidget {
                 child: _buildCard(context, ref, localItems[i], i),
               ),
             const SizedBox(height: 20),
-            const _HomeSectionLabel('Community'),
+            _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
             const SizedBox(height: 8),
             for (var i = 0; i < communityItems.length; i++)
               Padding(
@@ -241,11 +245,11 @@ class _HabitList extends ConsumerWidget {
       return ListView(
         padding: padding,
         children: [
-          const _HomeSectionLabel('My Habits'),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
           const SizedBox(height: 8),
           sectionGrid(localItems, 0),
           const SizedBox(height: 20),
-          const _HomeSectionLabel('Community'),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
           const SizedBox(height: 8),
           sectionGrid(communityItems, localItems.length),
         ],
@@ -315,23 +319,24 @@ class _HabitList extends ConsumerWidget {
       unawaited(syncCommunityHabit(ref, habit.id, selectedDate));
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save progress: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.homeFailedToSaveProgress('$e'))),
+        );
       }
     }
   }
 
   Future<void> _confirmDeactivate(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    final lang = ref.read(appLanguageProvider);
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this habit?'),
-        content: Text(
-          '"${item.habit.name}" and all of its progress history will be permanently deleted '
-          'and will no longer count toward your Dashboard stats. This cannot be undone.',
-        ),
+        title: Text(l10n.homeDeleteHabitTitle),
+        content: Text(l10n.homeDeleteHabitBody(item.habit.displayName(lang))),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
+          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l10n.commonDelete)),
         ],
       ),
     );
@@ -411,10 +416,13 @@ class _EmptyState extends StatelessWidget {
           children: [
             const EmptyStateIllustration(),
             const SizedBox(height: 16),
-            Text('No habits scheduled yet', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              AppLocalizations.of(context)!.homeNoHabitsScheduledYet,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
-            const Text(
-              'Tap the Add Habit button at the bottom left to add your first habit for today.',
+            Text(
+              AppLocalizations.of(context)!.homeEmptyStateHint,
               textAlign: TextAlign.center,
             ),
           ],

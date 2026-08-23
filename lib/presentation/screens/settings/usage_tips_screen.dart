@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
 
@@ -8,39 +9,18 @@ import '../../widgets/animations/staggered_entrance.dart';
 class UsageTipsScreen extends StatelessWidget {
   const UsageTipsScreen({super.key});
 
-  static const _tips = [
-    (
-      icon: Icons.notifications_active_rounded,
-      title: 'Use Reminders',
-      body: 'When adding or editing a habit, turn on the Reminder toggle and set a time. '
-          'The app will send a local notification at that time on the habit\'s active days.',
-    ),
-    (
-      icon: Icons.edit_calendar_rounded,
-      title: 'Backfill Progress',
-      body: 'From the Dashboard tab, tap a past date on the calendar to see that day\'s habit detail. '
-          'You can still mark/change progress for previous days from there.',
-    ),
-    (
-      icon: Icons.palette_rounded,
-      title: 'Change Theme',
-      body: 'Open Settings > Personalize to pick one of 5 color palettes. '
-          'The change applies instantly throughout the app.',
-    ),
-    (
-      icon: Icons.edit_rounded,
-      title: 'Use Edit Mode',
-      body: 'Tap the pencil button at the bottom right of Home to enter Edit Mode — from there you '
-          'can reorder (drag), edit, or deactivate habits. Tap the '
-          'check button or "Done" to exit.',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final tips = [
+      (icon: Icons.notifications_active_rounded, title: l10n.usageTip1Title, body: l10n.usageTip1Body),
+      (icon: Icons.edit_calendar_rounded, title: l10n.usageTip2Title, body: l10n.usageTip2Body),
+      (icon: Icons.palette_rounded, title: l10n.usageTip3Title, body: l10n.usageTip3Body),
+      (icon: Icons.edit_rounded, title: l10n.usageTip4Title, body: l10n.usageTip4Body),
+    ];
     return Scaffold(
-      appBar: AppBar(title: const Text('Usage Tips')),
+      appBar: AppBar(title: Text(l10n.usageTipsTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -48,7 +28,7 @@ class UsageTipsScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              for (final (index, tip) in _tips.indexed)
+              for (final (index, tip) in tips.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 14),
                   child: FadeSlideIn(

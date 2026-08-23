@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/models/user_profile.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
@@ -39,9 +40,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Future<void> _save(UserProfile current) async {
+    final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileNameEmpty)));
       return;
     }
     setState(() => _saving = true);
@@ -57,7 +59,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile saved')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -67,10 +69,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final profileAsync = ref.watch(userProfileStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text(l10n.profileTitle)),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('$e')),
@@ -91,29 +94,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 10),
                         TextButton(
                           onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Profile photo is not available in this version yet')),
+                            SnackBar(content: Text(l10n.profilePhotoNotAvailable)),
                           ),
-                          child: const Text('Change photo'),
+                          child: Text(l10n.profileChangePhoto),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text('Name', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(l10n.profileNameLabel, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
-                  TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Your name')),
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(hintText: l10n.profileNameHint),
+                  ),
                   const SizedBox(height: 16),
-                  Text('Age', style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(l10n.profileAgeLabel, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(hintText: 'e.g. 25'),
+                    decoration: InputDecoration(hintText: l10n.profileAgeHint),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _saving ? null : () => _save(profile),
-                    child: Text(_saving ? 'Saving...' : 'Save'),
+                    child: Text(_saving ? l10n.profileSaving : l10n.profileSave),
                   ),
                 ],
               ),

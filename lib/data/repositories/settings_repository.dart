@@ -12,6 +12,8 @@ class SettingsRepository {
   static const _stepsSyncKey = 'health_sync_steps_enabled';
   static const _calendarSyncKey = 'health_sync_calendar_enabled';
   static const _alarmSyncKey = 'health_sync_alarm_enabled';
+  static const _languageKey = 'app_language';
+  static const _templateBackfillDoneKey = 'template_backfill_done';
 
   String? get defaultReminderTime => _prefs.getString(_defaultReminderTimeKey);
 
@@ -52,4 +54,17 @@ class SettingsRepository {
 
   bool get alarmSyncEnabled => _prefs.getBool(_alarmSyncKey) ?? false;
   Future<void> setAlarmSyncEnabled(bool value) => _prefs.setBool(_alarmSyncKey, value);
+
+  /// Bahasa tampilan aplikasi ('en'/'id') — setting global persisten,
+  /// dipakai di seluruh app (bukan cuma onboarding). Default 'en' supaya
+  /// tampilan awal tidak berubah untuk instalasi yang sudah ada.
+  String get language => _prefs.getString(_languageKey) ?? 'en';
+  Future<void> setLanguage(String code) => _prefs.setString(_languageKey, code);
+
+  /// True setelah routine backfill sekali-jalan (cocokkan habit/kategori
+  /// lama ke `habit_templates.json` untuk mengisi isCustom/templateKey/
+  /// nameId) selesai dijalankan — mencegah pengulangan di setiap start.
+  bool get templateBackfillDone => _prefs.getBool(_templateBackfillDoneKey) ?? false;
+  Future<void> setTemplateBackfillDone(bool value) =>
+      _prefs.setBool(_templateBackfillDoneKey, value);
 }

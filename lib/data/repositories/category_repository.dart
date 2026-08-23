@@ -45,6 +45,8 @@ class CategoryRepository {
           icon: Value(template.icon),
           colorHex: Value(template.colorHex),
           isDefault: const Value(true),
+          nameId: Value(template.defaultGoalPhraseId),
+          templateKey: Value(template.key),
         ),
       );
     }
@@ -52,12 +54,14 @@ class CategoryRepository {
 
   Future<int> createCustomCategory({
     required String name,
+    required String nameId,
     required String icon,
     required String colorHex,
   }) {
     return _db.categoryDao.insertCategory(
       db.CategoriesCompanion.insert(
         name: name,
+        nameId: Value(nameId),
         icon: Value(icon),
         colorHex: Value(colorHex),
       ),
@@ -66,6 +70,30 @@ class CategoryRepository {
 
   Future<void> renameCategory(int id, String newName) {
     return _db.categoryDao.updateCategoryFields(id, name: newName);
+  }
+
+  /// Routine backfill sekali-jalan (lihat `HabitRepository.
+  /// backfillTemplateProvenance`) — cocokkan kategori bawaan lama yang belum
+  /// punya `templateKey` ke 13 goal phrase template lewat `name`, isi
+  /// `nameId`/`templateKey`. Kategori custom (`isDefault=false`) tidak
+  /// pernah dicocokkan.
+  Future<void> backfillTemplateProvenance(List<CategoryTemplate> templates) async {
+    final byNormalizedGoalPhrase = <String, CategoryTemplate>{
+      for (final template in templates)
+        template.defaultGoalPhrase.trim().toLowerCase(): template,
+    };
+
+    final rows = await _db.categoryDao.getAllActive();
+    for (final row in rows) {
+      if (!row.isDefault || row.templateKey != null) continue;
+      final match = byNormalizedGoalPhrase[row.name.trim().toLowerCase()];
+      if (match == null) continue;
+      await _db.categoryDao.setTemplateProvenance(
+        row.id,
+        nameId: match.defaultGoalPhraseId ?? match.defaultGoalPhrase,
+        templateKey: match.key,
+      );
+    }
   }
 
   /// Kategori bawaan hanya disembunyikan. Kategori custom dihapus permanen
