@@ -1,9 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../providers/settings_providers.dart';
 
 /// Quick progress input bottom sheet for habits with goalValue > 1 or a
 /// unit — +/- stepper plus direct number input. For time-unit habits
@@ -21,7 +24,7 @@ Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item
   );
 }
 
-class _QuickProgressSheetState extends State<_QuickProgressSheet> {
+class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   late int _value = widget.item.progressValue;
   late final _controller = TextEditingController(text: '$_value');
 
@@ -103,6 +106,8 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final habit = widget.item.habit;
     final unit = habit.isRupiah || habit.goalUnit == 'x' ? '' : habit.goalUnit;
 
@@ -112,9 +117,9 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(habit.name, style: theme.textTheme.titleLarge),
+          Text(habit.displayName(lang), style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          Text('Target: ${habit.goalValueLabel}', style: theme.textTheme.bodySmall),
+          Text(l10n.quickProgressTarget(habit.goalValueLabel), style: theme.textTheme.bodySmall),
           if (_isTimeUnit) ...[
             const SizedBox(height: 20),
             _TimerCard(
@@ -131,7 +136,7 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Text(
-                    'or enter manually',
+                    l10n.quickProgressOrEnterManually,
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
@@ -189,14 +194,14 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => _setValue(habit.goalValue),
-                  child: const Text('Mark Achieved'),
+                  child: Text(l10n.quickProgressMarkAchieved),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(_value),
-                  child: const Text('Save'),
+                  child: Text(l10n.commonSave),
                 ),
               ),
             ],
@@ -207,13 +212,13 @@ class _QuickProgressSheetState extends State<_QuickProgressSheet> {
   }
 }
 
-class _QuickProgressSheet extends StatefulWidget {
+class _QuickProgressSheet extends ConsumerStatefulWidget {
   const _QuickProgressSheet({required this.item});
 
   final HabitWithProgress item;
 
   @override
-  State<_QuickProgressSheet> createState() => _QuickProgressSheetState();
+  ConsumerState<_QuickProgressSheet> createState() => _QuickProgressSheetState();
 }
 
 class _TimerCard extends StatelessWidget {
@@ -234,6 +239,7 @@ class _TimerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
@@ -244,7 +250,7 @@ class _TimerCard extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'TIMER',
+            l10n.timerLabel,
             style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.5),
           ),
           const SizedBox(height: 6),
@@ -256,13 +262,13 @@ class _TimerCard extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: onToggle,
                 icon: Icon(running ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 18),
-                label: Text(running ? 'Pause' : (hasElapsed ? 'Resume' : 'Start')),
+                label: Text(running ? l10n.timerPause : (hasElapsed ? l10n.timerResume : l10n.timerStart)),
               ),
               if (hasElapsed) ...[
                 const SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: onCommit,
-                  child: const Text('Add'),
+                  child: Text(l10n.commonAdd),
                 ),
               ],
             ],

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../language.dart';
 import 'enums.dart';
 
 /// Encode/decode the `taskDays` column (JSON array text in Drift) into a
@@ -31,9 +32,9 @@ class TaskDays {
     return days.contains(key);
   }
 
-  static String summaryLabel(List<String> days) {
-    if (isEveryDay(days)) return 'Every day';
+  static String summaryLabel(List<String> days, AppLang lang) {
+    if (isEveryDay(days)) return lang == AppLang.id ? 'Setiap hari' : 'Every day';
     final ordered = weekdayKeys.where(days.contains).toList();
-    return ordered.map((d) => weekdayLabels[d]).join(', ');
+    return ordered.map((d) => weekdayLabel(d, lang)).join(', ');
   }
 }

@@ -3,14 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
@@ -19,7 +22,6 @@ import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/icon_picker_sheet.dart';
-import '../../widgets/pill_button.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/responsive_grid.dart';
 import '../../widgets/toggle_switch.dart';
@@ -95,8 +97,22 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   int? _categoryId;
   bool _saving = false;
 
+  // Step 2 multi-select state — templates picked from the recommendation
+  // list, added together via "Add N Habits" instead of one at a time. Each
+  // entry carries its own categoryId (not just the template) so the user
+  // can switch goal phrases via the chip row without losing selections
+  // already made under a different one — every entry still gets created
+  // under the goal phrase it was actually picked from.
+  final Set<({int categoryId, HabitTemplate template})> _selectedTemplates = {};
+
   // Step 3 form state.
   final _nameController = TextEditingController();
+  final _nameIdController = TextEditingController();
+  // True kalau title (nama Inggris & Indonesia) boleh diedit user — false
+  // untuk habit yang berasal dari template bawaan (dikunci, CLAUDE.md
+  // §Bahasa), true untuk habit custom buatan user sendiri.
+  bool _isCustomDraft = true;
+  String? _templateKeyDraft;
   final _goalUnitController = TextEditingController(text: 'x');
   final _goalValueController = TextEditingController(text: '1');
   String _habitIcon = defaultHabitIconKey;
@@ -113,6 +129,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   // Step 4 form state.
   final _newCatNameController = TextEditingController();
+  final _newCatNameIdController = TextEditingController();
   int _newCatColorIndex = 0;
   String _newCatIcon = 'list-check';
 
@@ -139,6 +156,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nameIdController.dispose();
+    _newCatNameIdController.dispose();
     _goalUnitController.dispose();
     _goalValueController.dispose();
     _newCatNameController.dispose();
@@ -159,18 +178,18 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     'rupiah',
   ];
 
-  static const Map<String, String> unitPresetLabels = {
-    'x': 'No unit',
-    'minute': 'Minute',
-    'hour': 'Hour',
-    'step': 'Step',
-    'glass': 'Glass',
-    'page': 'Page',
-    'time': 'Time',
-    'kilometer': 'Kilometer',
-    'rupiah': 'Rupiah',
-    'custom': 'Custom...',
-  };
+  static Map<String, String> unitPresetLabelsFor(AppLocalizations l10n) => {
+        'x': l10n.unitNoUnit,
+        'minute': l10n.unitMinute,
+        'hour': l10n.unitHour,
+        'step': l10n.unitStep,
+        'glass': l10n.unitGlass,
+        'page': l10n.unitPage,
+        'time': l10n.unitTime,
+        'kilometer': l10n.unitKilometer,
+        'rupiah': l10n.unitRupiah,
+        'custom': l10n.unitCustom,
+      };
 
   void _applyUnit(String goalUnit) {
     _goalUnitController.text = goalUnit;
@@ -202,6 +221,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   void _loadFormFromHabit(Habit habit) {
     _nameController.text = habit.name;
+    _nameIdController.text = habit.nameId ?? '';
+    _isCustomDraft = habit.isCustom;
+    _templateKeyDraft = habit.templateKey;
     _habitIcon = habit.icon ?? defaultHabitIconKey;
     _applyUnit(habit.goalUnit);
     _goalPeriod = habit.goalPeriod;
@@ -217,6 +239,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   void _resetFormDraft({
     String? name,
+    String? nameId,
+    bool isCustom = true,
+    String? templateKey,
     String? icon,
     GoalPeriod? goalPeriod,
     int? goalValue,
@@ -226,6 +251,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     DateTime? startDate,
   }) {
     _nameController.text = name ?? '';
+    _nameIdController.text = nameId ?? '';
+    _isCustomDraft = isCustom;
+    _templateKeyDraft = templateKey;
     _habitIcon = icon ?? defaultHabitIconKey;
     _applyUnit(goalUnit ?? 'x');
     _goalPeriod = goalPeriod ?? GoalPeriod.daily;
@@ -266,27 +294,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   /// Finance category (Save Money) is Pro-only — checked at the category
   /// pick point (step 1) AND at the submit point (step 3 has its own goal
   /// phrase dropdown that can change _categoryId without going through step 1 again).
-  Future<bool> _blockedByFinanceGate() async {
-    if (!_categoryIdIsFinance(_categoryId) || ref.read(isProProvider)) return false;
+  /// [categoryId] defaults to the current draft's category; Step 2's
+  /// multi-select batch passes each distinct category among the selected
+  /// entries, since a batch can span goal phrases other than the one
+  /// currently on screen.
+  Future<bool> _blockedByFinanceGate([int? categoryId]) async {
+    if (!_categoryIdIsFinance(categoryId ?? _categoryId) || ref.read(isProProvider)) return false;
     await showProRequiredDialog(
       context,
-      message: 'The Finance category (Save Money) is Pro-only. Upgrade to Pro '
-          'to manage finance habits & see your savings summary.',
+      message: AppLocalizations.of(context)!.addHabitFinanceProOnly,
     );
     return true;
   }
 
   /// Free users are capped at 5 active habits — only relevant when creating
-  /// a new habit, not when editing an existing one.
-  Future<bool> _blockedByFreeHabitLimit() async {
+  /// new habit(s), not when editing an existing one. [additional] is how
+  /// many new habits this action would add (>1 for the Step 2 multi-select
+  /// "Add N Habits" batch) — blocked when the batch would push the total
+  /// past the cap, not just when already at/over it.
+  Future<bool> _blockedByFreeHabitLimit({int additional = 1}) async {
     if (ref.read(isProProvider)) return false;
     final activeHabits = await ref.read(habitRepositoryProvider).getAllActive();
-    if (activeHabits.length < _freeActiveHabitLimit) return false;
+    if (activeHabits.length + additional <= _freeActiveHabitLimit) return false;
     if (mounted) {
       await showProRequiredDialog(
         context,
-        message: 'You\'ve reached the $_freeActiveHabitLimit active habit limit for '
-            'Free users. Upgrade to Pro to add unlimited habits.',
+        message: AppLocalizations.of(context)!.addHabitFreeLimitMessage(_freeActiveHabitLimit),
       );
     }
     return true;
@@ -302,16 +335,16 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     setState(() => _stepStack.removeLast());
   }
 
-  String get _title {
+  String _titleFor(AppLocalizations l10n) {
     switch (_step) {
       case 1:
-        return 'Pick Goal Phrase';
+        return l10n.addHabitTitlePickGoalPhrase;
       case 2:
-        return 'Add Habit';
+        return l10n.addHabitTitleAddHabit;
       case 3:
-        return _isEditing ? 'Edit Habit' : 'Habit Form';
+        return _isEditing ? l10n.addHabitTitleEditHabit : l10n.addHabitTitleHabitForm;
       case 4:
-        return 'New Goal';
+        return l10n.addHabitTitleNewGoal;
       default:
         return '';
     }
@@ -322,8 +355,10 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final isTablet = MediaQuery.sizeOf(context).width >= 900;
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
+    final showSelectionBar = _step == 2 && _selectedTemplates.isNotEmpty;
 
     return Scaffold(
       // Step 1 (Pick Goal Phrase) gets a grayer backdrop than the app default
@@ -332,40 +367,85 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ? (theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt)
           : theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: FadeSlideIn(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(isTablet ? 44 : 16, isTablet ? 32 : 20, isTablet ? 44 : 16, 40),
-              children: [
-                Row(
-                  children: [
-                    if (_showBack)
-                      _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: _back)
-                    else
-                      const SizedBox(width: 32),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(_title, style: theme.textTheme.titleLarge),
+        child: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth),
+                  child: FadeSlideIn(
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(
+                      isTablet ? 44 : 16,
+                      isTablet ? 32 : 20,
+                      isTablet ? 44 : 16,
+                      40,
                     ),
-                    _RoundIconButton(
-                      icon: Icons.close_rounded,
-                      iconSize: 14,
-                      onTap: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+                    children: [
+                      Row(
+                        children: [
+                          if (_showBack)
+                            _RoundIconButton(icon: Icons.chevron_left_rounded, onTap: _back)
+                          else
+                            const SizedBox(width: 32),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(_titleFor(l10n), style: theme.textTheme.titleLarge),
+                          ),
+                          _RoundIconButton(
+                            icon: Icons.close_rounded,
+                            iconSize: 14,
+                            onTap: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      switch (_step) {
+                        1 => _buildStep1(),
+                        2 => _buildStep2(),
+                        3 => _buildStep3(),
+                        4 => _buildStep4(),
+                        _ => const SizedBox.shrink(),
+                      },
+                    ],
+                  ),
+                  ),
                 ),
-                const SizedBox(height: 22),
-                switch (_step) {
-                  1 => _buildStep1(),
-                  2 => _buildStep2(),
-                  3 => _buildStep3(),
-                  4 => _buildStep4(),
-                  _ => const SizedBox.shrink(),
-                },
-              ],
+              ),
             ),
+            if (showSelectionBar) _buildSelectionBar(context, l10n, maxWidth),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pinned bar below the Step 2 list (a sibling in the outer `Column`, not
+  /// inside the scrolling `ListView`) — appears once at least 1 template is
+  /// selected, showing the "Add N Habits" batch action so it's always
+  /// reachable without scrolling down. The outer `SafeArea` in `build()`
+  /// already keeps this clear of the system nav bar, so no extra one here.
+  Widget _buildSelectionBar(BuildContext context, AppLocalizations l10n, double maxWidth) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: ElevatedButton(
+              onPressed: _saving ? null : _addSelectedTemplates,
+              child: Text(l10n.addHabitAddSelected(_selectedTemplates.length)),
             ),
           ),
         ),
@@ -377,15 +457,17 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Widget _buildStep1() {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Pick a goal phrase for the new habit.', style: theme.textTheme.bodyMedium),
+        Text(l10n.addHabitPickGoalPhrase, style: theme.textTheme.bodyMedium),
         const SizedBox(height: 20),
         categoriesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, st) => Text('Failed to load categories: $e'),
+          error: (e, st) => Text(l10n.addHabitFailedToLoadCategories('$e')),
           data: (categories) {
             final columns = categoryGridColumns(MediaQuery.sizeOf(context).width);
             return GridView.builder(
@@ -426,7 +508,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                           ),
                           const SizedBox(height: 10),
                           Text(
-                            'Create New Goal',
+                            l10n.addHabitCreateNewGoal,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.labelLarge?.copyWith(
                               fontFamily: 'Poppins',
@@ -444,7 +526,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 return FadeSlideIn(
                   delay: staggeredDelay(index),
                   child: _CategoryGridTile(
-                    name: category.name,
+                    name: category.displayName(lang),
                     description: goalPhraseDescriptionFor(category),
                     icon: isFinanceCategory(category) ? 'credit-card' : category.icon,
                     color: color,
@@ -452,9 +534,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       if (isFinanceCategory(category) && !ref.read(isProProvider)) {
                         showProRequiredDialog(
                           context,
-                          message:
-                              'The Finance category (Save Money) is Pro-only. Upgrade to '
-                              'Pro to manage finance habits & see your savings summary.',
+                          message: l10n.addHabitFinanceProOnly,
                         );
                         return;
                       }
@@ -475,6 +555,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Widget _buildStep2() {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final templatesAsync = ref.watch(habitTemplatesProvider);
 
@@ -496,7 +578,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           data: (allTemplates) {
             final match = category == null
                 ? const <CategoryTemplate>[]
-                : allTemplates.where((t) => t.defaultGoalPhrase == category!.name).toList();
+                : allTemplates.where((t) => t.key == category!.templateKey).toList();
             final templates = match.isEmpty ? const <HabitTemplate>[] : match.first.habits;
 
             final displayIcon =
@@ -505,6 +587,41 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Lets the user hop between goal phrases without leaving
+                // Step 2 (and without losing selections made under a
+                // different one — see `_selectedTemplates`'s doc comment).
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: categories.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final c = categories[index];
+                      final isCurrent = c.id == _categoryId;
+                      final chipColor = AppColors.categoryColorFromHex(c.colorHex, index);
+                      return ChoiceChip(
+                        label: Text(c.displayName(lang)),
+                        selected: isCurrent,
+                        onSelected: (_) {
+                          if (isCurrent) return;
+                          if (isFinanceCategory(c) && !ref.read(isProProvider)) {
+                            showProRequiredDialog(context, message: l10n.addHabitFinanceProOnly);
+                            return;
+                          }
+                          setState(() => _categoryId = c.id);
+                        },
+                        selectedColor: chipColor.withValues(alpha: 0.18),
+                        side: isCurrent ? BorderSide(color: chipColor) : BorderSide.none,
+                        labelStyle: TextStyle(
+                          color: isCurrent ? chipColor : theme.textTheme.bodySmall?.color,
+                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Container(
@@ -516,7 +633,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        category?.name ?? '',
+                        category?.displayName(lang) ?? '',
                         style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -526,44 +643,75 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 if (templates.isEmpty)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Text('No recommendations for this category yet.', style: theme.textTheme.bodySmall),
+                    child: Text(l10n.addHabitNoRecommendations, style: theme.textTheme.bodySmall),
                   ),
                 for (final t in templates)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => _openFormForTemplate(t),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(t.name, style: theme.textTheme.titleMedium),
-                                  const SizedBox(height: 2),
-                                  Text(t.goalLabel, style: theme.textTheme.bodyMedium),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          PrimaryPillButton(
-                            label: 'Add',
-                            onPressed: _saving ? null : () => _quickAddTemplate(t),
-                          ),
-                        ],
+                  Builder(builder: (context) {
+                    final entry = (categoryId: _categoryId!, template: t);
+                    final selected = _selectedTemplates.contains(entry);
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      color: selected ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: selected
+                            ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
+                            : BorderSide.none,
                       ),
-                    ),
-                  ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => setState(() {
+                          if (!_selectedTemplates.remove(entry)) _selectedTemplates.add(entry);
+                        }),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(t.displayName(lang), style: theme.textTheme.titleMedium),
+                                    const SizedBox(height: 2),
+                                    Text(t.goalLabel(lang), style: theme.textTheme.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              IconButton(
+                                tooltip: l10n.addHabitCustomizeBeforeAdding,
+                                icon: const Icon(Icons.tune_rounded, size: 20),
+                                onPressed: () => _openFormForTemplate(t),
+                              ),
+                              const SizedBox(width: 4),
+                              Container(
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: selected ? theme.colorScheme.primary : Colors.transparent,
+                                  border: Border.all(
+                                    color: selected ? theme.colorScheme.primary : theme.dividerColor,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: selected
+                                    ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
                 const SizedBox(height: 4),
                 DashedBorder(
                   borderRadius: 14,
                   onTap: () => _openCustomForm(),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Text('+ Add Custom Habit', style: theme.textTheme.titleSmall),
+                    child: Text(l10n.addHabitAddCustomHabit, style: theme.textTheme.titleSmall),
                   ),
                 ),
               ],
@@ -578,6 +726,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     setState(() {
       _resetFormDraft(
         name: template.name,
+        nameId: template.nameId,
+        isCustom: false,
+        templateKey: template.key,
         icon: template.icon,
         goalPeriod: template.goalPeriod,
         goalValue: template.goalValue,
@@ -600,34 +751,59 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     });
   }
 
-  Future<void> _quickAddTemplate(HabitTemplate template) async {
-    if (_categoryId == null) return;
-    if (await _blockedByFinanceGate() || await _blockedByFreeHabitLimit()) return;
+  /// Creates every habit in [_selectedTemplates] at once (Step 2 multi-select
+  /// — replaces the old "Add" pill that saved 1 template and immediately
+  /// popped the screen). Entries can span more than 1 goal phrase (the chip
+  /// row lets the user switch category without losing earlier picks), so
+  /// each is created under its own `categoryId`, and the Finance Pro-gate is
+  /// checked once per distinct category in the batch rather than just the
+  /// one currently on screen. Free-tier gate is checked against the whole
+  /// batch up front so it doesn't fail partway through and leave a mix of
+  /// created/not-created habits.
+  Future<void> _addSelectedTemplates() async {
+    if (_selectedTemplates.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final entries = List<({int categoryId, HabitTemplate template})>.from(_selectedTemplates);
+    for (final categoryId in entries.map((e) => e.categoryId).toSet()) {
+      if (await _blockedByFinanceGate(categoryId)) return;
+    }
+    if (await _blockedByFreeHabitLimit(additional: entries.length)) return;
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
-      final id = await repo.createHabit(
-        categoryId: _categoryId!,
-        name: template.name,
-        icon: template.icon,
-        goalPeriod: template.goalPeriod,
-        goalValue: template.goalValue,
-        goalUnit: template.goalUnit,
-        goalDirection: template.goalDirection,
-        taskDays: const [allDaysKey],
-        timeRange: template.timeRange,
-        reminderEnabled: false,
-        startDate: today(),
-      );
-      final created = await repo.getById(id);
-      if (created != null) {
-        await _tryScheduleNotification(created);
+      for (final entry in entries) {
+        final template = entry.template;
+        final id = await repo.createHabit(
+          categoryId: entry.categoryId,
+          name: template.name,
+          nameId: template.nameId,
+          isCustom: false,
+          templateKey: template.key,
+          icon: template.icon,
+          goalPeriod: template.goalPeriod,
+          goalValue: template.goalValue,
+          goalUnit: template.goalUnit,
+          goalDirection: template.goalDirection,
+          taskDays: const [allDaysKey],
+          timeRange: template.timeRange,
+          reminderEnabled: false,
+          startDate: today(),
+        );
+        final created = await repo.getById(id);
+        if (created != null) {
+          await _tryScheduleNotification(created);
+        }
       }
-      await _finishAndReturn(toastMessage: 'Habit added');
+      await _finishAndReturn(
+        toastMessage: entries.length == 1
+            ? l10n.addHabitAdded
+            : l10n.addHabitAddedMultiple(entries.length),
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to add habit: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.addHabitFailedToAdd('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -636,7 +812,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Future<void> _tryScheduleNotification(Habit habit) async {
     try {
-      await ref.read(notificationServiceProvider).rescheduleForHabit(habit);
+      await ref
+          .read(notificationServiceProvider)
+          .rescheduleForHabit(habit, lang: ref.read(appLanguageProvider));
     } catch (_) {
       // Notification scheduling failed (e.g. platform not supported) —
       // don't fail the habit save because of this.
@@ -647,7 +825,10 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Widget _buildStep3() {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final unitLabels = unitPresetLabelsFor(l10n);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -661,11 +842,28 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-        _FieldLabel('Habit Name'),
+        _FieldLabel(l10n.addHabitFieldHabitName),
         const SizedBox(height: 6),
-        TextField(controller: _nameController, decoration: const InputDecoration(hintText: 'Habit name')),
+        TextField(
+          controller: _nameController,
+          enabled: !widget.lockGoalFields && _isCustomDraft,
+          decoration: InputDecoration(hintText: l10n.addHabitHintNameEn),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _nameIdController,
+          enabled: !widget.lockGoalFields && _isCustomDraft,
+          decoration: InputDecoration(hintText: l10n.addHabitHintNameId),
+        ),
+        if (!_isCustomDraft) ...[
+          const SizedBox(height: 6),
+          Text(
+            l10n.addHabitLockedNameNotice,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
         const SizedBox(height: 16),
-        _FieldLabel('Icon'),
+        _FieldLabel(l10n.addHabitFieldIcon),
         const SizedBox(height: 10),
         InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -682,7 +880,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 child: Center(child: HabitIcon(icon: _habitIcon, size: 16, color: Colors.white)),
               ),
               const SizedBox(width: 12),
-              Text('Change icon', style: theme.textTheme.bodyMedium?.copyWith(
+              Text(l10n.addHabitChangeIcon, style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w700,
                   )),
@@ -690,7 +888,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _FieldLabel('Goal Phrase'),
+        _FieldLabel(l10n.addHabitFieldGoalPhrase),
         const SizedBox(height: 6),
         categoriesAsync.when(
           loading: () => const LinearProgressIndicator(),
@@ -699,7 +897,10 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             final validId = categories.any((c) => c.id == _categoryId) ? _categoryId : null;
             return DropdownButtonFormField<int>(
               initialValue: validId,
-              items: [for (final c in categories) DropdownMenuItem(value: c.id, child: Text(c.name))],
+              items: [
+                for (final c in categories)
+                  DropdownMenuItem(value: c.id, child: Text(c.displayName(lang))),
+              ],
               onChanged: (v) {
                 if (v == null) return;
                 setState(() {
@@ -718,7 +919,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           },
         ),
         const SizedBox(height: 16),
-        _FieldLabel('Goal Period'),
+        _FieldLabel(l10n.addHabitFieldGoalPeriod),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -727,7 +928,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 child: Padding(
                   padding: EdgeInsets.only(right: period == GoalPeriod.values.last ? 0 : 8),
                   child: _SelectablePill(
-                    label: period.label,
+                    label: period.label(lang),
                     selected: _goalPeriod == period,
                     onTap: () => setState(() => _goalPeriod = period),
                   ),
@@ -743,7 +944,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Goal Value'),
+                  _FieldLabel(l10n.addHabitFieldGoalValue),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -785,7 +986,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Unit'),
+                  _FieldLabel(l10n.addHabitFieldUnit),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
                     initialValue: _unitDropdownValue,
@@ -805,15 +1006,15 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                           },
                     items: [
                       for (final value in unitPresetValues)
-                        DropdownMenuItem(value: value, child: Text(unitPresetLabels[value]!)),
-                      DropdownMenuItem(value: 'custom', child: Text(unitPresetLabels['custom']!)),
+                        DropdownMenuItem(value: value, child: Text(unitLabels[value]!)),
+                      DropdownMenuItem(value: 'custom', child: Text(unitLabels['custom']!)),
                     ],
                   ),
                   if (_unitDropdownValue == 'custom') ...[
                     const SizedBox(height: 8),
                     TextField(
                       controller: _goalUnitController,
-                      decoration: const InputDecoration(hintText: 'e.g. book pages'),
+                      decoration: InputDecoration(hintText: l10n.addHabitUnitHintCustom),
                     ),
                   ],
                 ],
@@ -822,7 +1023,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        _FieldLabel('Target Direction'),
+        _FieldLabel(l10n.addHabitFieldTargetDirection),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -831,7 +1032,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                 child: Padding(
                   padding: EdgeInsets.only(right: direction == GoalDirection.values.last ? 0 : 8),
                   child: _SelectablePill(
-                    label: direction.label,
+                    label: direction.label(lang),
                     selected: _goalDirection == direction,
                     onTap: () => setState(() => _goalDirection = direction),
                   ),
@@ -840,16 +1041,16 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 6),
-        Text(_goalDirection.helperText, style: theme.textTheme.bodySmall),
+        Text(_goalDirection.helperText(lang), style: theme.textTheme.bodySmall),
         const SizedBox(height: 16),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _FieldLabel('Task Days'),
+            _FieldLabel(l10n.addHabitFieldTaskDays),
             InkWell(
               onTap: () => setState(() => _taskDays = {allDaysKey}),
               child: Text(
-                'Every day',
+                l10n.addHabitEveryDay,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w700,
@@ -861,10 +1062,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 8),
         _TaskDaysGrid(
           selected: _taskDays,
+          lang: lang,
           onChanged: (days) => setState(() => _taskDays = days),
         ),
         const SizedBox(height: 16),
-        _FieldLabel('Time Range'),
+        _FieldLabel(l10n.addHabitFieldTimeRange),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -872,7 +1074,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           children: [
             for (final tr in TimeRange.values)
               _SelectablePill(
-                label: tr.label,
+                label: tr.label(lang),
                 selected: _timeRange == tr,
                 pill: true,
                 onTap: () => setState(() => _timeRange = tr),
@@ -889,7 +1091,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Reminder', style: theme.textTheme.bodyMedium),
+                Text(l10n.addHabitReminder, style: theme.textTheme.bodyMedium),
                 Row(
                   children: [
                     if (_reminderEnabled) ...[
@@ -929,7 +1131,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FieldLabel('Start Date'),
+                  _FieldLabel(l10n.addHabitFieldStartDate),
                   const SizedBox(height: 6),
                   _DateField(
                     date: _startDate,
@@ -954,11 +1156,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _FieldLabel('End Date'),
+                      _FieldLabel(l10n.addHabitFieldEndDate),
                       InkWell(
                         onTap: () => setState(() => _endDate = _endDate == null ? today() : null),
                         child: Text(
-                          _endDate == null ? 'Set date' : 'No limit',
+                          _endDate == null ? l10n.addHabitSetDate : l10n.addHabitNoLimit,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w700,
@@ -984,7 +1186,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   else
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Text('No time limit', style: theme.textTheme.bodySmall),
+                      child: Text(l10n.addHabitNoTimeLimit, style: theme.textTheme.bodySmall),
                     ),
                 ],
               ),
@@ -995,24 +1197,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitHabitForm,
-          child: Text(_isEditing ? 'Save Changes' : 'Save Habit'),
+          child: Text(_isEditing ? l10n.addHabitSaveChanges : l10n.addHabitSaveHabit),
         ),
       ],
     );
   }
 
   Future<void> _submitHabitForm() async {
+    final l10n = AppLocalizations.of(context)!;
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Habit name is required')));
+    final nameId = _nameIdController.text.trim();
+    if (name.isEmpty || nameId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.addHabitNameRequired)),
+      );
       return;
     }
     if (_categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a goal phrase first')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.addHabitPickGoalPhraseFirst)),
+      );
       return;
     }
     if (_taskDays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick at least 1 active day')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.addHabitPickAtLeastOneDay)),
+      );
       return;
     }
     if (await _blockedByFinanceGate()) return;
@@ -1030,6 +1240,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           id: widget.editingHabit!.id,
           categoryId: _categoryId!,
           name: name,
+          nameId: nameId,
+          isCustom: _isCustomDraft,
+          templateKey: _templateKeyDraft,
           description: widget.editingHabit!.description,
           icon: _habitIcon,
           goalPeriod: _goalPeriod,
@@ -1052,6 +1265,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         final id = await repo.createHabit(
           categoryId: _categoryId!,
           name: name,
+          nameId: nameId,
+          isCustom: _isCustomDraft,
+          templateKey: _templateKeyDraft,
           icon: _habitIcon,
           goalPeriod: _goalPeriod,
           goalValue: _goalValue,
@@ -1071,12 +1287,12 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       }
 
       await _finishAndReturn(
-        toastMessage: _isEditing ? 'Habit updated' : 'Habit added',
+        toastMessage: _isEditing ? l10n.addHabitUpdated : l10n.addHabitAdded,
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
+            .showSnackBar(SnackBar(content: Text(l10n.addHabitFailedToSave('$e'))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1086,17 +1302,23 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   // ---------------- Step 4: new category ----------------
 
   Widget _buildStep4() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _FieldLabel('Goal Phrase Name'),
+        _FieldLabel(l10n.addHabitFieldGoalPhraseName),
         const SizedBox(height: 6),
         TextField(
           controller: _newCatNameController,
-          decoration: const InputDecoration(hintText: 'e.g. Hobby'),
+          decoration: InputDecoration(hintText: l10n.addHabitHintCatNameEn),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _newCatNameIdController,
+          decoration: InputDecoration(hintText: l10n.addHabitHintCatNameId),
         ),
         const SizedBox(height: 20),
-        _FieldLabel('Color'),
+        _FieldLabel(l10n.addHabitFieldColor),
         const SizedBox(height: 10),
         Wrap(
           spacing: 10,
@@ -1111,7 +1333,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
         ),
         const SizedBox(height: 20),
-        _FieldLabel('Icon'),
+        _FieldLabel(l10n.addHabitFieldIcon),
         const SizedBox(height: 10),
         InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -1132,7 +1354,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               ),
               const SizedBox(width: 12),
               Text(
-                'Change icon',
+                l10n.addHabitChangeIcon,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w700,
@@ -1144,16 +1366,20 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: _saving ? null : _submitNewCategory,
-          child: const Text('Create Goal'),
+          child: Text(l10n.addHabitCreateGoal),
         ),
       ],
     );
   }
 
   Future<void> _submitNewCategory() async {
+    final l10n = AppLocalizations.of(context)!;
     final name = _newCatNameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Goal phrase name is required')));
+    final nameId = _newCatNameIdController.text.trim();
+    if (name.isEmpty || nameId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.addHabitCatNameRequired)),
+      );
       return;
     }
     setState(() => _saving = true);
@@ -1162,6 +1388,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           '#${AppColors.customCategoryColorPalette[_newCatColorIndex].toARGB32().toRadixString(16).substring(2).toUpperCase()}';
       final id = await ref.read(categoryRepositoryProvider).createCustomCategory(
             name: name,
+            nameId: nameId,
             icon: _newCatIcon,
             colorHex: colorHex,
           );
@@ -1177,7 +1404,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Failed to create category: $e')));
+            .showSnackBar(SnackBar(content: Text(l10n.addHabitFailedToCreateCategory('$e'))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1326,10 +1553,7 @@ class _CommunityLockedNotice extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'This habit is linked to a Community group, so its target and '
-              'schedule stay locked to match everyone tracking it. Unlink it '
-              'from the group\'s Habits tab first to change them. Reminder '
-              'settings are still yours to change.',
+              AppLocalizations.of(context)!.addHabitCommunityLockedNotice,
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -1455,9 +1679,10 @@ class _DateField extends StatelessWidget {
 }
 
 class _TaskDaysGrid extends StatelessWidget {
-  const _TaskDaysGrid({required this.selected, required this.onChanged});
+  const _TaskDaysGrid({required this.selected, required this.lang, required this.onChanged});
 
   final Set<String> selected;
+  final AppLang lang;
   final ValueChanged<Set<String>> onChanged;
 
   bool get _isEveryDay => selected.contains(allDaysKey);
@@ -1503,7 +1728,7 @@ class _TaskDaysGrid extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  weekdayLabels[day]!,
+                  weekdayLabel(day, lang),
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 12,

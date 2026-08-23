@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import 'group_detail_screen.dart';
@@ -45,7 +46,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create group: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.createGroupFailed('$e'))),
         );
       }
     } finally {
@@ -55,22 +56,23 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Group')),
+      appBar: AppBar(title: Text(l10n.createGroupTitle)),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: FadeSlideIn(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Group Name', style: Theme.of(context).textTheme.labelMedium),
+            Text(l10n.createGroupNameLabel, style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Morning Run Squad',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: l10n.createGroupNameHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
@@ -84,7 +86,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Create Group'),
+                    : Text(l10n.createGroupTitle),
               ),
             ),
           ],

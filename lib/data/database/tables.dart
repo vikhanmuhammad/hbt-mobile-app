@@ -45,6 +45,17 @@ class Categories extends Table {
       boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// Terjemahan Indonesia dari `name` (goal phrase) — dwibahasa (CLAUDE.md
+  /// §Bahasa). Nullable: kategori lama/custom yang belum sempat diisi
+  /// fallback ke `name` (Inggris) saat ditampilkan.
+  TextColumn get nameId => text().nullable()();
+
+  /// Key stabil ke entri kategori di `habit_templates.json` (mis.
+  /// 'save_money') — dipakai untuk mencocokkan ulang terjemahan/goal-phrase
+  /// lookup tanpa bergantung ke string `name` yang sekarang bisa 2 bahasa.
+  /// Null untuk kategori custom buatan user.
+  TextColumn get templateKey => text().nullable()();
 }
 
 /// taskDays disimpan sebagai JSON array text, mis. ["mon","wed","fri"] atau ["all"].
@@ -74,6 +85,23 @@ class Habits extends Table {
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// Terjemahan Indonesia dari `name` — dwibahasa (CLAUDE.md §Bahasa).
+  /// Nullable: habit lama/custom yang belum sempat diisi fallback ke `name`
+  /// (Inggris) saat ditampilkan.
+  TextColumn get nameId => text().nullable()();
+
+  /// True kalau title boleh diedit user. Habit dari template bawaan
+  /// (`templateKey` non-null, dikonfirmasi lewat backfill) dikunci
+  /// (`isCustom=false`); default true supaya baris lama yang gagal
+  /// dicocokkan ke template tetap aman untuk diedit alih-alih tiba-tiba
+  /// terkunci tanpa alasan jelas ke user.
+  BoolColumn get isCustom =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Key stabil ke entri habit di `habit_templates.json` (mis.
+  /// 'drink_water'). Null untuk habit custom buatan user.
+  TextColumn get templateKey => text().nullable()();
 }
 
 @TableIndex(name: 'idx_habit_logs_date', columns: {#date})

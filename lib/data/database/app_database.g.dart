@@ -93,6 +93,26 @@ class $CategoriesTable extends Categories
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _nameIdMeta = const VerificationMeta('nameId');
+  @override
+  late final GeneratedColumn<String> nameId = GeneratedColumn<String>(
+    'name_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _templateKeyMeta = const VerificationMeta(
+    'templateKey',
+  );
+  @override
+  late final GeneratedColumn<String> templateKey = GeneratedColumn<String>(
+    'template_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -102,6 +122,8 @@ class $CategoriesTable extends Categories
     isDefault,
     isArchived,
     createdAt,
+    nameId,
+    templateKey,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -156,6 +178,21 @@ class $CategoriesTable extends Categories
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('name_id')) {
+      context.handle(
+        _nameIdMeta,
+        nameId.isAcceptableOrUnknown(data['name_id']!, _nameIdMeta),
+      );
+    }
+    if (data.containsKey('template_key')) {
+      context.handle(
+        _templateKeyMeta,
+        templateKey.isAcceptableOrUnknown(
+          data['template_key']!,
+          _templateKeyMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -193,6 +230,14 @@ class $CategoriesTable extends Categories
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      nameId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_id'],
+      ),
+      templateKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_key'],
+      ),
     );
   }
 
@@ -210,6 +255,17 @@ class Category extends DataClass implements Insertable<Category> {
   final bool isDefault;
   final bool isArchived;
   final DateTime createdAt;
+
+  /// Terjemahan Indonesia dari `name` (goal phrase) — dwibahasa (CLAUDE.md
+  /// §Bahasa). Nullable: kategori lama/custom yang belum sempat diisi
+  /// fallback ke `name` (Inggris) saat ditampilkan.
+  final String? nameId;
+
+  /// Key stabil ke entri kategori di `habit_templates.json` (mis.
+  /// 'save_money') — dipakai untuk mencocokkan ulang terjemahan/goal-phrase
+  /// lookup tanpa bergantung ke string `name` yang sekarang bisa 2 bahasa.
+  /// Null untuk kategori custom buatan user.
+  final String? templateKey;
   const Category({
     required this.id,
     required this.name,
@@ -218,6 +274,8 @@ class Category extends DataClass implements Insertable<Category> {
     required this.isDefault,
     required this.isArchived,
     required this.createdAt,
+    this.nameId,
+    this.templateKey,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -233,6 +291,12 @@ class Category extends DataClass implements Insertable<Category> {
     map['is_default'] = Variable<bool>(isDefault);
     map['is_archived'] = Variable<bool>(isArchived);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || nameId != null) {
+      map['name_id'] = Variable<String>(nameId);
+    }
+    if (!nullToAbsent || templateKey != null) {
+      map['template_key'] = Variable<String>(templateKey);
+    }
     return map;
   }
 
@@ -247,6 +311,12 @@ class Category extends DataClass implements Insertable<Category> {
       isDefault: Value(isDefault),
       isArchived: Value(isArchived),
       createdAt: Value(createdAt),
+      nameId: nameId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameId),
+      templateKey: templateKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templateKey),
     );
   }
 
@@ -263,6 +333,8 @@ class Category extends DataClass implements Insertable<Category> {
       isDefault: serializer.fromJson<bool>(json['isDefault']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      nameId: serializer.fromJson<String?>(json['nameId']),
+      templateKey: serializer.fromJson<String?>(json['templateKey']),
     );
   }
   @override
@@ -276,6 +348,8 @@ class Category extends DataClass implements Insertable<Category> {
       'isDefault': serializer.toJson<bool>(isDefault),
       'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'nameId': serializer.toJson<String?>(nameId),
+      'templateKey': serializer.toJson<String?>(templateKey),
     };
   }
 
@@ -287,6 +361,8 @@ class Category extends DataClass implements Insertable<Category> {
     bool? isDefault,
     bool? isArchived,
     DateTime? createdAt,
+    Value<String?> nameId = const Value.absent(),
+    Value<String?> templateKey = const Value.absent(),
   }) => Category(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -295,6 +371,8 @@ class Category extends DataClass implements Insertable<Category> {
     isDefault: isDefault ?? this.isDefault,
     isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
+    nameId: nameId.present ? nameId.value : this.nameId,
+    templateKey: templateKey.present ? templateKey.value : this.templateKey,
   );
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
@@ -307,6 +385,10 @@ class Category extends DataClass implements Insertable<Category> {
           ? data.isArchived.value
           : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      nameId: data.nameId.present ? data.nameId.value : this.nameId,
+      templateKey: data.templateKey.present
+          ? data.templateKey.value
+          : this.templateKey,
     );
   }
 
@@ -319,14 +401,25 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('colorHex: $colorHex, ')
           ..write('isDefault: $isDefault, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('nameId: $nameId, ')
+          ..write('templateKey: $templateKey')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, icon, colorHex, isDefault, isArchived, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    icon,
+    colorHex,
+    isDefault,
+    isArchived,
+    createdAt,
+    nameId,
+    templateKey,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -337,7 +430,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.colorHex == this.colorHex &&
           other.isDefault == this.isDefault &&
           other.isArchived == this.isArchived &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.nameId == this.nameId &&
+          other.templateKey == this.templateKey);
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
@@ -348,6 +443,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<bool> isDefault;
   final Value<bool> isArchived;
   final Value<DateTime> createdAt;
+  final Value<String?> nameId;
+  final Value<String?> templateKey;
   const CategoriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -356,6 +453,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isDefault = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.nameId = const Value.absent(),
+    this.templateKey = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
@@ -365,6 +464,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.isDefault = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.nameId = const Value.absent(),
+    this.templateKey = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Category> custom({
     Expression<int>? id,
@@ -374,6 +475,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<bool>? isDefault,
     Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
+    Expression<String>? nameId,
+    Expression<String>? templateKey,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -383,6 +486,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (isDefault != null) 'is_default': isDefault,
       if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
+      if (nameId != null) 'name_id': nameId,
+      if (templateKey != null) 'template_key': templateKey,
     });
   }
 
@@ -394,6 +499,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Value<bool>? isDefault,
     Value<bool>? isArchived,
     Value<DateTime>? createdAt,
+    Value<String?>? nameId,
+    Value<String?>? templateKey,
   }) {
     return CategoriesCompanion(
       id: id ?? this.id,
@@ -403,6 +510,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       isDefault: isDefault ?? this.isDefault,
       isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
+      nameId: nameId ?? this.nameId,
+      templateKey: templateKey ?? this.templateKey,
     );
   }
 
@@ -430,6 +539,12 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (nameId.present) {
+      map['name_id'] = Variable<String>(nameId.value);
+    }
+    if (templateKey.present) {
+      map['template_key'] = Variable<String>(templateKey.value);
+    }
     return map;
   }
 
@@ -442,7 +557,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('colorHex: $colorHex, ')
           ..write('isDefault: $isDefault, ')
           ..write('isArchived: $isArchived, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('nameId: $nameId, ')
+          ..write('templateKey: $templateKey')
           ..write(')'))
         .toString();
   }
@@ -666,6 +783,41 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _nameIdMeta = const VerificationMeta('nameId');
+  @override
+  late final GeneratedColumn<String> nameId = GeneratedColumn<String>(
+    'name_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isCustomMeta = const VerificationMeta(
+    'isCustom',
+  );
+  @override
+  late final GeneratedColumn<bool> isCustom = GeneratedColumn<bool>(
+    'is_custom',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_custom" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _templateKeyMeta = const VerificationMeta(
+    'templateKey',
+  );
+  @override
+  late final GeneratedColumn<String> templateKey = GeneratedColumn<String>(
+    'template_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -686,6 +838,9 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     isActive,
     sortOrder,
     createdAt,
+    nameId,
+    isCustom,
+    templateKey,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -826,6 +981,27 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('name_id')) {
+      context.handle(
+        _nameIdMeta,
+        nameId.isAcceptableOrUnknown(data['name_id']!, _nameIdMeta),
+      );
+    }
+    if (data.containsKey('is_custom')) {
+      context.handle(
+        _isCustomMeta,
+        isCustom.isAcceptableOrUnknown(data['is_custom']!, _isCustomMeta),
+      );
+    }
+    if (data.containsKey('template_key')) {
+      context.handle(
+        _templateKeyMeta,
+        templateKey.isAcceptableOrUnknown(
+          data['template_key']!,
+          _templateKeyMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -907,6 +1083,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      nameId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_id'],
+      ),
+      isCustom: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_custom'],
+      )!,
+      templateKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_key'],
+      ),
     );
   }
 
@@ -935,6 +1123,22 @@ class Habit extends DataClass implements Insertable<Habit> {
   final bool isActive;
   final int sortOrder;
   final DateTime createdAt;
+
+  /// Terjemahan Indonesia dari `name` — dwibahasa (CLAUDE.md §Bahasa).
+  /// Nullable: habit lama/custom yang belum sempat diisi fallback ke `name`
+  /// (Inggris) saat ditampilkan.
+  final String? nameId;
+
+  /// True kalau title boleh diedit user. Habit dari template bawaan
+  /// (`templateKey` non-null, dikonfirmasi lewat backfill) dikunci
+  /// (`isCustom=false`); default true supaya baris lama yang gagal
+  /// dicocokkan ke template tetap aman untuk diedit alih-alih tiba-tiba
+  /// terkunci tanpa alasan jelas ke user.
+  final bool isCustom;
+
+  /// Key stabil ke entri habit di `habit_templates.json` (mis.
+  /// 'drink_water'). Null untuk habit custom buatan user.
+  final String? templateKey;
   const Habit({
     required this.id,
     required this.categoryId,
@@ -954,6 +1158,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     required this.isActive,
     required this.sortOrder,
     required this.createdAt,
+    this.nameId,
+    required this.isCustom,
+    this.templateKey,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -984,6 +1191,13 @@ class Habit extends DataClass implements Insertable<Habit> {
     map['is_active'] = Variable<bool>(isActive);
     map['sort_order'] = Variable<int>(sortOrder);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || nameId != null) {
+      map['name_id'] = Variable<String>(nameId);
+    }
+    map['is_custom'] = Variable<bool>(isCustom);
+    if (!nullToAbsent || templateKey != null) {
+      map['template_key'] = Variable<String>(templateKey);
+    }
     return map;
   }
 
@@ -1013,6 +1227,13 @@ class Habit extends DataClass implements Insertable<Habit> {
       isActive: Value(isActive),
       sortOrder: Value(sortOrder),
       createdAt: Value(createdAt),
+      nameId: nameId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameId),
+      isCustom: Value(isCustom),
+      templateKey: templateKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templateKey),
     );
   }
 
@@ -1040,6 +1261,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      nameId: serializer.fromJson<String?>(json['nameId']),
+      isCustom: serializer.fromJson<bool>(json['isCustom']),
+      templateKey: serializer.fromJson<String?>(json['templateKey']),
     );
   }
   @override
@@ -1064,6 +1288,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       'isActive': serializer.toJson<bool>(isActive),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'nameId': serializer.toJson<String?>(nameId),
+      'isCustom': serializer.toJson<bool>(isCustom),
+      'templateKey': serializer.toJson<String?>(templateKey),
     };
   }
 
@@ -1086,6 +1313,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     bool? isActive,
     int? sortOrder,
     DateTime? createdAt,
+    Value<String?> nameId = const Value.absent(),
+    bool? isCustom,
+    Value<String?> templateKey = const Value.absent(),
   }) => Habit(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -1105,6 +1335,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     isActive: isActive ?? this.isActive,
     sortOrder: sortOrder ?? this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
+    nameId: nameId.present ? nameId.value : this.nameId,
+    isCustom: isCustom ?? this.isCustom,
+    templateKey: templateKey.present ? templateKey.value : this.templateKey,
   );
   Habit copyWithCompanion(HabitsCompanion data) {
     return Habit(
@@ -1138,6 +1371,11 @@ class Habit extends DataClass implements Insertable<Habit> {
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      nameId: data.nameId.present ? data.nameId.value : this.nameId,
+      isCustom: data.isCustom.present ? data.isCustom.value : this.isCustom,
+      templateKey: data.templateKey.present
+          ? data.templateKey.value
+          : this.templateKey,
     );
   }
 
@@ -1161,13 +1399,16 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('nameId: $nameId, ')
+          ..write('isCustom: $isCustom, ')
+          ..write('templateKey: $templateKey')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     categoryId,
     name,
@@ -1186,7 +1427,10 @@ class Habit extends DataClass implements Insertable<Habit> {
     isActive,
     sortOrder,
     createdAt,
-  );
+    nameId,
+    isCustom,
+    templateKey,
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1208,7 +1452,10 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.endDate == this.endDate &&
           other.isActive == this.isActive &&
           other.sortOrder == this.sortOrder &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.nameId == this.nameId &&
+          other.isCustom == this.isCustom &&
+          other.templateKey == this.templateKey);
 }
 
 class HabitsCompanion extends UpdateCompanion<Habit> {
@@ -1230,6 +1477,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<bool> isActive;
   final Value<int> sortOrder;
   final Value<DateTime> createdAt;
+  final Value<String?> nameId;
+  final Value<bool> isCustom;
+  final Value<String?> templateKey;
   const HabitsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -1249,6 +1499,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.isActive = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.nameId = const Value.absent(),
+    this.isCustom = const Value.absent(),
+    this.templateKey = const Value.absent(),
   });
   HabitsCompanion.insert({
     this.id = const Value.absent(),
@@ -1269,6 +1522,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.isActive = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.nameId = const Value.absent(),
+    this.isCustom = const Value.absent(),
+    this.templateKey = const Value.absent(),
   }) : categoryId = Value(categoryId),
        name = Value(name),
        goalPeriod = Value(goalPeriod),
@@ -1293,6 +1549,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<bool>? isActive,
     Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
+    Expression<String>? nameId,
+    Expression<bool>? isCustom,
+    Expression<String>? templateKey,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1313,6 +1572,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (isActive != null) 'is_active': isActive,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
+      if (nameId != null) 'name_id': nameId,
+      if (isCustom != null) 'is_custom': isCustom,
+      if (templateKey != null) 'template_key': templateKey,
     });
   }
 
@@ -1335,6 +1597,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<bool>? isActive,
     Value<int>? sortOrder,
     Value<DateTime>? createdAt,
+    Value<String?>? nameId,
+    Value<bool>? isCustom,
+    Value<String?>? templateKey,
   }) {
     return HabitsCompanion(
       id: id ?? this.id,
@@ -1355,6 +1620,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       isActive: isActive ?? this.isActive,
       sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
+      nameId: nameId ?? this.nameId,
+      isCustom: isCustom ?? this.isCustom,
+      templateKey: templateKey ?? this.templateKey,
     );
   }
 
@@ -1415,6 +1683,15 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (nameId.present) {
+      map['name_id'] = Variable<String>(nameId.value);
+    }
+    if (isCustom.present) {
+      map['is_custom'] = Variable<bool>(isCustom.value);
+    }
+    if (templateKey.present) {
+      map['template_key'] = Variable<String>(templateKey.value);
+    }
     return map;
   }
 
@@ -1438,7 +1715,10 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('nameId: $nameId, ')
+          ..write('isCustom: $isCustom, ')
+          ..write('templateKey: $templateKey')
           ..write(')'))
         .toString();
   }
@@ -3057,6 +3337,8 @@ typedef $$CategoriesTableCreateCompanionBuilder =
       Value<bool> isDefault,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<String?> nameId,
+      Value<String?> templateKey,
     });
 typedef $$CategoriesTableUpdateCompanionBuilder =
     CategoriesCompanion Function({
@@ -3067,6 +3349,8 @@ typedef $$CategoriesTableUpdateCompanionBuilder =
       Value<bool> isDefault,
       Value<bool> isArchived,
       Value<DateTime> createdAt,
+      Value<String?> nameId,
+      Value<String?> templateKey,
     });
 
 final class $$CategoriesTableReferences
@@ -3134,6 +3418,16 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameId => $composableBuilder(
+    column: $table.nameId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3206,6 +3500,16 @@ class $$CategoriesTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get nameId => $composableBuilder(
+    column: $table.nameId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$CategoriesTableAnnotationComposer
@@ -3239,6 +3543,14 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get nameId =>
+      $composableBuilder(column: $table.nameId, builder: (column) => column);
+
+  GeneratedColumn<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
+    builder: (column) => column,
+  );
 
   Expression<T> habitsRefs<T extends Object>(
     Expression<T> Function($$HabitsTableAnnotationComposer a) f,
@@ -3301,6 +3613,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isDefault = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> nameId = const Value.absent(),
+                Value<String?> templateKey = const Value.absent(),
               }) => CategoriesCompanion(
                 id: id,
                 name: name,
@@ -3309,6 +3623,8 @@ class $$CategoriesTableTableManager
                 isDefault: isDefault,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                nameId: nameId,
+                templateKey: templateKey,
               ),
           createCompanionCallback:
               ({
@@ -3319,6 +3635,8 @@ class $$CategoriesTableTableManager
                 Value<bool> isDefault = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> nameId = const Value.absent(),
+                Value<String?> templateKey = const Value.absent(),
               }) => CategoriesCompanion.insert(
                 id: id,
                 name: name,
@@ -3327,6 +3645,8 @@ class $$CategoriesTableTableManager
                 isDefault: isDefault,
                 isArchived: isArchived,
                 createdAt: createdAt,
+                nameId: nameId,
+                templateKey: templateKey,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3400,6 +3720,9 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<bool> isActive,
       Value<int> sortOrder,
       Value<DateTime> createdAt,
+      Value<String?> nameId,
+      Value<bool> isCustom,
+      Value<String?> templateKey,
     });
 typedef $$HabitsTableUpdateCompanionBuilder =
     HabitsCompanion Function({
@@ -3421,6 +3744,9 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<int> sortOrder,
       Value<DateTime> createdAt,
+      Value<String?> nameId,
+      Value<bool> isCustom,
+      Value<String?> templateKey,
     });
 
 final class $$HabitsTableReferences
@@ -3576,6 +3902,21 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameId => $composableBuilder(
+    column: $table.nameId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3747,6 +4088,21 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameId => $composableBuilder(
+    column: $table.nameId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCustom => $composableBuilder(
+    column: $table.isCustom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3840,6 +4196,17 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get nameId =>
+      $composableBuilder(column: $table.nameId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCustom =>
+      $composableBuilder(column: $table.isCustom, builder: (column) => column);
+
+  GeneratedColumn<String> get templateKey => $composableBuilder(
+    column: $table.templateKey,
+    builder: (column) => column,
+  );
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -3965,6 +4332,9 @@ class $$HabitsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> nameId = const Value.absent(),
+                Value<bool> isCustom = const Value.absent(),
+                Value<String?> templateKey = const Value.absent(),
               }) => HabitsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -3984,6 +4354,9 @@ class $$HabitsTableTableManager
                 isActive: isActive,
                 sortOrder: sortOrder,
                 createdAt: createdAt,
+                nameId: nameId,
+                isCustom: isCustom,
+                templateKey: templateKey,
               ),
           createCompanionCallback:
               ({
@@ -4005,6 +4378,9 @@ class $$HabitsTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> nameId = const Value.absent(),
+                Value<bool> isCustom = const Value.absent(),
+                Value<String?> templateKey = const Value.absent(),
               }) => HabitsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -4024,6 +4400,9 @@ class $$HabitsTableTableManager
                 isActive: isActive,
                 sortOrder: sortOrder,
                 createdAt: createdAt,
+                nameId: nameId,
+                isCustom: isCustom,
+                templateKey: templateKey,
               ),
           withReferenceMapper: (p0) => p0
               .map(

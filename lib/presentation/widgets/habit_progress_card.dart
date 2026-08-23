@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
+import '../../providers/settings_providers.dart';
 import 'habit_icon.dart';
 
 /// Kartu habit flat-list Beranda — 2 state visual (in-progress fill parsial,
 /// complete solid+checkmark) dan affordance Edit Mode (reorder/edit/hapus).
 /// CLAUDE.md v3 §6.2/§6.3.
-class HabitProgressCard extends StatelessWidget {
+class HabitProgressCard extends ConsumerWidget {
   const HabitProgressCard({
     super.key,
     required this.item,
@@ -45,8 +47,9 @@ class HabitProgressCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     final done = item.isDone;
     final ratio = _ratio;
 
@@ -94,7 +97,7 @@ class HabitProgressCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item.habit.name,
+                          item.habit.displayName(lang),
                           style: theme.textTheme.titleSmall?.copyWith(
                             color: done ? Colors.white : null,
                           ),

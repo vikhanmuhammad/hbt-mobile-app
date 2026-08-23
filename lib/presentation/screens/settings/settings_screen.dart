@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../domain/language.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
@@ -28,6 +30,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
     final themeMode = ref.watch(appThemeModeProvider);
     final isDarkEffective = themeMode == ThemeMode.dark;
@@ -55,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          profile?.name.isNotEmpty == true ? profile!.name : 'No Name',
+                          profile?.name.isNotEmpty == true ? profile!.name : l10n.settingsNoName,
                           style: theme.textTheme.headlineSmall,
                         ),
                         if (isPro) ...[
@@ -66,7 +69,7 @@ class SettingsScreen extends ConsumerWidget {
                               Icon(Icons.workspace_premium_rounded, size: 14, color: theme.colorScheme.primary),
                               const SizedBox(width: 4),
                               Text(
-                                'Pro Member',
+                                l10n.settingsProMember,
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: theme.colorScheme.primary,
                                   fontWeight: FontWeight.w700,
@@ -87,17 +90,17 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 28),
-              _SectionLabel('Settings'),
+              _SectionLabel(l10n.settingsSectionSettings),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.checklist_rounded,
-                label: 'Habit Manager',
+                label: l10n.settingsHabitManager,
                 onTap: () => openCreateCategoryFlow(context),
               ),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.palette_outlined,
-                label: 'Theme',
+                label: l10n.settingsTheme,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const PersonalizeScreen()),
                 ),
@@ -109,7 +112,10 @@ class SettingsScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Dark mode', style: theme.textTheme.bodyMedium),
+                      Text(
+                        l10n.settingsDarkMode,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
                       ToggleSwitch(
                         value: isDarkEffective,
                         onChanged: (v) => ref.read(appThemeModeProvider.notifier).toggleDark(v),
@@ -118,26 +124,55 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.settingsLanguage,
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      SegmentedButton<AppLang>(
+                        segments: const [
+                          ButtonSegment(value: AppLang.en, label: Text('EN')),
+                          ButtonSegment(value: AppLang.id, label: Text('ID')),
+                        ],
+                        selected: {ref.watch(appLanguageProvider)},
+                        onSelectionChanged: (selection) => ref
+                            .read(appLanguageProvider.notifier)
+                            .setLanguage(selection.first),
+                        showSelectedIcon: false,
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
-              _SectionLabel('Health & Calendar Sync'),
+              _SectionLabel(l10n.settingsSectionHealthCalendarSync),
               const SizedBox(height: 10),
               const HealthSyncSettingsTile(),
               if (kDebugMode) ...[
                 const SizedBox(height: 24),
-                _SectionLabel('Pro Access'),
+                _SectionLabel(l10n.settingsSectionProAccess),
                 const SizedBox(height: 10),
                 const _DebugProToggleTile(),
               ],
               const SizedBox(height: 24),
-              _SectionLabel('Default Reminder'),
+              _SectionLabel(l10n.settingsSectionDefaultReminder),
               const SizedBox(height: 10),
               const _DefaultReminderTile(),
               const SizedBox(height: 24),
-              _SectionLabel('About'),
+              _SectionLabel(l10n.settingsSectionAbout),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.lightbulb_outline_rounded,
-                label: 'Usage Tips',
+                label: l10n.settingsUsageTips,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const UsageTipsScreen()),
                 ),
@@ -145,7 +180,7 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.help_outline_rounded,
-                label: 'FAQs',
+                label: l10n.settingsFaqs,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const FaqScreen()),
                 ),
@@ -153,27 +188,27 @@ class SettingsScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.mail_outline_rounded,
-                label: 'Contact us',
-                onTap: () => _contactUs(context),
+                label: l10n.settingsContactUs,
+                onTap: () => _contactUs(context, l10n),
               ),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.share_outlined,
-                label: 'Share',
-                onTap: () => _shareApp(context),
+                label: l10n.settingsShare,
+                onTap: () => _shareApp(l10n),
               ),
               const SizedBox(height: 10),
               _NavTile(
                 icon: Icons.restore_rounded,
-                label: 'Restore Purchases',
-                onTap: () => _restorePurchases(context, ref),
+                label: l10n.settingsRestorePurchases,
+                onTap: () => _restorePurchases(context, ref, l10n),
               ),
               if (ref.watch(currentUidProvider) != null) ...[
                 const SizedBox(height: 10),
                 _NavTile(
                   icon: Icons.person_remove_outlined,
-                  label: 'Delete Account',
-                  onTap: () => _deleteAccount(context, ref),
+                  label: l10n.settingsDeleteAccount,
+                  onTap: () => _deleteAccount(context, ref, l10n),
                 ),
               ],
               const SizedBox(height: 24),
@@ -181,12 +216,8 @@ class SettingsScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Text(
-                    'Built on research by Phillippa Lally et al. (UCL): a new habit '
-                    'takes on average 66 days of repetition to become automatic. Focus on '
-                    'consistency, not perfection.\n\n'
-                    'Fully offline. All recommendations come from static data in the app, '
-                    'no account or cloud sync.',
-                    style: theme.textTheme.bodySmall?.copyWith(height: 1.6),
+                    l10n.settingsAboutBody,
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                   ),
                 ),
               ),
@@ -194,10 +225,10 @@ class SettingsScreen extends ConsumerWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: () => _confirmResetDemo(context, ref),
-                  child: const Text(
-                    'Replay the onboarding flow',
-                    style: TextStyle(decoration: TextDecoration.underline, fontSize: 13),
+                  onPressed: () => _confirmResetDemo(context, ref, l10n),
+                  child: Text(
+                    l10n.settingsReplayOnboarding,
+                    style: const TextStyle(decoration: TextDecoration.underline, fontSize: 13),
                   ),
                 ),
               ),
@@ -211,7 +242,7 @@ class SettingsScreen extends ConsumerWidget {
 
   static const _supportEmail = 'habtrack08@gmail.com';
 
-  Future<void> _contactUs(BuildContext context) async {
+  Future<void> _contactUs(BuildContext context, AppLocalizations l10n) async {
     final uri = Uri(
       scheme: 'mailto',
       path: _supportEmail,
@@ -220,17 +251,17 @@ class SettingsScreen extends ConsumerWidget {
     final launched = await launchUrl(uri);
     if (!launched && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No email app found — reach us at $_supportEmail'),
+        SnackBar(
+          content: Text(l10n.settingsNoEmailApp(_supportEmail)),
         ),
       );
     }
   }
 
-  Future<void> _shareApp(BuildContext context) async {
+  Future<void> _shareApp(AppLocalizations l10n) async {
     await SharePlus.instance.share(
       ShareParams(
-        text: "I'm building better habits with Daily Habits — join me!",
+        text: l10n.settingsShareText,
         subject: 'Daily Habits',
       ),
     );
@@ -241,18 +272,18 @@ class SettingsScreen extends ConsumerWidget {
   /// Actual `isPro` update still flows through Cloud Functions verification,
   /// not this call directly (see `IAPEntitlementService`), so the result
   /// only shows up after that round-trip completes.
-  Future<void> _restorePurchases(BuildContext context, WidgetRef ref) async {
+  Future<void> _restorePurchases(BuildContext context, WidgetRef ref, AppLocalizations l10n) async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in first to restore purchases.')),
+        SnackBar(content: Text(l10n.settingsSignInFirstToRestore)),
       );
       return;
     }
     await ref.read(purchaseServiceProvider).restorePurchases(uid: uid);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Restoring purchases…')),
+        SnackBar(content: Text(l10n.settingsRestoringPurchases)),
       );
     }
   }
@@ -263,25 +294,21 @@ class SettingsScreen extends ConsumerWidget {
   /// where this user is the sole admin may reject it, ignored so account
   /// deletion still proceeds) and drops the Pro entitlement doc, all while
   /// still authenticated, then deletes the Firebase Auth account itself.
-  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref, AppLocalizations l10n) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
-          'This permanently deletes your Community account — group memberships, chat '
-          'history, and Pro entitlement tied to it. Your local habit data on this device '
-          'is not affected. This action cannot be undone.',
-        ),
+        title: Text(l10n.settingsDeleteAccountTitle),
+        content: Text(l10n.settingsDeleteAccountBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete Account'),
+            child: Text(l10n.settingsDeleteAccount),
           ),
         ],
       ),
@@ -309,35 +336,32 @@ class SettingsScreen extends ConsumerWidget {
       );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account deleted.')),
+          SnackBar(content: Text(l10n.settingsAccountDeleted)),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not delete account: $e')),
+          SnackBar(content: Text(l10n.settingsDeleteAccountFailed('$e'))),
         );
       }
     }
   }
 
-  Future<void> _confirmResetDemo(BuildContext context, WidgetRef ref) async {
+  Future<void> _confirmResetDemo(BuildContext context, WidgetRef ref, AppLocalizations l10n) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete all data?'),
-        content: const Text(
-          'All categories, habits, and progress history will be permanently deleted, then '
-          'the app returns to the onboarding flow from the start. This action cannot be undone.',
-        ),
+        title: Text(l10n.settingsDeleteAllDataTitle),
+        content: Text(l10n.settingsDeleteAllDataBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete All'),
+            child: Text(l10n.settingsDeleteAll),
           ),
         ],
       ),
@@ -414,10 +438,15 @@ class _NavTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
+              Icon(icon, size: 20, color: theme.textTheme.bodyMedium?.color),
               const SizedBox(width: 12),
-              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodyMedium?.color),
             ],
           ),
         ),
@@ -443,7 +472,7 @@ class _DebugProToggleTile extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Expanded(
-              child: Text('Pro Mode', style: theme.textTheme.bodyMedium),
+              child: Text(AppLocalizations.of(context)!.settingsProMode, style: theme.textTheme.bodyMedium),
             ),
             ToggleSwitch(
               value: isPro,
@@ -488,12 +517,15 @@ class _DefaultReminderTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodySmall?.color),
+              Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodyMedium?.color),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Default reminder time: $current', style: theme.textTheme.bodyMedium),
+                child: Text(
+                  AppLocalizations.of(context)!.settingsDefaultReminderTime(current),
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
               ),
-              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodyMedium?.color),
             ],
           ),
         ),

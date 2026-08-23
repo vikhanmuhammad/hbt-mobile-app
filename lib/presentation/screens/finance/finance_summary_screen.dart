@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/date_utils.dart';
 import '../../../domain/format_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/finance_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
@@ -15,11 +19,6 @@ import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/segmented_pill_toggle.dart';
 
-const _monthNames = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
 /// Finance Summary: total expenses, amount saved, and savings deposits
 /// from all rupiah-unit habits (across categories), per calendar month —
 /// plus daily spending trend and a per-habit breakdown.
@@ -28,17 +27,17 @@ class FinanceSummaryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final isPro = ref.watch(isProProvider);
     if (!isPro) {
       return ProFeatureTeaser(
         icon: Icons.account_balance_wallet_rounded,
-        title: 'Finance — Pro Feature',
-        description: 'Track spending, savings, and saving habits in one monthly summary. '
-            'Upgrade to Pro to unlock this feature.',
-        benefits: const [
-          'Monthly spending & savings totals across all your finance habits',
-          'Daily spending trend chart so you can spot patterns early',
-          'Per-habit breakdown to see exactly where your money goes',
+        title: l10n.financeProFeatureTitle,
+        description: l10n.financeProFeatureDescription,
+        benefits: [
+          l10n.financeProBenefit1,
+          l10n.financeProBenefit2,
+          l10n.financeProBenefit3,
         ],
         previewBuilder: (context) => const FinancePreviewMock(),
       );
@@ -57,10 +56,10 @@ class FinanceSummaryScreen extends ConsumerWidget {
         padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
         children: [
           SegmentedPillToggle<FinancePeriod>(
-            segments: const [
-              PillSegment(value: FinancePeriod.daily, label: 'Daily'),
-              PillSegment(value: FinancePeriod.weekly, label: 'Weekly'),
-              PillSegment(value: FinancePeriod.monthly, label: 'Monthly'),
+            segments: [
+              PillSegment(value: FinancePeriod.daily, label: l10n.financePeriodDaily),
+              PillSegment(value: FinancePeriod.weekly, label: l10n.financePeriodWeekly),
+              PillSegment(value: FinancePeriod.monthly, label: l10n.financePeriodMonthly),
             ],
             selected: period,
             onChanged: (p) => ref.read(selectedFinancePeriodProvider.notifier).state = p,
@@ -85,7 +84,7 @@ class FinanceSummaryScreen extends ConsumerWidget {
             ),
             error: (e, st) => Padding(
               padding: const EdgeInsets.all(24),
-              child: Text('Failed to load finance summary: $e'),
+              child: Text(l10n.financeFailedToLoad('$e')),
             ),
             data: (summary) {
               if (!summary.hasData) return const _EmptyFinance();
@@ -112,24 +111,24 @@ class FinanceSummaryScreen extends ConsumerWidget {
 
 /// Prev/next navigator whose step size and label follow the selected
 /// [FinancePeriod] — a day, a week, or a calendar month at a time.
-class _PeriodNav extends StatelessWidget {
+class _PeriodNav extends ConsumerWidget {
   const _PeriodNav({required this.period, required this.anchor, required this.onChangeAnchor});
 
   final FinancePeriod period;
   final DateTime anchor;
   final ValueChanged<DateTime> onChangeAnchor;
 
-  String get _label {
+  String _label(AppLang lang) {
     switch (period) {
       case FinancePeriod.daily:
-        return '${anchor.day} ${_monthNames[anchor.month - 1]} ${anchor.year}';
+        return '${anchor.day} ${monthFullName(anchor.month, lang)} ${anchor.year}';
       case FinancePeriod.weekly:
         final (start, end) = financePeriodRange(FinancePeriod.weekly, anchor);
         final sameMonth = start.month == end.month;
-        final startLabel = sameMonth ? '${start.day}' : '${start.day} ${_monthNames[start.month - 1]}';
-        return '$startLabel–${end.day} ${_monthNames[end.month - 1]} ${end.year}';
+        final startLabel = sameMonth ? '${start.day}' : '${start.day} ${monthFullName(start.month, lang)}';
+        return '$startLabel–${end.day} ${monthFullName(end.month, lang)} ${end.year}';
       case FinancePeriod.monthly:
-        return '${_monthNames[anchor.month - 1]} ${anchor.year}';
+        return '${monthFullName(anchor.month, lang)} ${anchor.year}';
     }
   }
 
@@ -145,13 +144,14 @@ class _PeriodNav extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
-        Text(_label, style: theme.textTheme.titleLarge),
+        Text(_label(lang), style: theme.textTheme.titleLarge),
         _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),
       ],
     );
@@ -194,10 +194,10 @@ class _EmptyFinance extends StatelessWidget {
             children: [
               const EmptyStateIllustration(variant: EmptyStateVariant.wallet),
               const SizedBox(height: 16),
-              const Text('No finance habits yet'),
+              Text(AppLocalizations.of(context)!.financeNoFinanceHabitsYet),
               const SizedBox(height: 8),
-              const Text(
-                'Add a Rupiah-unit habit (e.g. a daily spending cap in "Save Money") to start seeing a summary here.',
+              Text(
+                AppLocalizations.of(context)!.financeEmptyHint,
                 textAlign: TextAlign.center,
               ),
             ],
@@ -216,6 +216,7 @@ class _TotalsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final saved = summary.totalSaved;
     final isOverBudget = saved < 0;
     final hasBudget = summary.totalBudget > 0;
@@ -232,7 +233,7 @@ class _TotalsSection extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Total Spending', style: theme.textTheme.bodyMedium),
+                    Text(l10n.financeTotalSpending, style: theme.textTheme.bodyMedium),
                     if (hasBudget) _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
                   ],
                 ),
@@ -254,7 +255,10 @@ class _TotalsSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text('of ${formatRupiah(summary.totalBudget)} budget', style: theme.textTheme.bodySmall),
+                  Text(
+                    l10n.financeOfBudget(formatRupiah(summary.totalBudget)),
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ],
             ),
@@ -268,7 +272,7 @@ class _TotalsSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Save Money Goal', style: theme.textTheme.bodyMedium),
+                  Text(l10n.financeSaveMoneyGoal, style: theme.textTheme.bodyMedium),
                   const SizedBox(height: 6),
                   Text(
                     '${formatRupiah(summary.totalSavingsDeposit)} / ${formatRupiah(summary.totalSavingsTarget)}',
@@ -296,7 +300,7 @@ class _TotalsSection extends StatelessWidget {
           children: [
             Expanded(
               child: _StatChip(
-                label: isOverBudget ? 'Over Budget' : 'Total Saved',
+                label: isOverBudget ? l10n.financeOverBudget : l10n.financeTotalSaved,
                 value: formatRupiah(saved.abs()),
                 color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
                 icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
@@ -305,7 +309,7 @@ class _TotalsSection extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: _StatChip(
-                label: 'Total Deposited',
+                label: l10n.financeTotalDeposited,
                 value: formatRupiah(summary.totalSavingsDeposit),
                 color: theme.colorScheme.primary,
                 icon: Icons.account_balance_wallet_rounded,
@@ -341,7 +345,9 @@ class _BudgetPaceChip extends StatelessWidget {
           Icon(pace.onTrack ? Icons.trending_down_rounded : Icons.trending_up_rounded, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
-            pace.onTrack ? 'On Track' : 'Overspending',
+            pace.onTrack
+                ? AppLocalizations.of(context)!.financeOnTrack
+                : AppLocalizations.of(context)!.financeOverspending,
             style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
           ),
         ],
@@ -433,12 +439,17 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Daily Spending Trend', style: theme.textTheme.titleMedium),
+            Text(AppLocalizations.of(context)!.financeDailySpendingTrend, style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
               height: 140,
               child: maxValue == 0
-                  ? Center(child: Text('No data yet', style: theme.textTheme.bodySmall))
+                  ? Center(
+                      child: Text(
+                        AppLocalizations.of(context)!.financeNoDataYet,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    )
                   : AnimatedBuilder(
                       animation: _grow,
                       builder: (context, _) => SingleChildScrollView(
@@ -504,7 +515,7 @@ class _HabitBreakdownCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('By Habit', style: theme.textTheme.titleMedium),
+            Text(AppLocalizations.of(context)!.commonByHabit, style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),
             for (final stat in summary.habitStats)
               Padding(
@@ -518,14 +529,15 @@ class _HabitBreakdownCard extends StatelessWidget {
   }
 }
 
-class _HabitFinanceRow extends StatelessWidget {
+class _HabitFinanceRow extends ConsumerWidget {
   const _HabitFinanceRow({required this.stat});
 
   final FinanceHabitStat stat;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
     final habit = stat.habit;
     final isAtMost = habit.goalDirection == GoalDirection.atMost;
     final overBudget = isAtMost && stat.totalValue > stat.totalTarget;
@@ -547,7 +559,7 @@ class _HabitFinanceRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                habit.name,
+                habit.displayName(lang),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import 'habit_icon.dart';
 
 /// Curated icon picker bottom sheet — grouped by context + a search bar
@@ -39,6 +40,7 @@ class _IconPickerSheetState extends State<_IconPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final query = _query.trim().toLowerCase();
     final grouped = <String, List<CuratedIcon>>{};
     for (final c in curatedHabitIcons) {
@@ -57,21 +59,21 @@ class _IconPickerSheetState extends State<_IconPickerSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Choose Icon', style: theme.textTheme.titleLarge),
+            Text(l10n.iconPickerChooseIcon, style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
             TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _query = v),
-              decoration: const InputDecoration(
-                hintText: 'Search icons...',
-                prefixIcon: Icon(Icons.search_rounded, size: 20),
+              decoration: InputDecoration(
+                hintText: l10n.iconPickerSearchHint,
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
               ),
             ),
             const SizedBox(height: 12),
             Expanded(
               child: grouped.isEmpty
                   ? Center(
-                      child: Text('No icons found', style: theme.textTheme.bodySmall),
+                      child: Text(l10n.iconPickerNoIconsFound, style: theme.textTheme.bodySmall),
                     )
                   : ListView(
                       children: [

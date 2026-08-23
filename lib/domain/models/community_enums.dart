@@ -1,3 +1,5 @@
+import '../language.dart';
+
 enum GroupRole {
   admin,
   member;
@@ -7,9 +9,15 @@ enum GroupRole {
         orElse: () => GroupRole.member,
       );
 
-  String get label => switch (this) {
-        GroupRole.admin => 'Admin',
-        GroupRole.member => 'Member',
+  String label(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            GroupRole.admin => 'Admin',
+            GroupRole.member => 'Member',
+          },
+        AppLang.id => switch (this) {
+            GroupRole.admin => 'Admin',
+            GroupRole.member => 'Anggota',
+          },
       };
 }
 
@@ -26,9 +34,16 @@ enum LeaderboardMode {
         orElse: () => LeaderboardMode.streak,
       );
 
-  String get label => switch (this) {
-        LeaderboardMode.streak => 'Streak',
-        LeaderboardMode.progress => 'Total Progress',
-        LeaderboardMode.both => 'Streak & Progress',
+  String label(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            LeaderboardMode.streak => 'Streak',
+            LeaderboardMode.progress => 'Total Progress',
+            LeaderboardMode.both => 'Streak & Progress',
+          },
+        AppLang.id => switch (this) {
+            LeaderboardMode.streak => 'Streak',
+            LeaderboardMode.progress => 'Total Progres',
+            LeaderboardMode.both => 'Streak & Progres',
+          },
       };
 }

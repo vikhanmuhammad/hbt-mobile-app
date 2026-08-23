@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/community_providers.dart';
 
 /// Full-screen teaser for features entirely gated behind Pro (Community,
@@ -107,7 +108,7 @@ class ProFeatureTeaser extends ConsumerWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () => _upgrade(context, ref),
-                            child: const Text('Upgrade to Pro'),
+                            child: Text(AppLocalizations.of(context)!.proFeatureUpgradeButton),
                           ),
                         ),
                       ],
@@ -123,6 +124,7 @@ class ProFeatureTeaser extends ConsumerWidget {
   }
 
   Future<void> _upgrade(BuildContext context, WidgetRef ref) async {
+    final l10n = AppLocalizations.of(context)!;
     var uid = ref.read(currentUidProvider);
     if (uid == null) {
       // Purchasing requires an account (to attribute the purchase), but the
@@ -135,7 +137,7 @@ class ProFeatureTeaser extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Sign-in failed: $e')),
+            SnackBar(content: Text(l10n.proFeatureSignInFailed('$e'))),
           );
         }
         return;
@@ -150,7 +152,7 @@ class ProFeatureTeaser extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not load subscription plans. Try again later.')),
+          SnackBar(content: Text(l10n.proFeatureCouldNotLoadPlans)),
         );
       }
       return;
@@ -158,7 +160,7 @@ class ProFeatureTeaser extends ConsumerWidget {
     if (products.isEmpty) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No subscription plans available right now.')),
+          SnackBar(content: Text(l10n.proFeatureNoPlansAvailable)),
         );
       }
       return;
@@ -194,7 +196,11 @@ class _ProPlanSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Choose your plan', style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
+            Text(
+              AppLocalizations.of(context)!.proFeatureChooseYourPlan,
+              style: theme.textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             for (final product in products)
               Padding(
@@ -228,12 +234,12 @@ Future<void> showProRequiredDialog(
   return showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Pro Feature'),
+      title: Text(AppLocalizations.of(context)!.proFeatureTitle),
       content: Text(message),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
+          child: Text(AppLocalizations.of(context)!.commonOk),
         ),
       ],
     ),

@@ -1,3 +1,4 @@
+import '../../language.dart';
 import '../community_enums.dart';
 
 /// "Tantangan" habit spesifik di dalam sebuah Group — satu Group bisa punya
@@ -8,6 +9,7 @@ class GroupHabit {
     required this.id,
     required this.groupId,
     required this.name,
+    this.nameId,
     required this.unit,
     this.icon,
     required this.leaderboardMode,
@@ -21,6 +23,13 @@ class GroupHabit {
   final String id;
   final String groupId;
   final String name;
+
+  /// Terjemahan Indonesia dari [name] — dwibahasa (CLAUDE.md §Bahasa), null
+  /// untuk Group Habit lama (dibuat sebelum fitur ini ada) atau habit lokal
+  /// yang publish sebelum field ini terisi; fallback ke [name] lewat
+  /// [displayName]. Menghindari judul habit terkunci ke 1 bahasa saat
+  /// member grup punya `appLanguageProvider` berbeda.
+  final String? nameId;
   final String unit;
   final String? icon;
   final LeaderboardMode leaderboardMode;
@@ -42,4 +51,7 @@ class GroupHabit {
   /// Habits published before this field existed don't have it; treat null
   /// as "unknown" (matching/adopt logic never guesses a direction).
   final String? goalDirection;
+
+  String displayName(AppLang lang) =>
+      lang == AppLang.id ? (nameId ?? name) : name;
 }

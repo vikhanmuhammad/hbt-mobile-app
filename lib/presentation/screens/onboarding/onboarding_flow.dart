@@ -5,16 +5,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_undraw/flutter_undraw.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/habit_template.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/onboarding_response.dart';
 import '../../../domain/onboarding_strings.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../../providers/ui_state_providers.dart';
@@ -368,24 +371,28 @@ class _LanguagePickStep extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'This only changes the questions during setup — the rest of the app stays in '
-            'English.\n\nIni hanya mengubah pertanyaan selama pengaturan awal — bagian lain '
-            'aplikasi tetap berbahasa Inggris.',
+            'This sets the language for the whole app — you can change it later in '
+            'Settings.\n\nIni mengatur bahasa untuk seluruh aplikasi — bisa diubah lagi nanti '
+            'lewat Settings.',
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 28),
           _OptionTile(
             label: 'English',
             selected: selected == OnboardingLang.en,
-            onTap: () => ref.read(introLanguageProvider.notifier).state =
-                OnboardingLang.en,
+            onTap: () {
+              ref.read(introLanguageProvider.notifier).state = OnboardingLang.en;
+              ref.read(appLanguageProvider.notifier).setLanguage(AppLang.en);
+            },
           ),
           const SizedBox(height: 10),
           _OptionTile(
             label: 'Bahasa Indonesia',
             selected: selected == OnboardingLang.id,
-            onTap: () => ref.read(introLanguageProvider.notifier).state =
-                OnboardingLang.id,
+            onTap: () {
+              ref.read(introLanguageProvider.notifier).state = OnboardingLang.id;
+              ref.read(appLanguageProvider.notifier).setLanguage(AppLang.id);
+            },
           ),
           const SizedBox(height: 28),
           SizedBox(
@@ -1715,7 +1722,7 @@ class _GoalPhrasePickStep extends ConsumerWidget {
   }
 }
 
-class _CategoryPickTile extends StatelessWidget {
+class _CategoryPickTile extends ConsumerWidget {
   const _CategoryPickTile({
     required this.category,
     required this.color,
@@ -1729,8 +1736,9 @@ class _CategoryPickTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final appLang = ref.watch(appLanguageProvider);
     return Card(
       // Blend from the theme's cardColor (not a hardcoded Colors.white) so
       // that in dark mode the selected tile doesn't turn light and swallow dark text.
@@ -1761,7 +1769,7 @@ class _CategoryPickTile extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                category.name,
+                category.displayName(appLang),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -1866,6 +1874,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     final categoriesAsync = ref.watch(categoriesProvider);
     final templatesAsync = ref.watch(habitTemplatesProvider);
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
+    final appLang = ref.watch(appLanguageProvider);
 
     return _StepScaffold(
       child: categoriesAsync.when(
@@ -1946,7 +1955,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        category.name,
+                        category.displayName(appLang),
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -1985,7 +1994,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       }
 
                       final match = allTemplates.where(
-                        (t) => t.defaultGoalPhrase == category.name,
+                        (t) => t.key == category.templateKey,
                       );
                       final templates = match.isEmpty
                           ? <HabitTemplate>[]
@@ -2070,14 +2079,14 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                                   CrossAxisAlignment.start,
                                               children: [
                                                 Text(
-                                                  t.name,
+                                                  t.displayName(appLang),
                                                   style: theme
                                                       .textTheme
                                                       .titleMedium,
                                                 ),
                                                 const SizedBox(height: 2),
                                                 Text(
-                                                  t.goalLabel,
+                                                  t.goalLabel(appLang),
                                                   style: theme
                                                       .textTheme
                                                       .bodyMedium,
@@ -2206,6 +2215,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           final id = await repo.createHabit(
             categoryId: entry.key,
             name: template.name,
+            nameId: template.nameId,
+            isCustom: false,
+            templateKey: template.key,
             icon: template.icon,
             goalPeriod: template.goalPeriod,
             goalValue: template.goalValue,
@@ -2220,7 +2232,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           final created = await repo.getById(id);
           if (created != null) {
             try {
-              await notif.rescheduleForHabit(created);
+              await notif.rescheduleForHabit(created, lang: ref.read(appLanguageProvider));
             } catch (_) {
               // Notification scheduling failed (e.g. platform not
               // supported) — don't fail the habit save because of this.
@@ -2232,9 +2244,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
       if (mounted) widget.onNext();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to save habit: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.addHabitFailedToSave('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -2281,14 +2293,14 @@ class _FinanceLockedPreview extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Finance tracking is a Pro feature',
+                    AppLocalizations.of(context)!.onboardingFinanceProFeature,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleSmall,
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: onUpgrade,
-                    child: const Text('Upgrade to Pro'),
+                    child: Text(AppLocalizations.of(context)!.proFeatureUpgradeButton),
                   ),
                 ],
               ),
@@ -2345,6 +2357,7 @@ class _SummaryStep extends ConsumerWidget {
     final theme = Theme.of(context);
     final habitsAsync = ref.watch(allActiveHabitsProvider);
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
+    final appLang = ref.watch(appLanguageProvider);
 
     return _StepScaffold(
       child: ListView(
@@ -2387,12 +2400,12 @@ class _SummaryStep extends ConsumerWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              habit.name,
+                              habit.displayName(appLang),
                               style: theme.textTheme.titleSmall,
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Cancel this habit',
+                            tooltip: AppLocalizations.of(context)!.onboardingCancelHabit,
                             icon: const Icon(Icons.close_rounded, size: 18),
                             onPressed: () => onRemoveHabit(habit.id),
                           ),

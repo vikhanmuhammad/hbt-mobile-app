@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/core_providers.dart';
 import '../../../services/calendar_alarm_service.dart';
 import '../../../services/health_sync_service.dart';
@@ -38,7 +39,7 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
     await repo.setStepsSyncEnabled(granted);
     if (mounted) {
       setState(() => _busy = false);
-      if (!granted) _showDenied('Health access');
+      if (!granted) _showDenied(AppLocalizations.of(context)!.healthSyncFeatureHealth);
     }
   }
 
@@ -54,7 +55,7 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
     await repo.setCalendarSyncEnabled(granted);
     if (mounted) {
       setState(() => _busy = false);
-      if (!granted) _showDenied('Calendar access');
+      if (!granted) _showDenied(AppLocalizations.of(context)!.healthSyncFeatureCalendar);
     }
   }
 
@@ -70,13 +71,14 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
 
   void _showDenied(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature was denied or unavailable on this device.')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.healthSyncDeniedMessage(feature))),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final repo = ref.watch(settingsRepositoryProvider);
 
     return Card(
@@ -84,7 +86,7 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
         children: [
           _SyncRow(
             icon: Icons.directions_walk_rounded,
-            label: 'Sync steps from Health app',
+            label: l10n.healthSyncStepsLabel,
             value: repo.stepsSyncEnabled,
             enabled: !_busy,
             onChanged: _toggleSteps,
@@ -92,7 +94,7 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
           Divider(height: 1, color: theme.dividerColor),
           _SyncRow(
             icon: Icons.calendar_month_rounded,
-            label: 'Sync reminders to Calendar',
+            label: l10n.healthSyncCalendarLabel,
             value: repo.calendarSyncEnabled,
             enabled: !_busy,
             onChanged: _toggleCalendar,
@@ -104,7 +106,7 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
             Divider(height: 1, color: theme.dividerColor),
             _SyncRow(
               icon: Icons.alarm_rounded,
-              label: 'Sync reminders to phone Alarm',
+              label: l10n.healthSyncAlarmLabel,
               value: repo.alarmSyncEnabled,
               enabled: !_busy,
               onChanged: _toggleAlarm,

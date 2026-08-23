@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/community/community_repository.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import 'group_detail_screen.dart';
@@ -45,17 +46,21 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
       );
     } on InviteCodeNotFound {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Invite code not found')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.joinGroupInviteCodeNotFound)),
+        );
       }
     } on AlreadyGroupMember {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('You\'re already a member of this group')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.joinGroupAlreadyMember)),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to join: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.joinGroupFailed('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _joining = false);
@@ -64,28 +69,29 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Join Group')),
+      appBar: AppBar(title: Text(l10n.joinGroupTitle)),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: FadeSlideIn(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Invite Code', style: Theme.of(context).textTheme.labelMedium),
+            Text(l10n.joinGroupInviteCodeLabel, style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 8),
             TextField(
               controller: _codeController,
               autofocus: true,
               textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                hintText: 'e.g. A1B2C3D4',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: l10n.joinGroupInviteCodeHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask an existing group member for the invite code.',
+              l10n.joinGroupAskMember,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 24),
@@ -99,7 +105,7 @@ class _JoinGroupScreenState extends ConsumerState<JoinGroupScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Join Group'),
+                    : Text(l10n.joinGroupTitle),
               ),
             ),
           ],

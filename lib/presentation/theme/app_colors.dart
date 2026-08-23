@@ -14,7 +14,7 @@ class AppColors {
 
   // Warna dasar preset default prototipe: [bg, teal(unused), gold/primary].
   static const Color teal = Color(0xFF3E7C6A); // tersedia, jarang dipakai
-  static const Color gold = Color(0xFFE8C468); // warna interaktif utama
+  static const Color gold = Color(0xFFD9A441); // warna interaktif utama
 
   // Light theme — persis nilai `colors` di prototipe saat isDark=false.
   // Shifted slightly cooler/grayer than the original warm off-white
@@ -25,7 +25,7 @@ class AppColors {
   static const Color lightSurfaceAlt = Color(0xFFEDEAE2); // colors.grayLight
   static const Color lightText = Color(0xFF2B2A26);
   static final Color lightTextMuted =
-      const Color(0xFF2B2A26).withValues(alpha: 0.6); // colors.textSoft
+      const Color(0xFF2B2A26).withValues(alpha: 0.72); // colors.textSoft
   static final Color lightBorder =
       const Color(0xFF2B2A26).withValues(alpha: 0.08); // colors.border
 
@@ -35,7 +35,7 @@ class AppColors {
   static const Color darkSurfaceAlt = Color(0xFF383733); // mix(bg, white, 14%)
   static const Color darkText = Color(0xFFF3F1EA);
   static final Color darkTextMuted =
-      const Color(0xFFF3F1EA).withValues(alpha: 0.6);
+      const Color(0xFFF3F1EA).withValues(alpha: 0.72);
   static final Color darkBorder = Colors.white.withValues(alpha: 0.08);
 
   /// Palet aksen per kategori bawaan, persis `DEFAULT_CATEGORIES` di prototipe.

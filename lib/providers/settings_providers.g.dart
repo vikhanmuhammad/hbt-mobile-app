@@ -61,6 +61,76 @@ abstract class _$AppThemeMode extends $Notifier<ThemeMode> {
   }
 }
 
+/// Bahasa tampilan aplikasi — setting global persisten (CLAUDE.md §Bahasa),
+/// menggantikan `introLanguageProvider` lama yang session-only/onboarding-
+/// only. Dibaca di seluruh app untuk memilih `Habit.displayName`/
+/// `Category.displayName` dan (bertahap) string UI chrome.
+
+@ProviderFor(AppLanguage)
+final appLanguageProvider = AppLanguageProvider._();
+
+/// Bahasa tampilan aplikasi — setting global persisten (CLAUDE.md §Bahasa),
+/// menggantikan `introLanguageProvider` lama yang session-only/onboarding-
+/// only. Dibaca di seluruh app untuk memilih `Habit.displayName`/
+/// `Category.displayName` dan (bertahap) string UI chrome.
+final class AppLanguageProvider
+    extends $NotifierProvider<AppLanguage, AppLang> {
+  /// Bahasa tampilan aplikasi — setting global persisten (CLAUDE.md §Bahasa),
+  /// menggantikan `introLanguageProvider` lama yang session-only/onboarding-
+  /// only. Dibaca di seluruh app untuk memilih `Habit.displayName`/
+  /// `Category.displayName` dan (bertahap) string UI chrome.
+  AppLanguageProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appLanguageProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appLanguageHash();
+
+  @$internal
+  @override
+  AppLanguage create() => AppLanguage();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppLang value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppLang>(value),
+    );
+  }
+}
+
+String _$appLanguageHash() => r'ee807159d205f3c9517e7899877c69aabd4c900e';
+
+/// Bahasa tampilan aplikasi — setting global persisten (CLAUDE.md §Bahasa),
+/// menggantikan `introLanguageProvider` lama yang session-only/onboarding-
+/// only. Dibaca di seluruh app untuk memilih `Habit.displayName`/
+/// `Category.displayName` dan (bertahap) string UI chrome.
+
+abstract class _$AppLanguage extends $Notifier<AppLang> {
+  AppLang build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<AppLang, AppLang>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AppLang, AppLang>,
+              AppLang,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 /// Stream profil user — dipakai untuk deteksi user baru/lama (CLAUDE.md v3
 /// §4.2) dan untuk menurunkan palet Personalize aktif di bawah.
 

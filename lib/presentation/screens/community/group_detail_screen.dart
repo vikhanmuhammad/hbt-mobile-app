@@ -14,10 +14,12 @@ import '../../../domain/models/community_enums.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/habit_providers.dart';
+import '../../../providers/settings_providers.dart';
 import '../../../providers/template_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
@@ -61,14 +63,15 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final groupAsync = ref.watch(groupDetailProvider(widget.groupId));
 
     return groupAsync.when(
       loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, st) => Scaffold(body: Center(child: Text('Failed to load group: $e'))),
+      error: (e, st) => Scaffold(body: Center(child: Text(l10n.groupFailedToLoad('$e')))),
       data: (group) {
         if (group == null) {
-          _scheduleExit(_exitMessage ?? 'This group is no longer available.');
+          _scheduleExit(_exitMessage ?? l10n.groupNotAvailable);
           return Scaffold(
             body: Center(
               child: Padding(
@@ -78,7 +81,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                   children: [
                     const Icon(Icons.group_off_rounded, size: 40),
                     const SizedBox(height: 16),
-                    Text(_exitMessage ?? 'This group is no longer available.', textAlign: TextAlign.center),
+                    Text(_exitMessage ?? l10n.groupNotAvailable, textAlign: TextAlign.center),
                   ],
                 ),
               ),
@@ -121,13 +124,15 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
   }
 
   void _copyInviteCode() {
+    final l10n = AppLocalizations.of(context)!;
     Clipboard.setData(ClipboardData(text: widget.group.inviteCode));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Invite code "${widget.group.inviteCode}" copied')),
+      SnackBar(content: Text(l10n.groupInviteCodeCopied(widget.group.inviteCode))),
     );
   }
 
   Future<void> _leaveGroup() async {
+    final l10n = AppLocalizations.of(context)!;
     final myUid = ref.read(currentUidProvider);
     if (myUid == null) return;
     final group = widget.group;
@@ -142,13 +147,10 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
         await showDialog<void>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Promote another admin first'),
-            content: const Text(
-              "You're the only admin in this group. Make another member an admin "
-              'before you leave, or delete the group instead.',
-            ),
+            title: Text(l10n.groupPromoteAdminFirstTitle),
+            content: Text(l10n.groupPromoteAdminFirstBody),
             actions: [
-              TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+              TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.commonOk)),
             ],
           ),
         );
@@ -159,16 +161,18 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Leave group?'),
+        title: Text(l10n.groupLeaveTitle),
         content: Text(
           group.members.length == 1
-              ? "You're the only member — leaving means you'll need the invite code "
-                  'to rejoin later. Delete the group instead if you want to remove it for good.'
-              : "You'll need a new invite code to rejoin \"${group.name}\" later.",
+              ? l10n.groupLeaveOnlyMemberBody
+              : l10n.groupLeaveNeedInviteBody(group.name),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Leave')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.groupLeaveConfirm),
+          ),
         ],
       ),
     );
@@ -181,30 +185,29 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
       // used to silently skip the pop and strand the user on a dead
       // "Group not found" screen. `widget.onExit` reaches the parent
       // GroupDetailScreen, which owns the actual pop and stays mounted.
-      widget.onExit('You left "${group.name}".');
+      widget.onExit(l10n.groupLeftMessage(group.name));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to leave group: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.groupFailedToLeave('$e'))));
       }
     }
   }
 
   Future<void> _deleteGroup() async {
+    final l10n = AppLocalizations.of(context)!;
     final group = widget.group;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete group?'),
-        content: Text(
-          'This permanently deletes "${group.name}", its Group Habits, and its invite '
-          "code for everyone in it. This can't be undone.",
-        ),
+        title: Text(l10n.groupDeleteTitle),
+        content: Text(l10n.groupDeleteBody(group.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -216,16 +219,18 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
             groupId: group.id,
             inviteCode: group.inviteCode,
           );
-      widget.onExit('"${group.name}" was deleted.');
+      widget.onExit(l10n.groupDeletedMessage(group.name));
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete group: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.groupFailedToDelete('$e'))));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final group = widget.group;
     final myUid = ref.watch(currentUidProvider);
     final iAmAdmin = myUid != null && group.isAdmin(myUid);
@@ -235,7 +240,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
         title: Text(group.name),
         actions: [
           IconButton(
-            tooltip: 'Copy invite code',
+            tooltip: l10n.groupCopyInviteCode,
             icon: const Icon(Icons.ios_share_rounded),
             onPressed: _copyInviteCode,
           ),
@@ -245,12 +250,12 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
               if (action == 'delete') _deleteGroup();
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'leave', child: Text('Leave Group')),
+              PopupMenuItem(value: 'leave', child: Text(l10n.groupLeaveGroup)),
               if (iAmAdmin)
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(
-                    'Delete Group',
+                    l10n.groupDeleteGroup,
                     style: TextStyle(color: Theme.of(context).colorScheme.error),
                   ),
                 ),
@@ -260,11 +265,11 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
-          tabs: const [
-            Tab(text: 'Habits'),
-            Tab(text: 'Leaderboard'),
-            Tab(text: 'Chat'),
-            Tab(text: 'Members'),
+          tabs: [
+            Tab(text: l10n.groupTabHabits),
+            Tab(text: l10n.groupTabLeaderboard),
+            Tab(text: l10n.groupTabChat),
+            Tab(text: l10n.groupTabMembers),
           ],
         ),
       ),
@@ -296,6 +301,7 @@ class _HabitsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final groupId = group.id;
     final groupHabitsAsync = ref.watch(groupHabitsProvider(groupId));
     final localHabitsAsync = ref.watch(allActiveHabitsProvider);
@@ -309,7 +315,7 @@ class _HabitsTab extends ConsumerWidget {
 
     if (groupHabits == null || localHabits == null || links == null) {
       final error = groupHabitsAsync.error ?? localHabitsAsync.error ?? linksAsync.error;
-      if (error != null) return Center(child: Text('Failed to load: $error'));
+      if (error != null) return Center(child: Text(l10n.groupFailedToLoadGeneric('$error')));
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -347,12 +353,11 @@ class _HabitsTab extends ConsumerWidget {
         children: [
           SizedBox(
             height: MediaQuery.sizeOf(context).height * 0.5,
-            child: const Center(
+            child: Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
-                  "You don't have any habits yet — add one from Home first, then come back "
-                  'here to bring it online with the group.',
+                  l10n.groupNoHabitsYetBody,
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -376,7 +381,7 @@ class _HabitsTab extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           if (myUnlinkedHabits.isNotEmpty) ...[
-            const _TabSectionLabel('Your Habits'),
+            _TabSectionLabel(l10n.groupYourHabits),
             const SizedBox(height: 8),
             for (var i = 0; i < myUnlinkedHabits.length; i++)
               Builder(
@@ -405,7 +410,7 @@ class _HabitsTab extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
           if (communityUnlinkedHabits.isNotEmpty) ...[
-            const _TabSectionLabel('Community Habits'),
+            _TabSectionLabel(l10n.groupCommunityHabits),
             const SizedBox(height: 8),
             for (var i = 0; i < communityUnlinkedHabits.length; i++)
               Padding(
@@ -418,7 +423,7 @@ class _HabitsTab extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
           if (linkedRows.isNotEmpty) ...[
-            const _TabSectionLabel('Linked'),
+            _TabSectionLabel(l10n.groupLinked),
             const SizedBox(height: 8),
             for (var i = 0; i < linkedRows.length; i++)
               Padding(
@@ -568,6 +573,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
           : (await ref.read(communityRepositoryProvider).createGroupHabit(
                 groupId: widget.groupId,
                 name: widget.habit.name,
+                nameId: widget.habit.nameId,
                 unit: widget.habit.goalUnit,
                 icon: widget.habit.icon,
                 leaderboardMode: LeaderboardMode.both,
@@ -600,7 +606,9 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to link: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.groupFailedToLink('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
@@ -610,25 +618,30 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final matched = widget.matchingGroupHabit != null;
     return TapScale(
       child: Card(
         child: ListTile(
           leading: HabitIcon(icon: widget.habit.icon, size: 20),
-          title: Text(widget.habit.name),
+          title: Text(widget.habit.displayName(lang)),
           subtitle: Text(
             widget.matchAlreadyTrackedByMe
-                ? 'Already tracked in this group via another habit of yours'
+                ? l10n.groupAlreadyTrackedViaOther
                 : matched
-                    ? 'Matches an existing community habit'
-                    : widget.habit.goalLabel,
+                    ? l10n.groupMatchesExisting
+                    : widget.habit.goalLabel(lang),
             style: theme.textTheme.bodySmall,
           ),
           trailing: widget.matchAlreadyTrackedByMe
               ? null
               : _working
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : TextButton(onPressed: _publishOrLink, child: Text(matched ? 'Link' : 'Publish')),
+                  : TextButton(
+                      onPressed: _publishOrLink,
+                      child: Text(matched ? l10n.groupLinkAction : l10n.groupPublishAction),
+                    ),
         ),
       ),
     );
@@ -655,6 +668,8 @@ class _CommunityHabitRow extends ConsumerWidget {
     // dev-only "Replay the onboarding flow" reset — see removeGroupHabitFromCommunity's
     // doc comment on why progress is never deleted for those), surface this
     // as reconnecting past progress rather than a generic first-time add.
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final myUid = ref.watch(currentUidProvider);
     final leaderboardAsync = ref.watch(groupHabitLeaderboardProvider(habit.groupId, habit.id));
     final isReconnect =
@@ -664,9 +679,9 @@ class _CommunityHabitRow extends ConsumerWidget {
       child: Card(
         child: ListTile(
           leading: HabitIcon(icon: habit.icon, size: 20),
-          title: Text(habit.name),
+          title: Text(habit.displayName(lang)),
           subtitle: Text(
-            isReconnect ? 'You tracked this before — reconnect to resume' : habit.unit,
+            isReconnect ? l10n.groupReconnectBefore : habit.unit,
             style: theme.textTheme.bodySmall?.copyWith(
               color: isReconnect ? theme.colorScheme.primary : null,
               fontWeight: isReconnect ? FontWeight.w700 : null,
@@ -677,13 +692,13 @@ class _CommunityHabitRow extends ConsumerWidget {
             children: [
               if (canManage)
                 IconButton(
-                  tooltip: 'Remove from community',
+                  tooltip: l10n.groupRemoveFromCommunity,
                   icon: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.error),
                   onPressed: () => removeGroupHabitFromCommunity(context, ref, habit),
                 ),
               TextButton(
                 onPressed: () => adoptGroupHabit(context, ref, habit),
-                child: Text(isReconnect ? 'Reconnect' : 'Add to My Habits'),
+                child: Text(isReconnect ? l10n.groupReconnectAction : l10n.groupAddToMyHabits),
               ),
             ],
           ),
@@ -732,7 +747,9 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
           );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to unlink: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.groupFailedToUnlink('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _working = false);
@@ -742,6 +759,8 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     return Card(
       color: theme.colorScheme.primary.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
@@ -750,9 +769,9 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
       ),
       child: ListTile(
         leading: HabitIcon(icon: widget.localHabit.icon, size: 20),
-        title: Text(widget.localHabit.name),
+        title: Text(widget.localHabit.displayName(lang)),
         subtitle: Text(
-          'Linked to "${widget.groupHabit.name}"',
+          l10n.groupLinkedTo(widget.groupHabit.displayName(lang)),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.w700,
@@ -765,14 +784,14 @@ class _LinkedHabitRowState extends ConsumerState<_LinkedHabitRow> {
                 children: [
                   if (widget.canManage)
                     IconButton(
-                      tooltip: 'Remove from community',
+                      tooltip: l10n.groupRemoveFromCommunity,
                       icon: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.error),
                       onPressed: () => removeGroupHabitFromCommunity(context, ref, widget.groupHabit),
                     ),
                   OutlinedButton(
                     onPressed: _unlink,
                     style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
-                    child: const Text('Unlink'),
+                    child: Text(l10n.groupUnlink),
                   ),
                 ],
               ),
@@ -801,19 +820,20 @@ class _LeaderboardTabState extends ConsumerState<_LeaderboardTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final habitsAsync = ref.watch(groupHabitsProvider(widget.groupId));
 
     return habitsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Failed to load: $e')),
+      error: (e, st) => Center(child: Text(l10n.groupFailedToLoadGeneric('$e'))),
       data: (habits) {
         if (habits.isEmpty) {
-          return const Center(
+          return Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: Text(
-                'No habits yet. Go to the Habits tab and publish one of your own to start '
-                'the first leaderboard.',
+                l10n.groupNoLeaderboardYetBody,
                 textAlign: TextAlign.center,
               ),
             ),
@@ -837,7 +857,7 @@ class _LeaderboardTabState extends ConsumerState<_LeaderboardTab> {
                 itemBuilder: (context, i) {
                   final h = habits[i];
                   return _HabitChip(
-                    label: h.name,
+                    label: h.displayName(lang),
                     selected: h.id == selected.id,
                     onTap: () => setState(() => _selectedHabitId = h.id),
                   );
@@ -849,9 +869,9 @@ class _LeaderboardTabState extends ConsumerState<_LeaderboardTab> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SegmentedPillToggle<bool>(
-                  segments: const [
-                    PillSegment(value: false, label: 'Streak'),
-                    PillSegment(value: true, label: 'Progress'),
+                  segments: [
+                    PillSegment(value: false, label: l10n.leaderboardStreak),
+                    PillSegment(value: true, label: l10n.leaderboardProgress),
                   ],
                   selected: _showProgress,
                   onChanged: (v) => setState(() => _showProgress = v),
@@ -922,13 +942,14 @@ class _LeaderboardList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context)!;
     final groupHabitId = groupHabit.id;
     final entriesAsync = ref.watch(groupHabitLeaderboardProvider(groupId, groupHabitId));
     final myUid = ref.watch(currentUidProvider);
 
     return entriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, st) => Center(child: Text('Failed to load leaderboard: $e')),
+      error: (e, st) => Center(child: Text(l10n.leaderboardFailedToLoad('$e'))),
       data: (entries) {
         final sorted = [...entries]
           ..sort((a, b) =>
@@ -950,7 +971,7 @@ class _LeaderboardList extends ConsumerWidget {
                   children: [
                     SizedBox(
                       height: MediaQuery.sizeOf(context).height * 0.4,
-                      child: const Center(child: Text('No progress recorded yet.')),
+                      child: Center(child: Text(l10n.leaderboardNoProgressYet)),
                     ),
                   ],
                 )
@@ -988,12 +1009,12 @@ const _rankColors = {
   3: Color(0xFFCD7F32),
 };
 
-String _relativeTime(DateTime dt) {
+String _relativeTime(DateTime dt, AppLocalizations l10n) {
   final diff = DateTime.now().difference(dt);
-  if (diff.inMinutes < 1) return 'just now';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-  if (diff.inHours < 24) return '${diff.inHours}h ago';
-  if (diff.inDays < 7) return '${diff.inDays}d ago';
+  if (diff.inMinutes < 1) return l10n.leaderboardJustNow;
+  if (diff.inMinutes < 60) return l10n.leaderboardMinutesAgo(diff.inMinutes);
+  if (diff.inHours < 24) return l10n.leaderboardHoursAgo(diff.inHours);
+  if (diff.inDays < 7) return l10n.leaderboardDaysAgo(diff.inDays);
   return '${dt.day}/${dt.month}/${dt.year}';
 }
 
@@ -1015,14 +1036,16 @@ class _LeaderboardTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final unit = groupHabit.unit;
     // Show both stats, not just whichever the toggle is currently sorting
     // by — "Lampirkan detail data setiap user" — so it's clear how someone
     // is doing overall, not only on the one metric currently sorted.
     final primaryValue = byProgress ? '${entry.progressValue}' : '${entry.streak}';
-    final primaryUnit = byProgress ? unit : 'days';
-    final secondaryLabel =
-        byProgress ? '${entry.streak}-day streak' : '${entry.progressValue} $unit total';
+    final primaryUnit = byProgress ? unit : l10n.leaderboardDaysUnit;
+    final secondaryLabel = byProgress
+        ? l10n.leaderboardStreakLabel(entry.streak)
+        : l10n.leaderboardTotalLabel('${entry.progressValue}', unit);
     final rankColor = _rankColors[rank];
     // "Add to My Habits" only makes sense on someone else's row, and only
     // if this device doesn't already have a local habit linked to this
@@ -1055,12 +1078,12 @@ class _LeaderboardTile extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    entry.displayName + (isMe ? ' (You)' : ''),
+                    entry.displayName + (isMe ? l10n.leaderboardYouSuffix : ''),
                     style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$secondaryLabel • Updated ${_relativeTime(entry.lastUpdated)}',
+                    l10n.leaderboardUpdatedLabel(secondaryLabel, _relativeTime(entry.lastUpdated, l10n)),
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -1083,7 +1106,7 @@ class _LeaderboardTile extends ConsumerWidget {
             if (!alreadyLinked) ...[
               const SizedBox(width: 4),
               IconButton(
-                tooltip: 'Add to My Habits',
+                tooltip: l10n.groupAddToMyHabits,
                 icon: Icon(Icons.add_circle_outline_rounded, color: theme.colorScheme.primary),
                 onPressed: () => adoptGroupHabit(context, ref, groupHabit),
               ),
@@ -1136,7 +1159,7 @@ Future<int?> _guessCategoryId(WidgetRef ref, GroupHabit groupHabit) async {
         template.habits.any((h) => h.name.trim().toLowerCase() == normalizedName);
     if (!matchesTemplate) continue;
     for (final c in categories) {
-      if (c.name == template.defaultGoalPhrase) return c.id;
+      if (c.templateKey == template.key) return c.id;
     }
   }
 
@@ -1152,6 +1175,8 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
   // exactly what silently broke restore before. Nothing below this block
   // touches `ref` or `context` again.
   final messenger = ScaffoldMessenger.of(context);
+  final l10n = AppLocalizations.of(context)!;
+  final lang = ref.read(appLanguageProvider);
   final uid = ref.read(currentUidProvider);
   if (uid == null) return;
   final user = ref.read(authStateProvider).value;
@@ -1187,10 +1212,10 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
         ));
       }
       messenger.showSnackBar(
-        SnackBar(content: Text('Linked your existing "${existingMatch.name}" habit')),
+        SnackBar(content: Text(l10n.groupLinkedExistingHabit(existingMatch.displayName(lang)))),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed to link: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.groupFailedToLink('$e'))));
     }
     return;
   }
@@ -1203,7 +1228,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
   // same locked-fields-while-linked rule as any other linked habit).
   final guessedCategoryId = await _guessCategoryId(ref, groupHabit);
   if (guessedCategoryId == null) {
-    messenger.showSnackBar(const SnackBar(content: Text('No goal phrase available yet')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.groupNoGoalPhraseAvailable)));
     return;
   }
 
@@ -1220,8 +1245,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
     if (context.mounted) {
       await showProRequiredDialog(
         context,
-        message: 'The Finance category (Save Money) is Pro-only. Upgrade to Pro '
-            'to manage finance habits & see your savings summary.',
+        message: l10n.addHabitFinanceProOnly,
       );
     }
     return;
@@ -1233,8 +1257,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       if (context.mounted) {
         await showProRequiredDialog(
           context,
-          message: 'You\'ve reached the 5 active habit limit for Free users. '
-              'Upgrade to Pro to add unlimited habits.',
+          message: l10n.addHabitFreeLimitMessage(5),
         );
       }
       return;
@@ -1246,19 +1269,18 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Add to your habits?'),
+      title: Text(l10n.groupAddToHabitsTitle),
       content: Text(
-        '"${groupHabit.name}" ($targetLabel · ${goalPeriod.label}) will be added to your '
-        'habit list, tracked exactly as published in this group.',
+        l10n.groupAddToHabitsBody(groupHabit.displayName(lang), targetLabel, goalPeriod.label(lang)),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.commonCancel),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('Add'),
+          child: Text(l10n.commonAdd),
         ),
       ],
     ),
@@ -1269,6 +1291,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
     final habitId = await habitRepository.createHabit(
       categoryId: guessedCategoryId,
       name: groupHabit.name,
+      nameId: groupHabit.nameId,
       icon: groupHabit.icon,
       goalPeriod: goalPeriod,
       goalValue: goalValue,
@@ -1307,14 +1330,14 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
         groupHabitId: groupHabit.id,
       );
       restoreMessage = restoredCount > 0
-          ? 'Added "${groupHabit.name}" — restored $restoredCount day(s) of history'
-          : 'Added "${groupHabit.name}" to your habits';
+          ? l10n.groupAddedRestored(groupHabit.displayName(lang), restoredCount)
+          : l10n.groupAddedPlain(groupHabit.displayName(lang));
     } catch (e) {
-      restoreMessage = 'Added "${groupHabit.name}", but restoring past history failed: $e';
+      restoreMessage = l10n.groupAddedRestoreFailed(groupHabit.displayName(lang), '$e');
     }
     messenger.showSnackBar(SnackBar(content: Text(restoreMessage)));
   } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('Failed to add habit: $e')));
+    messenger.showSnackBar(SnackBar(content: Text(l10n.groupFailedToAddHabit('$e'))));
   }
 }
 
@@ -1330,21 +1353,19 @@ Future<void> removeGroupHabitFromCommunity(
   WidgetRef ref,
   GroupHabit groupHabit,
 ) async {
+  final l10n = AppLocalizations.of(context)!;
+  final lang = ref.read(appLanguageProvider);
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Remove from community?'),
-      content: Text(
-        '"${groupHabit.name}" and its leaderboard will be removed for everyone in the '
-        "group. Everyone's own local habit and progress history stay untouched — this "
-        "can't be undone.",
-      ),
+      title: Text(l10n.groupRemoveFromCommunityTitle),
+      content: Text(l10n.groupRemoveFromCommunityBody(groupHabit.displayName(lang))),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.commonCancel)),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Remove'),
+          child: Text(l10n.commonRemove),
         ),
       ],
     ),
@@ -1359,7 +1380,8 @@ Future<void> removeGroupHabitFromCommunity(
     await ref.read(habitGroupLinkRepositoryProvider).unlinkAllForGroupHabit(groupHabit.id);
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.groupFailedToRemove('$e'))));
     }
   }
 }
@@ -1406,7 +1428,9 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
           );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.chatFailedToSend('$e'))),
+        );
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -1415,6 +1439,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final messagesAsync = ref.watch(groupMessagesProvider(widget.groupId));
     final myUid = ref.watch(currentUidProvider);
 
@@ -1423,7 +1448,7 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
         Expanded(
           child: messagesAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => Center(child: Text('Failed to load chat: $e')),
+            error: (e, st) => Center(child: Text(l10n.chatFailedToLoad('$e'))),
             data: (messages) {
               return RefreshIndicator(
                 onRefresh: () async {
@@ -1437,10 +1462,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                 child: messages.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
+                        children: [
                           SizedBox(
                             height: 300,
-                            child: Center(child: Text('No messages yet. Start the conversation!')),
+                            child: Center(child: Text(l10n.chatNoMessagesYet)),
                           ),
                         ],
                       )
@@ -1465,7 +1490,10 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    decoration: const InputDecoration(hintText: 'Write a message...', border: OutlineInputBorder()),
+                    decoration: InputDecoration(
+                      hintText: l10n.chatWriteMessageHint,
+                      border: const OutlineInputBorder(),
+                    ),
                     onSubmitted: (_) => _send(),
                   ),
                 ),
@@ -1579,15 +1607,17 @@ class _InviteCodeCard extends StatelessWidget {
   final String code;
 
   void _copy(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Invite code "$code" copied')),
+      SnackBar(content: Text(l10n.groupInviteCodeCopied(code))),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       color: theme.colorScheme.primary.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(
@@ -1604,7 +1634,7 @@ class _InviteCodeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Invite Code', style: theme.textTheme.labelSmall),
+                  Text(l10n.membersInviteCodeLabel, style: theme.textTheme.labelSmall),
                   const SizedBox(height: 2),
                   Text(
                     code,
@@ -1617,7 +1647,7 @@ class _InviteCodeCard extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: 'Copy invite code',
+              tooltip: l10n.groupCopyInviteCode,
               icon: const Icon(Icons.copy_rounded),
               onPressed: () => _copy(context),
             ),
@@ -1638,11 +1668,13 @@ class _MemberTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     return Card(
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
         title: Text(member.displayName),
-        subtitle: Text(member.role.label, style: theme.textTheme.bodySmall),
+        subtitle: Text(member.role.label(lang), style: theme.textTheme.bodySmall),
         trailing: canManage
             ? PopupMenuButton<String>(
                 onSelected: (action) async {
@@ -1657,10 +1689,10 @@ class _MemberTile extends ConsumerWidget {
                 },
                 itemBuilder: (context) => [
                   if (member.role == GroupRole.member)
-                    const PopupMenuItem(value: 'promote', child: Text('Make Admin')),
+                    PopupMenuItem(value: 'promote', child: Text(l10n.membersMakeAdmin)),
                   if (member.role == GroupRole.admin)
-                    const PopupMenuItem(value: 'demote', child: Text('Remove Admin')),
-                  const PopupMenuItem(value: 'kick', child: Text('Remove')),
+                    PopupMenuItem(value: 'demote', child: Text(l10n.membersRemoveAdmin)),
+                  PopupMenuItem(value: 'kick', child: Text(l10n.membersRemove)),
                 ],
               )
             : null,

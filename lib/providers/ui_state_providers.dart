@@ -2,10 +2,18 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../domain/date_utils.dart';
 import '../domain/onboarding_strings.dart';
+import 'core_providers.dart';
 
-/// Language used for onboarding's intro copy/questions only (point 4) —
-/// session-scoped, not persisted, defaults to English.
-final introLanguageProvider = StateProvider<OnboardingLang>((ref) => OnboardingLang.en);
+/// Language used for onboarding's intro copy/questions — seeded from the
+/// persisted global `appLanguageProvider` (Settings > Language) so
+/// onboarding opens in whatever language the user last picked, instead of
+/// always defaulting to English. Onboarding's own language toggle also
+/// writes back through `appLanguageProvider` (see onboarding_flow.dart) so
+/// the two stay in sync going forward.
+final introLanguageProvider = StateProvider<OnboardingLang>((ref) {
+  final code = ref.read(settingsRepositoryProvider).language;
+  return code == 'id' ? OnboardingLang.id : OnboardingLang.en;
+});
 
 /// Tanggal yang sedang dipilih di kalender layar Dashboard (menentukan hari
 /// mana yang dibuka lewat bottom sheet detail).

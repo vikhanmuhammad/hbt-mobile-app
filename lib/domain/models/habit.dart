@@ -1,4 +1,5 @@
 import '../format_utils.dart';
+import '../language.dart';
 import 'enums.dart';
 
 class Habit {
@@ -21,6 +22,9 @@ class Habit {
     required this.isActive,
     this.sortOrder = 0,
     required this.createdAt,
+    this.nameId,
+    this.isCustom = true,
+    this.templateKey,
   });
 
   final int id;
@@ -42,6 +46,23 @@ class Habit {
   final int sortOrder;
   final DateTime createdAt;
 
+  /// Terjemahan Indonesia dari [name] — null kalau belum diisi (habit
+  /// lama/custom), fallback ke [name] lewat [displayName].
+  final String? nameId;
+
+  /// False kalau title berasal dari template bawaan yang sudah
+  /// dikonfirmasi (lihat backfill di `HabitRepository`) — title bawaan
+  /// dikunci dari edit. Default true (bisa diedit) supaya habit yang gagal
+  /// dicocokkan ke template tidak tiba-tiba terkunci tanpa alasan jelas.
+  final bool isCustom;
+
+  /// Key stabil ke entri habit di `habit_templates.json`. Null untuk habit
+  /// custom buatan user.
+  final String? templateKey;
+
+  String displayName(AppLang lang) =>
+      lang == AppLang.id ? (nameId ?? name) : name;
+
   bool get isRupiah => goalUnit == 'rupiah';
 
   /// Mis. "8 gelas", "1x", atau "Rp 50.000" untuk satuan rupiah, persis
@@ -55,7 +76,7 @@ class Habit {
     return goalDirection == GoalDirection.atMost ? 'Maks. $value' : value;
   }
 
-  String get goalLabel => '$goalValueLabel • ${goalPeriod.label}';
+  String goalLabel(AppLang lang) => '$goalValueLabel • ${goalPeriod.label(lang)}';
 
   /// Satu sumber kebenaran untuk "tercapai atau belum" — dipakai baik saat
   /// menyimpan progress (`HabitLogRepository.setProgress`) maupun di tempat

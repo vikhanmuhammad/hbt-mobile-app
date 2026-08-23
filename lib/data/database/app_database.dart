@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,6 +74,18 @@ class AppDatabase extends _$AppDatabase {
             // di tables.dart). Baris lama (uid null) otomatis jadi tidak
             // terlihat oleh siapapun — aman, tinggal link ulang.
             await m.addColumn(habitGroupLinks, habitGroupLinks.uid);
+          }
+          if (from < 7) {
+            // v7: dwibahasa (ID/EN) untuk title habit & goal phrase kategori,
+            // plus isCustom/templateKey untuk mengunci edit title bawaan.
+            // Semua kolom baru nullable/berdefault aman — baris lama otomatis
+            // isCustom=true (bisa diedit) sampai routine backfill sekali-jalan
+            // mencocokkannya ke template dan mengisi nameId/templateKey.
+            await m.addColumn(categories, categories.nameId);
+            await m.addColumn(categories, categories.templateKey);
+            await m.addColumn(habits, habits.nameId);
+            await m.addColumn(habits, habits.isCustom);
+            await m.addColumn(habits, habits.templateKey);
           }
         },
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../domain/language.dart';
 import '../domain/models/user_profile.dart';
 import '../presentation/theme/app_palettes.dart';
 import 'core_providers.dart';
@@ -21,6 +22,24 @@ class AppThemeMode extends _$AppThemeMode {
   Future<void> toggleDark(bool enabled) async {
     await ref.read(settingsRepositoryProvider).setDarkModeEnabled(enabled);
     state = enabled ? ThemeMode.dark : ThemeMode.light;
+  }
+}
+
+/// Bahasa tampilan aplikasi — setting global persisten (CLAUDE.md §Bahasa),
+/// menggantikan `introLanguageProvider` lama yang session-only/onboarding-
+/// only. Dibaca di seluruh app untuk memilih `Habit.displayName`/
+/// `Category.displayName` dan (bertahap) string UI chrome.
+@riverpod
+class AppLanguage extends _$AppLanguage {
+  @override
+  AppLang build() {
+    final code = ref.watch(settingsRepositoryProvider).language;
+    return code == 'id' ? AppLang.id : AppLang.en;
+  }
+
+  Future<void> setLanguage(AppLang lang) async {
+    await ref.read(settingsRepositoryProvider).setLanguage(lang.name);
+    state = lang;
   }
 }
 

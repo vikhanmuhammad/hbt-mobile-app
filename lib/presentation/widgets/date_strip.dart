@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/date_utils.dart';
 import '../../domain/models/day_summary.dart';
 import '../../domain/models/enums.dart';
+import '../../providers/settings_providers.dart';
 import 'animations/tap_scale.dart';
 import 'daily_progress_ring.dart';
 
@@ -98,7 +100,7 @@ class _DateStripState extends State<DateStrip> {
   }
 }
 
-class _DateStripItem extends StatelessWidget {
+class _DateStripItem extends ConsumerWidget {
   const _DateStripItem({
     required this.day,
     required this.selected,
@@ -114,9 +116,10 @@ class _DateStripItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final weekdayLabel = weekdayLabels[weekdayKeys[day.weekday - 1]]!;
+    final lang = ref.watch(appLanguageProvider);
+    final weekdayText = weekdayLabel(weekdayKeys[day.weekday - 1], lang);
     final isToday = isSameDay(day, today());
 
     return TapScale(
@@ -131,7 +134,7 @@ class _DateStripItem extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  weekdayLabel,
+                  weekdayText,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: selected ? theme.colorScheme.primary : null,
                     fontWeight: selected ? FontWeight.w700 : null,

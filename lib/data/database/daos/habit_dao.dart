@@ -50,6 +50,24 @@ class HabitDao extends DatabaseAccessor<AppDatabase> with _$HabitDaoMixin {
     );
   }
 
+  /// Dipakai oleh routine backfill dwibahasa sekali-jalan (lihat
+  /// `HabitRepository.backfillTemplateProvenance`) — set `isCustom`/
+  /// `nameId`/`templateKey` tanpa menyentuh field lain.
+  Future<void> setTemplateProvenance(
+    int id, {
+    required bool isCustom,
+    String? nameId,
+    String? templateKey,
+  }) async {
+    await (update(habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(
+        isCustom: Value(isCustom),
+        nameId: Value(nameId),
+        templateKey: Value(templateKey),
+      ),
+    );
+  }
+
   Future<void> deleteHabit(int id) async {
     await (delete(habits)..where((h) => h.id.equals(id))).go();
   }

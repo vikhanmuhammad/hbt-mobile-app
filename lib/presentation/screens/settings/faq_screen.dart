@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
 
@@ -7,34 +8,18 @@ import '../../widgets/animations/staggered_entrance.dart';
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
 
-  static const _faqs = [
-    (
-      q: 'Why is this app fully offline?',
-      a: 'So your daily habit data stays private and can be used anytime without '
-          'needing an internet connection. No account, no server, no tracking.',
-    ),
-    (
-      q: 'How is my data stored and is it safe?',
-      a: 'All data (categories, habits, progress history, profile) is stored in a local '
-          'database on your own device — never sent anywhere.',
-    ),
-    (
-      q: 'What if I switch phones? Does my data move too?',
-      a: 'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the '
-          'Export Data feature in Settings (coming soon) to make a manual backup before '
-          'switching devices, then Import Data on the new phone.',
-    ),
-    (
-      q: 'Do I need to log in or sign up for an account?',
-      a: 'No. This app has no account system at all — open it and start using it right away.',
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final faqs = [
+      (q: l10n.faqQ1, a: l10n.faqA1),
+      (q: l10n.faqQ2, a: l10n.faqA2),
+      (q: l10n.faqQ3, a: l10n.faqA3),
+      (q: l10n.faqQ4, a: l10n.faqA4),
+    ];
     return Scaffold(
-      appBar: AppBar(title: const Text('FAQ')),
+      appBar: AppBar(title: Text(l10n.faqTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -42,7 +27,7 @@ class FaqScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              for (final (index, faq) in _faqs.indexed)
+              for (final (index, faq) in faqs.indexed)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: FadeSlideIn(
