@@ -69,7 +69,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteAccount => 'Delete Account';
 
   @override
-  String get settingsAboutBody => 'Built on research by Phillippa Lally et al. (UCL): a new habit takes on average 66 days of repetition to become automatic. Focus on consistency, not perfection.\n\nFully offline. All recommendations come from static data in the app, no account or cloud sync.';
+  String get settingsAboutBody =>
+      'Built on research by Phillippa Lally et al. (UCL): a new habit takes on average 66 days of repetition to become automatic. Focus on consistency, not perfection.\n\nFully offline. All recommendations come from static data in the app, no account or cloud sync.';
 
   @override
   String get settingsReplayOnboarding => 'Replay the onboarding flow';
@@ -80,10 +81,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get settingsShareText => 'I\'m building better habits with Daily Habits — join me!';
+  String get settingsShareText =>
+      'I\'m building better habits with Daily Habits — join me!';
 
   @override
-  String get settingsSignInFirstToRestore => 'Sign in first to restore purchases.';
+  String get settingsSignInFirstToRestore =>
+      'Sign in first to restore purchases.';
 
   @override
   String get settingsRestoringPurchases => 'Restoring purchases…';
@@ -92,7 +95,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteAccountTitle => 'Delete account?';
 
   @override
-  String get settingsDeleteAccountBody => 'This permanently deletes your Community account — group memberships, chat history, and Pro entitlement tied to it. Your local habit data on this device is not affected. This action cannot be undone.';
+  String get settingsDeleteAccountBody =>
+      'This permanently deletes your Community account — group memberships, chat history, and Pro entitlement tied to it. Your local habit data on this device is not affected. This action cannot be undone.';
 
   @override
   String get settingsAccountDeleted => 'Account deleted.';
@@ -106,7 +110,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeleteAllDataTitle => 'Delete all data?';
 
   @override
-  String get settingsDeleteAllDataBody => 'All categories, habits, and progress history will be permanently deleted, then the app returns to the onboarding flow from the start. This action cannot be undone.';
+  String get settingsDeleteAllDataBody =>
+      'All categories, habits, and progress history will be permanently deleted, then the app returns to the onboarding flow from the start. This action cannot be undone.';
 
   @override
   String get settingsDeleteAll => 'Delete All';
@@ -148,7 +153,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeNoHabitsScheduledYet => 'No habits scheduled yet';
 
   @override
-  String get homeEmptyStateHint => 'Tap the Add Habit button at the bottom left to add your first habit for today.';
+  String get homeEmptyStateHint =>
+      'Tap the Add Habit button at the bottom left to add your first habit for today.';
 
   @override
   String get commonByHabit => 'By Habit';
@@ -160,16 +166,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get financeProFeatureTitle => 'Finance — Pro Feature';
 
   @override
-  String get financeProFeatureDescription => 'Track spending, savings, and saving habits in one monthly summary. Upgrade to Pro to unlock this feature.';
+  String get financeProFeatureDescription =>
+      'Track spending, savings, and saving habits in one monthly summary. Upgrade to Pro to unlock this feature.';
 
   @override
-  String get financeProBenefit1 => 'Monthly spending & savings totals across all your finance habits';
+  String get financeProBenefit1 =>
+      'Monthly spending & savings totals across all your finance habits';
 
   @override
-  String get financeProBenefit2 => 'Daily spending trend chart so you can spot patterns early';
+  String get financeProBenefit2 =>
+      'Daily spending trend chart so you can spot patterns early';
 
   @override
-  String get financeProBenefit3 => 'Per-habit breakdown to see exactly where your money goes';
+  String get financeProBenefit3 =>
+      'Per-habit breakdown to see exactly where your money goes';
 
   @override
   String get financePeriodDaily => 'Daily';
@@ -189,7 +199,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get financeNoFinanceHabitsYet => 'No finance habits yet';
 
   @override
-  String get financeEmptyHint => 'Add a Rupiah-unit habit (e.g. a daily spending cap in \"Save Money\") to start seeing a summary here.';
+  String get financeEmptyHint =>
+      'Add a Rupiah-unit habit (e.g. a daily spending cap in \"Save Money\") to start seeing a summary here.';
 
   @override
   String get financeTotalSpending => 'Total Spending';
@@ -259,7 +270,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardNoDataToShowYet => 'No data to show yet';
 
   @override
-  String get dashboardEmptyHint => 'Start checking off habits today to get the dashboard filled in.';
+  String get dashboardEmptyHint =>
+      'Start checking off habits today to get the dashboard filled in.';
 
   @override
   String dashboardDaysTracked(int count) {
@@ -284,7 +296,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitCreateNewGoal => 'Create New Goal';
 
   @override
-  String get addHabitFinanceProOnly => 'The Finance category (Save Money) is Pro-only. Upgrade to Pro to manage finance habits & see your savings summary.';
+  String get addHabitFinanceProOnly =>
+      'The Finance category (Save Money) is Pro-only. Upgrade to Pro to manage finance habits & see your savings summary.';
 
   @override
   String addHabitFreeLimitMessage(int limit) {
@@ -292,7 +305,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get addHabitNoRecommendations => 'No recommendations for this category yet.';
+  String get addHabitNoRecommendations =>
+      'No recommendations for this category yet.';
 
   @override
   String get addHabitAdd => 'Add';
@@ -333,7 +347,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitHintNameId => 'Nama (Indonesia)';
 
   @override
-  String get addHabitLockedNameNotice => 'Built into the app — the name can\'t be changed.';
+  String get addHabitLockedNameNotice =>
+      'Built into the app — the name can\'t be changed.';
 
   @override
   String get addHabitFieldIcon => 'Icon';
@@ -393,7 +408,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitSaveHabit => 'Save Habit';
 
   @override
-  String get addHabitNameRequired => 'Habit name (English & Indonesia) is required';
+  String get addHabitNameRequired =>
+      'Habit name (English & Indonesia) is required';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pick a goal phrase first';
@@ -425,7 +441,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitCreateGoal => 'Create Goal';
 
   @override
-  String get addHabitCatNameRequired => 'Goal phrase name (English & Indonesia) is required';
+  String get addHabitCatNameRequired =>
+      'Goal phrase name (English & Indonesia) is required';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -433,7 +450,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get addHabitCommunityLockedNotice => 'This habit is linked to a Community group, so its target and schedule stay locked to match everyone tracking it. Unlink it from the group\'s Habits tab first to change them. Reminder settings are still yours to change.';
+  String get addHabitCommunityLockedNotice =>
+      'This habit is linked to a Community group, so its target and schedule stay locked to match everyone tracking it. Unlink it from the group\'s Habits tab first to change them. Reminder settings are still yours to change.';
 
   @override
   String get unitNoUnit => 'No unit';
@@ -469,16 +487,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get communityProFeatureTitle => 'Community — Pro Feature';
 
   @override
-  String get communityProFeatureDescription => 'Create/join habit groups with friends, compete via leaderboards, and chat in real-time. Upgrade to Pro to unlock this feature.';
+  String get communityProFeatureDescription =>
+      'Create/join habit groups with friends, compete via leaderboards, and chat in real-time. Upgrade to Pro to unlock this feature.';
 
   @override
-  String get communityProBenefit1 => 'Create or join unlimited habit groups with friends and family';
+  String get communityProBenefit1 =>
+      'Create or join unlimited habit groups with friends and family';
 
   @override
-  String get communityProBenefit2 => 'Compete on real-time leaderboards to stay motivated together';
+  String get communityProBenefit2 =>
+      'Compete on real-time leaderboards to stay motivated together';
 
   @override
-  String get communityProBenefit3 => 'Group chat to cheer each other on and stay accountable';
+  String get communityProBenefit3 =>
+      'Group chat to cheer each other on and stay accountable';
 
   @override
   String get communityTitle => 'Community';
@@ -498,7 +520,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get communitySignInTitle => 'Sign In to Continue';
 
   @override
-  String get communitySignInBody => 'Community requires an account so your progress can be shared to a group.';
+  String get communitySignInBody =>
+      'Community requires an account so your progress can be shared to a group.';
 
   @override
   String get communitySignInWithGoogle => 'Sign in with Google';
@@ -517,13 +540,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get communityNoGroupsYet => 'No groups yet. Create a new group or join with an invite code from a friend.';
+  String get communityNoGroupsYet =>
+      'No groups yet. Create a new group or join with an invite code from a friend.';
 
   @override
   String get communityLogOutTitle => 'Log out of Community?';
 
   @override
-  String get communityLogOutBody => 'You\'ll need to sign in again to see or sync your groups. Your local habit data is not affected.';
+  String get communityLogOutBody =>
+      'You\'ll need to sign in again to see or sync your groups. Your local habit data is not affected.';
 
   @override
   String get communityLogOutConfirm => 'Log Out';
@@ -552,7 +577,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get joinGroupInviteCodeHint => 'e.g. A1B2C3D4';
 
   @override
-  String get joinGroupAskMember => 'Ask an existing group member for the invite code.';
+  String get joinGroupAskMember =>
+      'Ask an existing group member for the invite code.';
 
   @override
   String get joinGroupInviteCodeNotFound => 'Invite code not found';
@@ -591,10 +617,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupPromoteAdminFirstTitle => 'Promote another admin first';
 
   @override
-  String get groupPromoteAdminFirstBody => 'You\'re the only admin in this group. Make another member an admin before you leave, or delete the group instead.';
+  String get groupPromoteAdminFirstBody =>
+      'You\'re the only admin in this group. Make another member an admin before you leave, or delete the group instead.';
 
   @override
-  String get groupLeaveOnlyMemberBody => 'You\'re the only member — leaving means you\'ll need the invite code to rejoin later. Delete the group instead if you want to remove it for good.';
+  String get groupLeaveOnlyMemberBody =>
+      'You\'re the only member — leaving means you\'ll need the invite code to rejoin later. Delete the group instead if you want to remove it for good.';
 
   @override
   String groupLeaveNeedInviteBody(String name) {
@@ -662,7 +690,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupNoHabitsYetBody => 'You don\'t have any habits yet — add one from Home first, then come back here to bring it online with the group.';
+  String get groupNoHabitsYetBody =>
+      'You don\'t have any habits yet — add one from Home first, then come back here to bring it online with the group.';
 
   @override
   String get groupYourHabits => 'Your Habits';
@@ -674,7 +703,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupLinked => 'Linked';
 
   @override
-  String get groupAlreadyTrackedViaOther => 'Already tracked in this group via another habit of yours';
+  String get groupAlreadyTrackedViaOther =>
+      'Already tracked in this group via another habit of yours';
 
   @override
   String get groupMatchesExisting => 'Matches an existing community habit';
@@ -694,7 +724,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupRemoveFromCommunity => 'Remove from community';
 
   @override
-  String get groupReconnectBefore => 'You tracked this before — reconnect to resume';
+  String get groupReconnectBefore =>
+      'You tracked this before — reconnect to resume';
 
   @override
   String get groupReconnectAction => 'Reconnect';
@@ -716,7 +747,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get groupNoLeaderboardYetBody => 'No habits yet. Go to the Habits tab and publish one of your own to start the first leaderboard.';
+  String get groupNoLeaderboardYetBody =>
+      'No habits yet. Go to the Habits tab and publish one of your own to start the first leaderboard.';
 
   @override
   String get leaderboardStreak => 'Streak';
@@ -855,25 +887,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faqQ1 => 'Why is this app fully offline?';
 
   @override
-  String get faqA1 => 'So your daily habit data stays private and can be used anytime without needing an internet connection. No account, no server, no tracking.';
+  String get faqA1 =>
+      'So your daily habit data stays private and can be used anytime without needing an internet connection. No account, no server, no tracking.';
 
   @override
   String get faqQ2 => 'How is my data stored and is it safe?';
 
   @override
-  String get faqA2 => 'All data (categories, habits, progress history, profile) is stored in a local database on your own device — never sent anywhere.';
+  String get faqA2 =>
+      'All data (categories, habits, progress history, profile) is stored in a local database on your own device — never sent anywhere.';
 
   @override
   String get faqQ3 => 'What if I switch phones? Does my data move too?';
 
   @override
-  String get faqA3 => 'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone.';
+  String get faqA3 =>
+      'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone.';
 
   @override
   String get faqQ4 => 'Do I need to log in or sign up for an account?';
 
   @override
-  String get faqA4 => 'No. This app has no account system at all — open it and start using it right away.';
+  String get faqA4 =>
+      'No. This app has no account system at all — open it and start using it right away.';
 
   @override
   String get usageTipsTitle => 'Usage Tips';
@@ -882,25 +918,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usageTip1Title => 'Use Reminders';
 
   @override
-  String get usageTip1Body => 'When adding or editing a habit, turn on the Reminder toggle and set a time. The app will send a local notification at that time on the habit\'s active days.';
+  String get usageTip1Body =>
+      'When adding or editing a habit, turn on the Reminder toggle and set a time. The app will send a local notification at that time on the habit\'s active days.';
 
   @override
   String get usageTip2Title => 'Backfill Progress';
 
   @override
-  String get usageTip2Body => 'From the Dashboard tab, tap a past date on the calendar to see that day\'s habit detail. You can still mark/change progress for previous days from there.';
+  String get usageTip2Body =>
+      'From the Dashboard tab, tap a past date on the calendar to see that day\'s habit detail. You can still mark/change progress for previous days from there.';
 
   @override
   String get usageTip3Title => 'Change Theme';
 
   @override
-  String get usageTip3Body => 'Open Settings > Personalize to pick one of 5 color palettes. The change applies instantly throughout the app.';
+  String get usageTip3Body =>
+      'Open Settings > Personalize to pick one of 5 color palettes. The change applies instantly throughout the app.';
 
   @override
   String get usageTip4Title => 'Use Edit Mode';
 
   @override
-  String get usageTip4Body => 'Tap the pencil button at the bottom right of Home to enter Edit Mode — from there you can reorder (drag), edit, or deactivate habits. Tap the check button or \"Done\" to exit.';
+  String get usageTip4Body =>
+      'Tap the pencil button at the bottom right of Home to enter Edit Mode — from there you can reorder (drag), edit, or deactivate habits. Tap the check button or \"Done\" to exit.';
 
   @override
   String get profileTitle => 'Profile';
@@ -915,7 +955,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileChangePhoto => 'Change photo';
 
   @override
-  String get profilePhotoNotAvailable => 'Profile photo is not available in this version yet';
+  String get profilePhotoNotAvailable =>
+      'Profile photo is not available in this version yet';
 
   @override
   String get profileNameLabel => 'Name';
@@ -939,7 +980,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get personalizeTitle => 'Personalize';
 
   @override
-  String get personalizeDescription => 'Pick the color theme you like best. This color is used for buttons, progress rings, and accents throughout the app.';
+  String get personalizeDescription =>
+      'Pick the color theme you like best. This color is used for buttons, progress rings, and accents throughout the app.';
 
   @override
   String get healthSyncStepsLabel => 'Sync steps from Health app';
@@ -979,10 +1021,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get proFeatureCouldNotLoadPlans => 'Could not load subscription plans. Try again later.';
+  String get proFeatureCouldNotLoadPlans =>
+      'Could not load subscription plans. Try again later.';
 
   @override
-  String get proFeatureNoPlansAvailable => 'No subscription plans available right now.';
+  String get proFeatureNoPlansAvailable =>
+      'No subscription plans available right now.';
 
   @override
   String get proFeatureChooseYourPlan => 'Choose your plan';
