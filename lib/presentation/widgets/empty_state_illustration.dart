@@ -50,6 +50,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
         animation: _controller,
         builder: (context, _) {
           final float = Curves.easeInOut.transform(_controller.value);
+          final strokeColor = theme.colorScheme.onSurface.withValues(alpha: 0.32);
           return Stack(
             alignment: Alignment.center,
             children: [
@@ -58,7 +59,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                 height: 130,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.18),
                 ),
               ),
               Transform.translate(
@@ -70,7 +71,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                         decoration: BoxDecoration(
                           color: theme.cardColor,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: theme.dividerColor, width: 1.5),
+                          border: Border.all(color: strokeColor, width: 1.5),
                         ),
                         padding: const EdgeInsets.all(14),
                         child: Column(
@@ -80,7 +81,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                               width: 36,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: theme.dividerColor,
+                                color: strokeColor,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                             ),
@@ -100,7 +101,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                                   width: 26,
                                   height: 8,
                                   decoration: BoxDecoration(
-                                    color: theme.dividerColor,
+                                    color: strokeColor,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                 ),
@@ -115,7 +116,7 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                         decoration: BoxDecoration(
                           color: theme.cardColor,
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: theme.dividerColor, width: 1.5),
+                          border: Border.all(color: strokeColor, width: 1.5),
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         child: Column(
@@ -130,12 +131,12 @@ class _EmptyStateIllustrationState extends State<EmptyStateIllustration>
                                       height: 10,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: theme.dividerColor, width: 1.5),
+                                        border: Border.all(color: strokeColor, width: 1.5),
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     Expanded(
-                                      child: Container(height: 6, color: theme.dividerColor),
+                                      child: Container(height: 6, color: strokeColor),
                                     ),
                                   ],
                                 ),

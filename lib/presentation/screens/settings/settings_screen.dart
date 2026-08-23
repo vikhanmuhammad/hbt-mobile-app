@@ -109,7 +109,10 @@ class SettingsScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Dark mode', style: theme.textTheme.bodyMedium),
+                      Text(
+                        'Dark mode',
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                      ),
                       ToggleSwitch(
                         value: isDarkEffective,
                         onChanged: (v) => ref.read(appThemeModeProvider.notifier).toggleDark(v),
@@ -186,7 +189,7 @@ class SettingsScreen extends ConsumerWidget {
                     'consistency, not perfection.\n\n'
                     'Fully offline. All recommendations come from static data in the app, '
                     'no account or cloud sync.',
-                    style: theme.textTheme.bodySmall?.copyWith(height: 1.6),
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.6),
                   ),
                 ),
               ),
@@ -414,10 +417,15 @@ class _NavTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
+              Icon(icon, size: 20, color: theme.textTheme.bodyMedium?.color),
               const SizedBox(width: 12),
-              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodyMedium?.color),
             ],
           ),
         ),
@@ -488,12 +496,15 @@ class _DefaultReminderTile extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
-              Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodySmall?.color),
+              Icon(Icons.schedule_rounded, size: 20, color: theme.textTheme.bodyMedium?.color),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Default reminder time: $current', style: theme.textTheme.bodyMedium),
+                child: Text(
+                  'Default reminder time: $current',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
               ),
-              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodySmall?.color),
+              Icon(Icons.chevron_right_rounded, color: theme.textTheme.bodyMedium?.color),
             ],
           ),
         ),

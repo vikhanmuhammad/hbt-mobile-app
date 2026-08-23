@@ -59,10 +59,21 @@ class HomeScreen extends ConsumerWidget {
                   icon: const Icon(Icons.chevron_left_rounded),
                 ),
                 Expanded(
-                  child: Text(
-                    '${monthFullNames[month.month - 1]} ${month.year}',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '${monthFullNames[month.month - 1]} ${month.year}',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(
