@@ -44,8 +44,16 @@ class NotificationService {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
+  /// Cap on how many same-day repeats [_timeSlots] generates for an interval
+  /// reminder — keeps `cancelForHabit`'s cleanup loop and the number of OS
+  /// alarms actually scheduled bounded even for a very short interval
+  /// starting early in the day.
+  static const _maxIntervalSlots = 48;
+
   /// Reschedule the reminder for 1 habit: cancel the old one, then create a
-  /// new notification following reminderTime + taskDays if the reminder is enabled.
+  /// new notification following reminderTime + taskDays if the reminder is
+  /// enabled. When `reminderIntervalMinutes` is set, repeats every N minutes
+  /// from reminderTime until the end of the day instead of firing once (#19).
   Future<void> rescheduleForHabit(Habit habit, {AppLang lang = AppLang.en}) async {
     await cancelForHabit(habit.id);
     if (!habit.reminderEnabled ||
@@ -60,6 +68,7 @@ class NotificationService {
     final minute = int.tryParse(timeParts[1]);
     if (hour == null || minute == null) return;
 
+    final slots = _timeSlots(hour, minute, habit.reminderIntervalMinutes);
     final days = habit.taskDays;
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -73,37 +82,65 @@ class NotificationService {
     );
 
     if (TaskDays.isEveryDay(days)) {
-      await _scheduleDaily(
-        id: _notificationId(habit.id, 7),
-        title: habit.displayName(lang),
-        hour: hour,
-        minute: minute,
-        details: details,
-      );
+      for (var s = 0; s < slots.length; s++) {
+        await _scheduleDaily(
+          id: _notificationId(habit.id, 7, s),
+          title: habit.displayName(lang),
+          hour: slots[s].$1,
+          minute: slots[s].$2,
+          details: details,
+        );
+      }
       return;
     }
 
     for (final day in days) {
       final weekdayIndex = weekdayKeys.indexOf(day);
       if (weekdayIndex == -1) continue;
-      await _scheduleWeekly(
-        id: _notificationId(habit.id, weekdayIndex),
-        title: habit.displayName(lang),
-        hour: hour,
-        minute: minute,
-        isoWeekday: weekdayIndex + 1,
-        details: details,
-      );
+      for (var s = 0; s < slots.length; s++) {
+        await _scheduleWeekly(
+          id: _notificationId(habit.id, weekdayIndex, s),
+          title: habit.displayName(lang),
+          hour: slots[s].$1,
+          minute: slots[s].$2,
+          isoWeekday: weekdayIndex + 1,
+          details: details,
+        );
+      }
     }
+  }
+
+  /// `(hour, minute)` of every repeat starting at [hour]:[minute], stepping
+  /// by [intervalMinutes] until past midnight — just the start time alone
+  /// when [intervalMinutes] is null/non-positive (original single-reminder
+  /// behavior).
+  List<(int, int)> _timeSlots(int hour, int minute, int? intervalMinutes) {
+    if (intervalMinutes == null || intervalMinutes <= 0) return [(hour, minute)];
+    final slots = <(int, int)>[];
+    var total = hour * 60 + minute;
+    while (total < 24 * 60 && slots.length < _maxIntervalSlots) {
+      slots.add((total ~/ 60, total % 60));
+      total += intervalMinutes;
+    }
+    return slots;
   }
 
   Future<void> cancelForHabit(int habitId) async {
+    for (var dayIndex = 0; dayIndex < 8; dayIndex++) {
+      for (var slot = 0; slot < _maxIntervalSlots; slot++) {
+        await _plugin.cancel(id: _notificationId(habitId, dayIndex, slot));
+      }
+    }
+    // Legacy single-slot-per-day IDs from before interval reminders existed
+    // — harmless no-ops once actually canceled, but left scheduled forever
+    // otherwise for any habit edited since before this change.
     for (var slot = 0; slot < 8; slot++) {
-      await _plugin.cancel(id: _notificationId(habitId, slot));
+      await _plugin.cancel(id: habitId * 10 + slot);
     }
   }
 
-  int _notificationId(int habitId, int slot) => habitId * 10 + slot;
+  int _notificationId(int habitId, int dayIndex, int slot) =>
+      habitId * 1000 + dayIndex * 100 + slot;
 
   Future<void> _scheduleDaily({
     required int id,

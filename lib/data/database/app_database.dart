@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -86,6 +86,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.nameId);
             await m.addColumn(habits, habits.isCustom);
             await m.addColumn(habits, habits.templateKey);
+          }
+          if (from < 8) {
+            // v8: reminderIntervalMinutes — repeat a reminder every N minutes
+            // starting at reminderTime, instead of just once/day. Nullable,
+            // defaults to null (single reminder, unchanged behavior).
+            await m.addColumn(habits, habits.reminderIntervalMinutes);
           }
         },
       );

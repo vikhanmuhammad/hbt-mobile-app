@@ -16,10 +16,6 @@ class OnboardingStrings {
 
   // Language pick step.
   String get chooseLanguageTitle => _t('Choose your language', 'Pilih bahasa kamu');
-  String get chooseLanguageSubtitle => _t(
-        'This only changes the questions during setup — the rest of the app stays in English.',
-        'Ini hanya mengubah pertanyaan selama pengaturan awal — bagian lain aplikasi tetap berbahasa Inggris.',
-      );
   String get englishLabel => 'English';
   String get indonesianLabel => 'Bahasa Indonesia';
 

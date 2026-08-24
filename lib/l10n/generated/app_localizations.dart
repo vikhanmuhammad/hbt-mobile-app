@@ -116,6 +116,12 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
+  /// No description provided for @commonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get commonUndo;
+
   /// Label for the app language switcher on the Settings screen.
   ///
   /// In en, this message translates to:
@@ -344,6 +350,12 @@ abstract class AppLocalizations {
   /// **'\"{name}\" and all of its progress history will be permanently deleted and will no longer count toward your Dashboard stats. This cannot be undone.'**
   String homeDeleteHabitBody(String name);
 
+  /// No description provided for @homeHabitDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" deleted.'**
+  String homeHabitDeleted(String name);
+
   /// No description provided for @homeFailedToSaveProgress.
   ///
   /// In en, this message translates to:
@@ -494,6 +506,72 @@ abstract class AppLocalizations {
   /// **'Daily Spending Trend'**
   String get financeDailySpendingTrend;
 
+  /// No description provided for @financeWeeklySpendingTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Spending Trend'**
+  String get financeWeeklySpendingTrend;
+
+  /// No description provided for @financeMonthlySpendingTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Spending Trend'**
+  String get financeMonthlySpendingTrend;
+
+  /// No description provided for @financeSpendingByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending by Category'**
+  String get financeSpendingByCategory;
+
+  /// No description provided for @financeAddSpendingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Spending Limit'**
+  String get financeAddSpendingLimit;
+
+  /// No description provided for @commonProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get commonProgress;
+
+  /// No description provided for @commonGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get commonGoal;
+
+  /// No description provided for @genderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get genderLabel;
+
+  /// No description provided for @genderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a gender'**
+  String get genderHint;
+
+  /// No description provided for @addHabitReminderRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get addHabitReminderRepeat;
+
+  /// No description provided for @addHabitReminderOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get addHabitReminderOnce;
+
+  /// No description provided for @addHabitReminderEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String addHabitReminderEveryMinutes(int minutes);
+
   /// No description provided for @financeNoDataYet.
   ///
   /// In en, this message translates to:
@@ -613,6 +691,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No recommendations for this category yet.'**
   String get addHabitNoRecommendations;
+
+  /// No description provided for @addHabitAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already added'**
+  String get addHabitAlreadyAdded;
+
+  /// No description provided for @addHabitDuplicateName.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a habit with this name.'**
+  String get addHabitDuplicateName;
 
   /// No description provided for @addHabitAdd.
   ///

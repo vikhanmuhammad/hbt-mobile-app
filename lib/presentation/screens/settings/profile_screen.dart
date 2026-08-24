@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../domain/language.dart';
+import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/core_providers.dart';
@@ -24,6 +26,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _ageController = TextEditingController();
   bool _loaded = false;
   bool _saving = false;
+  // Gender still lives in SettingsRepository/SharedPreferences (same as
+  // where onboarding wrote it), not on UserProfile itself — surfaced here
+  // and made editable per #22 without needing a DB schema migration.
+  Gender? _gender;
+
+  @override
+  void initState() {
+    super.initState();
+    _gender = Gender.fromValue(ref.read(settingsRepositoryProvider).gender);
+  }
 
   @override
   void dispose() {
@@ -58,6 +70,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               createdAt: current.createdAt,
             ),
           );
+      final gender = _gender;
+      if (gender != null) {
+        await ref.read(settingsRepositoryProvider).setGender(gender.name);
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
       }
@@ -70,6 +86,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final profileAsync = ref.watch(userProfileStreamProvider);
 
     return Scaffold(
@@ -115,6 +132,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     controller: _ageController,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(hintText: l10n.profileAgeHint),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.genderLabel, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  DropdownMenu<Gender>(
+                    initialSelection: _gender,
+                    hintText: l10n.genderHint,
+                    expandedInsets: EdgeInsets.zero,
+                    onSelected: (value) => setState(() => _gender = value),
+                    dropdownMenuEntries: [
+                      for (final g in Gender.values)
+                        DropdownMenuEntry(value: g, label: g.label(lang == AppLang.id)),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

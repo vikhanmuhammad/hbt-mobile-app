@@ -11,6 +11,8 @@ import '../../../domain/models/community/group_member.dart';
 import '../../../domain/models/community/leaderboard_entry.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/community_enums.dart';
+import '../../../domain/format_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
@@ -510,6 +512,26 @@ String _normalizeHabitName(String name) {
   return singularized.join(' ');
 }
 
+/// Formats a Group Habit's own target (value • period, "Maks." prefix for
+/// `atMost`) the same way `Habit.goalLabel` does locally, so a viewer
+/// deciding between "Link" and "Publish" can compare the two side by side
+/// instead of guessing why a same-named habit didn't auto-match (matching
+/// stays strict on purpose — see [findMatchingGroupHabit] — this just makes
+/// the mismatch visible instead of silent).
+String groupHabitTargetLabel(GroupHabit gh, AppLang lang) {
+  if (gh.goalValue == null || gh.goalPeriod == null) return gh.unit;
+  final period = GoalPeriod.values.firstWhere(
+    (p) => p.name == gh.goalPeriod,
+    orElse: () => GoalPeriod.daily,
+  );
+  final isRupiah = gh.unit.trim().toLowerCase() == 'rupiah';
+  final valueLabel = isRupiah
+      ? formatRupiah(gh.goalValue!)
+      : (gh.unit == 'x' ? '${gh.goalValue}x' : '${gh.goalValue} ${gh.unit}');
+  final prefixed = gh.goalDirection == 'atMost' ? 'Maks. $valueLabel' : valueLabel;
+  return '$prefixed • ${period.label(lang)}';
+}
+
 class _TabSectionLabel extends StatelessWidget {
   const _TabSectionLabel(this.text);
 
@@ -630,7 +652,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
             widget.matchAlreadyTrackedByMe
                 ? l10n.groupAlreadyTrackedViaOther
                 : matched
-                    ? l10n.groupMatchesExisting
+                    ? '${l10n.groupMatchesExisting} • ${widget.habit.goalLabel(lang)}'
                     : widget.habit.goalLabel(lang),
             style: theme.textTheme.bodySmall,
           ),
@@ -681,7 +703,7 @@ class _CommunityHabitRow extends ConsumerWidget {
           leading: HabitIcon(icon: habit.icon, size: 20),
           title: Text(habit.displayName(lang)),
           subtitle: Text(
-            isReconnect ? l10n.groupReconnectBefore : habit.unit,
+            isReconnect ? l10n.groupReconnectBefore : groupHabitTargetLabel(habit, lang),
             style: theme.textTheme.bodySmall?.copyWith(
               color: isReconnect ? theme.colorScheme.primary : null,
               fontWeight: isReconnect ? FontWeight.w700 : null,

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
 import '../../../domain/language.dart';
+import '../../../domain/models/category.dart';
 import '../../../domain/models/dashboard_summary.dart';
 import '../../../domain/models/habit_with_progress.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -243,8 +244,15 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
     final l10n = AppLocalizations.of(context)!;
     final hintColor = _scrollHintColor(theme);
     final lang = ref.watch(appLanguageProvider);
-    final habits = ref.watch(allActiveHabitsProvider).value ?? const [];
+    final allHabits = ref.watch(allActiveHabitsProvider).value ?? const [];
     final categories = ref.watch(categoriesProvider).value ?? const [];
+    final categoryById = {for (final c in categories) c.id: c};
+    // Habit finance dikecualikan dari Dashboard — cuma relevan di halaman
+    // Keuangan supaya tidak membingungkan dicampur dengan habit lain.
+    final habits = allHabits.where((h) {
+      final category = categoryById[h.categoryId];
+      return category == null || !isFinanceCategory(category);
+    }).toList();
     final selected = ref.watch(selectedDashboardHabitIdsProvider);
 
     if (habits.isEmpty) return const SizedBox.shrink();
@@ -842,6 +850,11 @@ class _MonthlyTrend extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: Column(
                           children: [
+                            Text(
+                              '${(point.successRate.clamp(0, 1) * 100).round()}%',
+                              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
                             // Expanded gives this slot a bounded/tight height
                             // so FractionallySizedBox has something to size
                             // its heightFactor against — a bare Column doesn't

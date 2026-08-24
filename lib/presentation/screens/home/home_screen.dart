@@ -42,7 +42,9 @@ class HomeScreen extends ConsumerWidget {
     final month = DateTime(selectedDate.year, selectedDate.month);
     final isEditMode = ref.watch(homeEditModeProvider);
 
+    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
     final items = [...ref.watch(habitsWithProgressForDateProvider(selectedDate))]
+      ..removeWhere((item) => pendingDeleteIds.contains(item.habit.id))
       ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
     final categoriesAsync = ref.watch(categoriesProvider);
     final categories = categoriesAsync.value ?? [];
@@ -90,9 +92,26 @@ class HomeScreen extends ConsumerWidget {
                     child: Text(l10n.homeDone),
                   )
                 else
-                  TextButton(
-                    onPressed: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
-                    child: Text(l10n.homeToday),
+                  Material(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Text(
+                          l10n.homeToday,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -110,18 +129,33 @@ class HomeScreen extends ConsumerWidget {
           const Divider(height: 1),
           const SizedBox(height: 8),
           Expanded(
-            child: items.isEmpty
-                ? const _EmptyState()
-                : _HabitList(
-                    items: items,
-                    categoryById: categoryById,
-                    categories: categories,
-                    isEditMode: isEditMode,
-                    isWide: isWide,
-                    isTablet: isTablet,
-                    selectedDate: selectedDate,
-                    linkedHabitIds: ref.watch(linkedHabitIdsProvider).value ?? const <int>{},
-                  ),
+            child: GestureDetector(
+              // Swipe left/right to move a day, mirroring the DateStrip tap
+              // interaction (#21) — disabled in Edit Mode since that's
+              // reorder-by-drag territory (ReorderableListView already owns
+              // horizontal-ish gestures there).
+              onHorizontalDragEnd: isEditMode
+                  ? null
+                  : (details) {
+                      final velocity = details.primaryVelocity ?? 0;
+                      if (velocity.abs() < 200) return;
+                      final delta = velocity < 0 ? 1 : -1;
+                      ref.read(selectedHomeDateProvider.notifier).state =
+                          selectedDate.add(Duration(days: delta));
+                    },
+              child: items.isEmpty
+                  ? const _EmptyState()
+                  : _HabitList(
+                      items: items,
+                      categoryById: categoryById,
+                      categories: categories,
+                      isEditMode: isEditMode,
+                      isWide: isWide,
+                      isTablet: isTablet,
+                      selectedDate: selectedDate,
+                      linkedHabitIds: ref.watch(linkedHabitIdsProvider).value ?? const <int>{},
+                    ),
+            ),
           ),
         ],
         ),
@@ -270,11 +304,18 @@ class _HabitList extends ConsumerWidget {
             accentColor: _accentFor(item.habit.categoryId),
             isEditMode: true,
             onTap: null,
-            onEdit: () => openEditHabitFlow(
-              context,
-              item.habit,
-              lockGoalFields: linkedHabitIds.contains(item.habit.id),
-            ),
+            onEdit: () async {
+              final saved = await openEditHabitFlow(
+                context,
+                item.habit,
+                lockGoalFields: linkedHabitIds.contains(item.habit.id),
+              );
+              // Only leave edit mode on an actual save — backing out of the
+              // edit form without saving should keep editing the list (#9).
+              if (saved) {
+                ref.read(homeEditModeProvider.notifier).state = false;
+              }
+            },
             onDelete: () => _confirmDeactivate(context, ref, item),
             dragHandle: ReorderableDragStartListener(
               index: index,
@@ -341,8 +382,38 @@ class _HabitList extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
+    final habit = item.habit;
+    final habitId = habit.id;
+
+    // Deferred delete (#12): hide immediately via `pendingDeleteHabitIdsProvider`
+    // (filtered out of `items` in build()), but only actually touch the
+    // database 5s later. Undo just un-hides it — no row is ever deleted if
+    // the user undoes in time, so unlike a real delete+recreate, the habit
+    // keeps its original id and any Community link stays intact.
+    ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s, habitId});
+
+    var undone = false;
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.homeHabitDeleted(habit.displayName(lang))),
+          duration: const Duration(seconds: 5),
+          action: SnackBarAction(
+            label: l10n.commonUndo,
+            onPressed: () {
+              undone = true;
+              ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
+            },
+          ),
+        ),
+      );
+    }
+
+    await Future.delayed(const Duration(seconds: 5));
+    if (undone) return;
+
     try {
-      await ref.read(notificationServiceProvider).cancelForHabit(item.habit.id);
+      await ref.read(notificationServiceProvider).cancelForHabit(habitId);
     } catch (_) {
       // Notification cancellation failed (e.g. platform not supported) —
       // don't fail the habit deletion because of this.
@@ -352,7 +423,8 @@ class _HabitList extends ConsumerWidget {
     // dashboardSummaryProvider/monthSummariesProvider/daySummaryProvider
     // being Future-backed (not reactive DB streams), which is why they also
     // need an explicit invalidate below.
-    await ref.read(habitRepositoryProvider).deleteHabit(item.habit.id);
+    await ref.read(habitRepositoryProvider).deleteHabit(habitId);
+    ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
     _invalidateSummaries(ref);
   }
 

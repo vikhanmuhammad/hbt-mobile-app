@@ -34,6 +34,7 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       timeRange: TimeRange.fromValue(row.timeRange),
       reminderEnabled: row.reminderEnabled,
       reminderTime: row.reminderTime,
+      reminderIntervalMinutes: row.reminderIntervalMinutes,
       startDate: row.startDate,
       endDate: row.endDate,
       isActive: row.isActive,

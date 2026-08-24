@@ -349,9 +349,9 @@ class _StepScaffold extends StatelessWidget {
   }
 }
 
-/// Step 0 (no progress bar yet): pick the language used for the rest of
-/// onboarding's instructional copy and the 3 lifestyle questions only —
-/// point 4. Doesn't affect the rest of the app.
+/// Step 0 (no progress bar yet): pick the app-wide display language — sets
+/// both `introLanguageProvider` (onboarding copy) and the persistent
+/// `appLanguageProvider` (everywhere else, editable later in Settings).
 class _LanguagePickStep extends ConsumerWidget {
   const _LanguagePickStep({required this.onNext});
 
@@ -1301,18 +1301,24 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
             ),
           ),
           const SizedBox(height: 6),
-          DropdownButtonFormField<Gender>(
-            initialValue: _selectedGender,
-            hint: Text(lang.genderHint),
-            items: [
-              for (final g in Gender.values)
-                DropdownMenuItem(value: g, child: Text(g.label(indonesian))),
-            ],
-            onChanged: (value) {
+          // `DropdownMenu` (not `DropdownButtonFormField`) so the options
+          // list opens anchored below the field, like a normal dropdown —
+          // `DropdownButtonFormField`'s default menu instead opens centered
+          // over the field with the selected entry, which reads as if the
+          // first item shown were already the current value (#26).
+          DropdownMenu<Gender>(
+            initialSelection: _selectedGender,
+            hintText: lang.genderHint,
+            expandedInsets: EdgeInsets.zero,
+            onSelected: (value) {
               if (value == null) return;
               setState(() => _selectedGender = value);
               ref.read(settingsRepositoryProvider).setGender(value.name);
             },
+            dropdownMenuEntries: [
+              for (final g in Gender.values)
+                DropdownMenuEntry(value: g, label: g.label(indonesian)),
+            ],
           ),
         ],
       ),
@@ -1902,7 +1908,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       ),
                     ),
                     if (!isPro)
-                      OutlinedButton.icon(
+                      FilledButton.icon(
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => ProFeatureTeaser(
@@ -1918,6 +1924,12 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                               ],
                             ),
                           ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.gold,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                         ),
                         icon: const Icon(
                           Icons.workspace_premium_rounded,

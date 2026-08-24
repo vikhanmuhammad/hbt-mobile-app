@@ -40,6 +40,14 @@ final selectedHomeDateProvider = StateProvider<DateTime>((ref) => today());
 /// merender FAB yang sesuai.
 final homeEditModeProvider = StateProvider<bool>((ref) => false);
 
+/// Habit yang baru saja dihapus user tapi masih dalam jeda 10 detik sebelum
+/// benar-benar terhapus dari database (lihat `HomeScreen._confirmDeactivate`)
+/// — disembunyikan dari daftar Beranda selagi id-nya ada di sini. Menekan
+/// "Undo" pada snackbar cukup mengeluarkan id dari set ini (tidak pernah ada
+/// baris yang benar-benar terhapus), jadi undo tidak perlu membuat ulang
+/// habit dengan id baru dan tidak berisiko kehilangan link Community-nya.
+final pendingDeleteHabitIdsProvider = StateProvider<Set<int>>((ref) => <int>{});
+
 /// Bulan yang sedang ditampilkan di layar Rangkuman Keuangan.
 final selectedFinanceMonthProvider =
     StateProvider<DateTime>((ref) => DateTime(today().year, today().month));

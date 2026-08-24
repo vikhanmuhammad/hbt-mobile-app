@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -53,16 +55,29 @@ Stream<UserProfile?> userProfileStream(Ref ref) {
 /// Palet warna aktif (fitur Personalize, CLAUDE.md v3 §8). Default ke
 /// "Teal Sage" (gold) selama belum ada `UserProfile` (mis. saat masih di
 /// tengah onboarding) atau selama `themeKey` belum pernah diubah user.
+///
+/// `UserProfile` sendiri cuma tersedia async (Drift stream) — sebelum
+/// snapshot pertamanya datang, jatuh balik ke `themeKey` yang di-cache
+/// sinkron di SharedPreferences (lihat `SettingsRepository.cachedThemeKey`)
+/// alih-alih selalu ke gold, supaya splash screen/frame pertama app tidak
+/// sempat "kedip" ke warna default dulu baru pindah ke warna tema asli user.
 @riverpod
 class ActivePalette extends _$ActivePalette {
   @override
   AppPalette build() {
-    final profile = ref.watch(userProfileStreamProvider).value;
-    return AppPalettes.byKey(profile?.themeKey);
+    final profileAsync = ref.watch(userProfileStreamProvider);
+    final settingsRepo = ref.watch(settingsRepositoryProvider);
+    final resolvedThemeKey = profileAsync.value?.themeKey;
+    final themeKey = resolvedThemeKey ?? settingsRepo.cachedThemeKey;
+    if (resolvedThemeKey != null) {
+      unawaited(settingsRepo.setCachedThemeKey(resolvedThemeKey));
+    }
+    return AppPalettes.byKey(themeKey);
   }
 
   Future<void> setPalette(String key) async {
     await ref.read(profileRepositoryProvider).setThemeKey(key);
+    await ref.read(settingsRepositoryProvider).setCachedThemeKey(key);
     state = AppPalettes.byKey(key);
   }
 }

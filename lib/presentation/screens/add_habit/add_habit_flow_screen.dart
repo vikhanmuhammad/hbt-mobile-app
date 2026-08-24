@@ -13,6 +13,7 @@ import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
+import '../../../providers/habit_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../../providers/stats_providers.dart';
 import '../../../providers/template_providers.dart';
@@ -41,17 +42,21 @@ Future<void> openAddHabitFlow(BuildContext context) {
 /// Open the flow directly at the edit form for an existing habit (from Home
 /// Edit Mode or Settings) — after finishing, just pop back to the caller's
 /// screen. Pass [lockGoalFields] true when the habit is linked to a
-/// Community Group Habit (see `AddHabitFlowScreen.lockGoalFields`).
-Future<void> openEditHabitFlow(
+/// Community Group Habit (see `AddHabitFlowScreen.lockGoalFields`). Returns
+/// true if the habit was actually saved (vs. the user backing/canceling
+/// out) — callers use this to tell a real save apart from a no-op close
+/// (e.g. Home's edit mode only auto-exits on an actual save, #9).
+Future<bool> openEditHabitFlow(
   BuildContext context,
   Habit habit, {
   bool lockGoalFields = false,
-}) {
-  return Navigator.of(context).push(
+}) async {
+  final saved = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (_) => AddHabitFlowScreen(editingHabit: habit, lockGoalFields: lockGoalFields),
     ),
   );
+  return saved ?? false;
 }
 
 /// Open the flow directly at the "Create New Category" step (from
@@ -80,12 +85,13 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
   final bool startAtNewCategory;
 
   /// When editing a habit that's linked to a Community Group Habit, locks
-  /// every field except Reminder — name, icon, goal phrase/period/value/
-  /// unit/direction, task days, time range, and start/end date all stay
+  /// every field except Reminder and Time Range — name, icon, goal phrase/
+  /// period/value/unit/direction, task days, and start/end date all stay
   /// exactly what the Group Habit was published/adopted with, so tracking
   /// against the shared leaderboard target never silently drifts out of
-  /// sync from one device's local edit. Unlink from Community first to
-  /// change any of those.
+  /// sync from one device's local edit. Reminder and Time Range are purely
+  /// local "when" preferences never synced to the group, so they're always
+  /// editable. Unlink from Community first to change any of the locked ones.
   final bool lockGoalFields;
 
   @override
@@ -124,6 +130,9 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   TimeRange _timeRange = TimeRange.anytime;
   bool _reminderEnabled = false;
   TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+  // null = single reminder at _reminderTime; otherwise repeats every N
+  // minutes starting there until end of day (#19).
+  int? _reminderIntervalMinutes;
   DateTime _startDate = today();
   DateTime? _endDate;
 
@@ -233,6 +242,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _timeRange = habit.timeRange;
     _reminderEnabled = habit.reminderEnabled;
     _reminderTime = _parseTime(habit.reminderTime) ?? const TimeOfDay(hour: 8, minute: 0);
+    _reminderIntervalMinutes = habit.reminderIntervalMinutes;
     _startDate = habit.startDate;
     _endDate = habit.endDate;
   }
@@ -263,6 +273,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _timeRange = timeRange ?? TimeRange.anytime;
     _reminderEnabled = false;
     _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+    _reminderIntervalMinutes = null;
     _startDate = startDate ?? today();
     _endDate = null;
   }
@@ -553,12 +564,30 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   // ---------------- Step 2: recommendations / custom ----------------
 
+  /// True kalau user sudah punya habit aktif yang berasal dari template [t]
+  /// (dicocokkan lewat `templateKey`, atau nama sebagai fallback untuk habit
+  /// lama yang belum ter-backfill) — dipakai supaya template yang sama tidak
+  /// bisa ditambahkan dua kali dari Step 2.
+  bool _templateAlreadyAdded(HabitTemplate t, List<Habit> activeHabits) {
+    final normalizedNames = {
+      t.name.trim().toLowerCase(),
+      if (t.nameId != null) t.nameId!.trim().toLowerCase(),
+    };
+    return activeHabits.any((h) {
+      if (widget.editingHabit != null && h.id == widget.editingHabit!.id) return false;
+      if (h.templateKey != null) return h.templateKey == t.key;
+      return normalizedNames.contains(h.name.trim().toLowerCase()) ||
+          (h.nameId != null && normalizedNames.contains(h.nameId!.trim().toLowerCase()));
+    });
+  }
+
   Widget _buildStep2() {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final lang = ref.watch(appLanguageProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final templatesAsync = ref.watch(habitTemplatesProvider);
+    final activeHabits = ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
 
     return categoriesAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -649,7 +678,10 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                   Builder(builder: (context) {
                     final entry = (categoryId: _categoryId!, template: t);
                     final selected = _selectedTemplates.contains(entry);
-                    return Card(
+                    final alreadyAdded = _templateAlreadyAdded(t, activeHabits);
+                    return Opacity(
+                      opacity: alreadyAdded ? 0.45 : 1,
+                      child: Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       color: selected ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
                       shape: RoundedRectangleBorder(
@@ -660,9 +692,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => setState(() {
-                          if (!_selectedTemplates.remove(entry)) _selectedTemplates.add(entry);
-                        }),
+                        onTap: alreadyAdded
+                            ? null
+                            : () => setState(() {
+                                  if (!_selectedTemplates.remove(entry)) _selectedTemplates.add(entry);
+                                }),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           child: Row(
@@ -678,30 +712,35 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              IconButton(
-                                tooltip: l10n.addHabitCustomizeBeforeAdding,
-                                icon: const Icon(Icons.tune_rounded, size: 20),
-                                onPressed: () => _openFormForTemplate(t),
-                              ),
-                              const SizedBox(width: 4),
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: selected ? theme.colorScheme.primary : Colors.transparent,
-                                  border: Border.all(
-                                    color: selected ? theme.colorScheme.primary : theme.dividerColor,
-                                    width: 1.5,
-                                  ),
+                              if (alreadyAdded)
+                                Text(l10n.addHabitAlreadyAdded, style: theme.textTheme.bodySmall)
+                              else ...[
+                                IconButton(
+                                  tooltip: l10n.addHabitCustomizeBeforeAdding,
+                                  icon: const Icon(Icons.tune_rounded, size: 20),
+                                  onPressed: () => _openFormForTemplate(t),
                                 ),
-                                child: selected
-                                    ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
-                                    : null,
-                              ),
+                                const SizedBox(width: 4),
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: selected ? theme.colorScheme.primary : Colors.transparent,
+                                    border: Border.all(
+                                      color: selected ? theme.colorScheme.primary : theme.dividerColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: selected
+                                      ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                                      : null,
+                                ),
+                              ],
                             ],
                           ),
                         ),
+                      ),
                       ),
                     );
                   }),
@@ -1066,6 +1105,15 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           onChanged: (days) => setState(() => _taskDays = days),
         ),
         const SizedBox(height: 16),
+        ], // end Column children (locked section)
+          ), // end Column (locked section)
+        ), // end _LockableSection
+        const SizedBox(height: 16),
+        // Time range stays editable even when the rest of the goal fields
+        // are locked to a linked Community Group Habit — it's purely a local
+        // "when do I usually do this" preference that never gets synced or
+        // matched against the shared leaderboard target, so changing it
+        // can't drift local tracking out of sync with the group (#10).
         _FieldLabel(l10n.addHabitFieldTimeRange),
         const SizedBox(height: 8),
         Wrap(
@@ -1081,9 +1129,6 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
               ),
           ],
         ),
-        ], // end Column children (locked section)
-          ), // end Column (locked section)
-        ), // end _LockableSection
         const SizedBox(height: 16),
         Card(
           child: Padding(
@@ -1121,6 +1166,26 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             ),
           ),
         ),
+        if (_reminderEnabled) ...[
+          const SizedBox(height: 10),
+          Text(l10n.addHabitReminderRepeat, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final minutes in const [null, 15, 30, 60, 120])
+                _SelectablePill(
+                  label: minutes == null
+                      ? l10n.addHabitReminderOnce
+                      : l10n.addHabitReminderEveryMinutes(minutes),
+                  selected: _reminderIntervalMinutes == minutes,
+                  pill: true,
+                  onTap: () => setState(() => _reminderIntervalMinutes = minutes),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
         _LockableSection(
           locked: widget.lockGoalFields,
@@ -1225,6 +1290,21 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       );
       return;
     }
+    final activeHabits = ref.read(allActiveHabitsProvider).value ?? const <Habit>[];
+    final normalizedName = name.toLowerCase();
+    final normalizedNameId = nameId.toLowerCase();
+    final isDuplicate = activeHabits.any((h) {
+      if (widget.editingHabit != null && h.id == widget.editingHabit!.id) return false;
+      final hName = h.name.trim().toLowerCase();
+      final hNameId = h.nameId?.trim().toLowerCase();
+      return hName == normalizedName || hNameId == normalizedNameId;
+    });
+    if (isDuplicate) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.addHabitDuplicateName)),
+      );
+      return;
+    }
     if (await _blockedByFinanceGate()) return;
     if (!_isEditing && await _blockedByFreeHabitLimit()) return;
 
@@ -1233,6 +1313,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       final repo = ref.read(habitRepositoryProvider);
       final goalUnit = _goalUnitController.text.trim().isEmpty ? 'x' : _goalUnitController.text.trim();
       final reminderTimeStr = _reminderEnabled ? _formatTime(_reminderTime) : null;
+      final reminderIntervalValue = _reminderEnabled ? _reminderIntervalMinutes : null;
       final taskDaysList = _taskDays.contains(allDaysKey) ? [allDaysKey] : _taskDays.toList();
 
       if (_isEditing) {
@@ -1253,6 +1334,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           timeRange: _timeRange,
           reminderEnabled: _reminderEnabled,
           reminderTime: reminderTimeStr,
+          reminderIntervalMinutes: reminderIntervalValue,
           startDate: _startDate,
           endDate: _endDate,
           isActive: widget.editingHabit!.isActive,
@@ -1277,6 +1359,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           timeRange: _timeRange,
           reminderEnabled: _reminderEnabled,
           reminderTime: reminderTimeStr,
+          reminderIntervalMinutes: reminderIntervalValue,
           startDate: _startDate,
           endDate: _endDate,
         );
@@ -1423,7 +1506,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
-    navigator.pop();
+    navigator.pop(true);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(toastMessage)));

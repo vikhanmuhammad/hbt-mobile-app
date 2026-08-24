@@ -18,6 +18,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get commonDelete => 'Hapus';
 
   @override
+  String get commonUndo => 'Urungkan';
+
+  @override
   String get settingsLanguage => 'Bahasa';
 
   @override
@@ -146,6 +149,11 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String homeHabitDeleted(String name) {
+    return '\"$name\" dihapus.';
+  }
+
+  @override
   String homeFailedToSaveProgress(String error) {
     return 'Gagal menyimpan progres: $error';
   }
@@ -233,6 +241,41 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeDailySpendingTrend => 'Tren Pengeluaran Harian';
 
   @override
+  String get financeWeeklySpendingTrend => 'Tren Pengeluaran Mingguan';
+
+  @override
+  String get financeMonthlySpendingTrend => 'Tren Pengeluaran Bulanan';
+
+  @override
+  String get financeSpendingByCategory => 'Pengeluaran per Kategori';
+
+  @override
+  String get financeAddSpendingLimit => 'Tambah Batas Pengeluaran';
+
+  @override
+  String get commonProgress => 'Progres';
+
+  @override
+  String get commonGoal => 'Target';
+
+  @override
+  String get genderLabel => 'Jenis kelamin';
+
+  @override
+  String get genderHint => 'Pilih jenis kelamin';
+
+  @override
+  String get addHabitReminderRepeat => 'Ulangi';
+
+  @override
+  String get addHabitReminderOnce => 'Sekali';
+
+  @override
+  String addHabitReminderEveryMinutes(int minutes) {
+    return 'Tiap $minutes menit';
+  }
+
+  @override
   String get financeNoDataYet => 'Belum ada data';
 
   @override
@@ -310,6 +353,12 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get addHabitNoRecommendations =>
       'Belum ada rekomendasi untuk kategori ini.';
+
+  @override
+  String get addHabitAlreadyAdded => 'Sudah ditambahkan';
+
+  @override
+  String get addHabitDuplicateName => 'Anda sudah punya habit dengan nama ini.';
 
   @override
   String get addHabitAdd => 'Tambah';

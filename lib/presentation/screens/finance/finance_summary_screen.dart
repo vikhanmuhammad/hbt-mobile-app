@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/date_utils.dart';
 import '../../../domain/format_utils.dart';
 import '../../../domain/language.dart';
+import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/finance_providers.dart';
 import '../../../providers/settings_providers.dart';
@@ -18,6 +20,7 @@ import '../../widgets/finance_preview_mock.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/segmented_pill_toggle.dart';
+import '../add_habit/add_habit_flow_screen.dart';
 
 /// Finance Summary: total expenses, amount saved, and savings deposits
 /// from all rupiah-unit habits (across categories), per calendar month —
@@ -51,6 +54,11 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openAddSpendingLimitHabit(context, ref),
+        icon: const Icon(Icons.add_rounded),
+        label: Text(l10n.financeAddSpendingLimit),
+      ),
       body: FadeSlideIn(
         child: ListView(
         padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
@@ -94,7 +102,11 @@ class FinanceSummaryScreen extends ConsumerWidget {
                   _TotalsSection(summary: summary),
                   if (summary.dailyTrend.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    _SpendingTrendCard(summary: summary),
+                    _SpendingTrendCard(summary: summary, period: period),
+                  ],
+                  if (summary.totalExpense > 0) ...[
+                    const SizedBox(height: 20),
+                    _SpendingBreakdownCard(summary: summary),
                   ],
                   const SizedBox(height: 20),
                   _HabitBreakdownCard(summary: summary),
@@ -104,6 +116,28 @@ class FinanceSummaryScreen extends ConsumerWidget {
           ),
         ],
         ),
+      ),
+    );
+  }
+
+  /// Jumps straight to the template picker under the Finance goal phrase
+  /// (skipping the goal-phrase-pick step) so adding a spending-limit habit —
+  /// daily/weekly/monthly — is reachable directly from this page instead of
+  /// only via the general Add Habit flow (#27). Logging progress against it
+  /// still only happens from Home, unchanged.
+  Future<void> _openAddSpendingLimitHabit(BuildContext context, WidgetRef ref) async {
+    final categories = await ref.read(categoriesProvider.future);
+    Category? financeCategory;
+    for (final c in categories) {
+      if (isFinanceCategory(c)) {
+        financeCategory = c;
+        break;
+      }
+    }
+    if (financeCategory == null || !context.mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddHabitFlowScreen(initialCategoryId: financeCategory!.id),
       ),
     );
   }
@@ -151,7 +185,15 @@ class _PeriodNav extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
-        Text(_label(lang), style: theme.textTheme.titleLarge),
+        Expanded(
+          child: Text(
+            _label(lang),
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),
       ],
     );
@@ -264,59 +306,39 @@ class _TotalsSection extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: _StatChip(
+            label: isOverBudget ? l10n.financeOverBudget : l10n.financeTotalSaved,
+            value: formatRupiah(saved.abs()),
+            color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
+            icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
+          ),
+        ),
+        // Saving/deposit info kept much smaller than spending above — this
+        // page is primarily for tracking spending, not savings (see #24).
         if (summary.totalSavingsTarget > 0) ...[
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.financeSaveMoneyGoal, style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 6),
-                  Text(
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Icon(Icons.savings_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${l10n.financeSaveMoneyGoal}: '
                     '${formatRupiah(summary.totalSavingsDeposit)} / ${formatRupiah(summary.totalSavingsTarget)}',
-                    style: theme.textTheme.headlineMedium,
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: (summary.totalSavingsDeposit / summary.totalSavingsTarget).clamp(0, 1).toDouble(),
-                      minHeight: 8,
-                      backgroundColor: theme.brightness == Brightness.light
-                          ? AppColors.lightSurfaceAlt
-                          : AppColors.darkSurfaceAlt,
-                      valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _StatChip(
-                label: isOverBudget ? l10n.financeOverBudget : l10n.financeTotalSaved,
-                value: formatRupiah(saved.abs()),
-                color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
-                icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatChip(
-                label: l10n.financeTotalDeposited,
-                value: formatRupiah(summary.totalSavingsDeposit),
-                color: theme.colorScheme.primary,
-                icon: Icons.account_balance_wallet_rounded,
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -396,9 +418,10 @@ class _StatChip extends StatelessWidget {
 }
 
 class _SpendingTrendCard extends StatefulWidget {
-  const _SpendingTrendCard({required this.summary});
+  const _SpendingTrendCard({required this.summary, required this.period});
 
   final FinanceSummary summary;
+  final FinancePeriod period;
 
   @override
   State<_SpendingTrendCard> createState() => _SpendingTrendCardState();
@@ -427,6 +450,12 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
     super.dispose();
   }
 
+  String _trendTitle(AppLocalizations l10n) => switch (widget.period) {
+        FinancePeriod.daily => l10n.financeDailySpendingTrend,
+        FinancePeriod.weekly => l10n.financeWeeklySpendingTrend,
+        FinancePeriod.monthly => l10n.financeMonthlySpendingTrend,
+      };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -439,7 +468,7 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context)!.financeDailySpendingTrend, style: theme.textTheme.titleMedium),
+            Text(_trendTitle(AppLocalizations.of(context)!), style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
             SizedBox(
               height: 140,
@@ -494,6 +523,80 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
                       ),
                     ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Breakdown of total spending by spending habit (each `atMost` finance
+/// habit acts as its own spending category, e.g. "Food", "Transport") — more
+/// insightful than the previous single "Total Deposited" figure, since it
+/// shows WHERE the money actually went (#5, #24).
+class _SpendingBreakdownCard extends ConsumerWidget {
+  const _SpendingBreakdownCard({required this.summary});
+
+  final FinanceSummary summary;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
+    final spendingStats = summary.habitStats
+        .where((s) => s.habit.goalDirection == GoalDirection.atMost && s.totalValue > 0)
+        .toList()
+      ..sort((a, b) => b.totalValue.compareTo(a.totalValue));
+    if (spendingStats.isEmpty) return const SizedBox.shrink();
+    final total = spendingStats.fold<int>(0, (sum, s) => sum + s.totalValue);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.financeSpendingByCategory, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 16),
+            for (final stat in spendingStats)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            stat.habit.displayName(lang),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${formatRupiah(stat.totalValue)} (${(stat.totalValue / total * 100).round()}%)',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: stat.totalValue / total,
+                        minHeight: 6,
+                        backgroundColor: theme.brightness == Brightness.light
+                            ? AppColors.lightSurfaceAlt
+                            : AppColors.darkSurfaceAlt,
+                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),

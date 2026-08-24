@@ -14,6 +14,7 @@ class SettingsRepository {
   static const _alarmSyncKey = 'health_sync_alarm_enabled';
   static const _languageKey = 'app_language';
   static const _templateBackfillDoneKey = 'template_backfill_done';
+  static const _cachedThemeKeyKey = 'cached_theme_key';
 
   String? get defaultReminderTime => _prefs.getString(_defaultReminderTimeKey);
 
@@ -67,4 +68,12 @@ class SettingsRepository {
   bool get templateBackfillDone => _prefs.getBool(_templateBackfillDoneKey) ?? false;
   Future<void> setTemplateBackfillDone(bool value) =>
       _prefs.setBool(_templateBackfillDoneKey, value);
+
+  /// Last-known `UserProfile.themeKey`, mirrored here purely so the splash
+  /// screen/first frame can pick the right accent color synchronously —
+  /// `UserProfile` itself only loads asynchronously (Drift stream), which
+  /// otherwise leaves a brief flash of the default gold palette before the
+  /// real one arrives. Null until the user has ever had a saved theme.
+  String? get cachedThemeKey => _prefs.getString(_cachedThemeKeyKey);
+  Future<void> setCachedThemeKey(String key) => _prefs.setString(_cachedThemeKeyKey, key);
 }

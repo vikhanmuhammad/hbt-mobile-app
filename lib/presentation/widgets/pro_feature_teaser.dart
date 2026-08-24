@@ -54,10 +54,20 @@ class ProFeatureTeaser extends ConsumerWidget {
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.35)),
+              filter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
+              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.62)),
             ),
           ),
+          if (Navigator.of(context).canPop())
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(32),

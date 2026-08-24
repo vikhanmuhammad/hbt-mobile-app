@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
 import '../../domain/models/habit_with_progress.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/settings_providers.dart';
 import 'habit_icon.dart';
 
@@ -32,13 +33,16 @@ class HabitProgressCard extends ConsumerWidget {
   /// disuntikkan dari HomeScreen supaya widget ini tidak perlu tahu index.
   final Widget? dragHandle;
 
-  String get _progressLabel {
+  /// "{progress} of {goal}" instead of a bare "x/y" — makes which number is
+  /// the current progress and which is the target unambiguous at a glance
+  /// (#25), especially for rupiah amounts where a raw fraction reads oddly.
+  String _progressLabel(AppLocalizations l10n) {
     final h = item.habit;
-    if (h.isRupiah) {
-      return '${formatRupiah(item.progressValue)}/${formatRupiah(h.goalValue)}';
-    }
-    final target = h.goalUnit == 'x' ? '${h.goalValue}x' : '${h.goalValue} ${h.goalUnit}';
-    return '${item.progressValue}/$target';
+    final progress = h.isRupiah ? formatRupiah(item.progressValue) : '${item.progressValue}';
+    final goal = h.isRupiah
+        ? formatRupiah(h.goalValue)
+        : (h.goalUnit == 'x' ? '${h.goalValue}x' : '${h.goalValue} ${h.goalUnit}');
+    return '${l10n.commonProgress} $progress • ${l10n.commonGoal} $goal';
   }
 
   double get _ratio {
@@ -62,7 +66,7 @@ class HabitProgressCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       color: baseColor,
       child: InkWell(
-        onTap: isEditMode ? null : onTap,
+        onTap: isEditMode ? onEdit : onTap,
         child: Stack(
           children: [
             if (!done)
@@ -106,7 +110,9 @@ class HabitProgressCard extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _progressLabel,
+                          _progressLabel(AppLocalizations.of(context)!),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: done ? Colors.white.withValues(alpha: 0.85) : null,
                           ),

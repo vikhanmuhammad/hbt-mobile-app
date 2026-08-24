@@ -79,6 +79,10 @@ class Habits extends Table {
   BoolColumn get reminderEnabled =>
       boolean().withDefault(const Constant(false))();
   TextColumn get reminderTime => text().nullable()();
+  /// Minutes between repeats starting at [reminderTime], e.g. every 30
+  /// minutes — null means a single reminder at [reminderTime] (the
+  /// pre-existing behavior). No end time: repeats until end of day.
+  IntColumn get reminderIntervalMinutes => integer().nullable()();
   DateTimeColumn get startDate => dateTime()();
   DateTimeColumn get endDate => dateTime().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();

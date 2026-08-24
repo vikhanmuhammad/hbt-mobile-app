@@ -722,6 +722,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _reminderIntervalMinutesMeta =
+      const VerificationMeta('reminderIntervalMinutes');
+  @override
+  late final GeneratedColumn<int> reminderIntervalMinutes =
+      GeneratedColumn<int>(
+        'reminder_interval_minutes',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _startDateMeta = const VerificationMeta(
     'startDate',
   );
@@ -833,6 +844,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     timeRange,
     reminderEnabled,
     reminderTime,
+    reminderIntervalMinutes,
     startDate,
     endDate,
     isActive,
@@ -946,6 +958,15 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         reminderTime.isAcceptableOrUnknown(
           data['reminder_time']!,
           _reminderTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_interval_minutes')) {
+      context.handle(
+        _reminderIntervalMinutesMeta,
+        reminderIntervalMinutes.isAcceptableOrUnknown(
+          data['reminder_interval_minutes']!,
+          _reminderIntervalMinutesMeta,
         ),
       );
     }
@@ -1063,6 +1084,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.string,
         data['${effectivePrefix}reminder_time'],
       ),
+      reminderIntervalMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_interval_minutes'],
+      ),
       startDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}start_date'],
@@ -1118,6 +1143,11 @@ class Habit extends DataClass implements Insertable<Habit> {
   final String timeRange;
   final bool reminderEnabled;
   final String? reminderTime;
+
+  /// Minutes between repeats starting at [reminderTime], e.g. every 30
+  /// minutes — null means a single reminder at [reminderTime] (the
+  /// pre-existing behavior). No end time: repeats until end of day.
+  final int? reminderIntervalMinutes;
   final DateTime startDate;
   final DateTime? endDate;
   final bool isActive;
@@ -1153,6 +1183,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     required this.timeRange,
     required this.reminderEnabled,
     this.reminderTime,
+    this.reminderIntervalMinutes,
     required this.startDate,
     this.endDate,
     required this.isActive,
@@ -1183,6 +1214,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     map['reminder_enabled'] = Variable<bool>(reminderEnabled);
     if (!nullToAbsent || reminderTime != null) {
       map['reminder_time'] = Variable<String>(reminderTime);
+    }
+    if (!nullToAbsent || reminderIntervalMinutes != null) {
+      map['reminder_interval_minutes'] = Variable<int>(reminderIntervalMinutes);
     }
     map['start_date'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
@@ -1220,6 +1254,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderTime: reminderTime == null && nullToAbsent
           ? const Value.absent()
           : Value(reminderTime),
+      reminderIntervalMinutes: reminderIntervalMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderIntervalMinutes),
       startDate: Value(startDate),
       endDate: endDate == null && nullToAbsent
           ? const Value.absent()
@@ -1256,6 +1293,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       timeRange: serializer.fromJson<String>(json['timeRange']),
       reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
       reminderTime: serializer.fromJson<String?>(json['reminderTime']),
+      reminderIntervalMinutes: serializer.fromJson<int?>(
+        json['reminderIntervalMinutes'],
+      ),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -1283,6 +1323,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       'timeRange': serializer.toJson<String>(timeRange),
       'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
       'reminderTime': serializer.toJson<String?>(reminderTime),
+      'reminderIntervalMinutes': serializer.toJson<int?>(
+        reminderIntervalMinutes,
+      ),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'isActive': serializer.toJson<bool>(isActive),
@@ -1308,6 +1351,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     String? timeRange,
     bool? reminderEnabled,
     Value<String?> reminderTime = const Value.absent(),
+    Value<int?> reminderIntervalMinutes = const Value.absent(),
     DateTime? startDate,
     Value<DateTime?> endDate = const Value.absent(),
     bool? isActive,
@@ -1330,6 +1374,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     timeRange: timeRange ?? this.timeRange,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
     reminderTime: reminderTime.present ? reminderTime.value : this.reminderTime,
+    reminderIntervalMinutes: reminderIntervalMinutes.present
+        ? reminderIntervalMinutes.value
+        : this.reminderIntervalMinutes,
     startDate: startDate ?? this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
     isActive: isActive ?? this.isActive,
@@ -1366,6 +1413,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderTime: data.reminderTime.present
           ? data.reminderTime.value
           : this.reminderTime,
+      reminderIntervalMinutes: data.reminderIntervalMinutes.present
+          ? data.reminderIntervalMinutes.value
+          : this.reminderIntervalMinutes,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
@@ -1395,6 +1445,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
           ..write('reminderTime: $reminderTime, ')
+          ..write('reminderIntervalMinutes: $reminderIntervalMinutes, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
@@ -1422,6 +1473,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     timeRange,
     reminderEnabled,
     reminderTime,
+    reminderIntervalMinutes,
     startDate,
     endDate,
     isActive,
@@ -1448,6 +1500,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.timeRange == this.timeRange &&
           other.reminderEnabled == this.reminderEnabled &&
           other.reminderTime == this.reminderTime &&
+          other.reminderIntervalMinutes == this.reminderIntervalMinutes &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.isActive == this.isActive &&
@@ -1472,6 +1525,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String> timeRange;
   final Value<bool> reminderEnabled;
   final Value<String?> reminderTime;
+  final Value<int?> reminderIntervalMinutes;
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> isActive;
@@ -1494,6 +1548,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.reminderTime = const Value.absent(),
+    this.reminderIntervalMinutes = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1517,6 +1572,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.reminderTime = const Value.absent(),
+    this.reminderIntervalMinutes = const Value.absent(),
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1544,6 +1600,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? timeRange,
     Expression<bool>? reminderEnabled,
     Expression<String>? reminderTime,
+    Expression<int>? reminderIntervalMinutes,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? isActive,
@@ -1567,6 +1624,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (timeRange != null) 'time_range': timeRange,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
       if (reminderTime != null) 'reminder_time': reminderTime,
+      if (reminderIntervalMinutes != null)
+        'reminder_interval_minutes': reminderIntervalMinutes,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (isActive != null) 'is_active': isActive,
@@ -1592,6 +1651,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String>? timeRange,
     Value<bool>? reminderEnabled,
     Value<String?>? reminderTime,
+    Value<int?>? reminderIntervalMinutes,
     Value<DateTime>? startDate,
     Value<DateTime?>? endDate,
     Value<bool>? isActive,
@@ -1615,6 +1675,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       timeRange: timeRange ?? this.timeRange,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderTime: reminderTime ?? this.reminderTime,
+      reminderIntervalMinutes:
+          reminderIntervalMinutes ?? this.reminderIntervalMinutes,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       isActive: isActive ?? this.isActive,
@@ -1668,6 +1730,11 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (reminderTime.present) {
       map['reminder_time'] = Variable<String>(reminderTime.value);
     }
+    if (reminderIntervalMinutes.present) {
+      map['reminder_interval_minutes'] = Variable<int>(
+        reminderIntervalMinutes.value,
+      );
+    }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
     }
@@ -1711,6 +1778,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
           ..write('reminderTime: $reminderTime, ')
+          ..write('reminderIntervalMinutes: $reminderIntervalMinutes, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
@@ -3715,6 +3783,7 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String> timeRange,
       Value<bool> reminderEnabled,
       Value<String?> reminderTime,
+      Value<int?> reminderIntervalMinutes,
       required DateTime startDate,
       Value<DateTime?> endDate,
       Value<bool> isActive,
@@ -3739,6 +3808,7 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String> timeRange,
       Value<bool> reminderEnabled,
       Value<String?> reminderTime,
+      Value<int?> reminderIntervalMinutes,
       Value<DateTime> startDate,
       Value<DateTime?> endDate,
       Value<bool> isActive,
@@ -3877,6 +3947,11 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<String> get reminderTime => $composableBuilder(
     column: $table.reminderTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4063,6 +4138,11 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get startDate => $composableBuilder(
     column: $table.startDate,
     builder: (column) => ColumnOrderings(column),
@@ -4179,6 +4259,11 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<String> get reminderTime => $composableBuilder(
     column: $table.reminderTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
     builder: (column) => column,
   );
 
@@ -4327,6 +4412,7 @@ class $$HabitsTableTableManager
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<String?> reminderTime = const Value.absent(),
+                Value<int?> reminderIntervalMinutes = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -4349,6 +4435,7 @@ class $$HabitsTableTableManager
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
                 reminderTime: reminderTime,
+                reminderIntervalMinutes: reminderIntervalMinutes,
                 startDate: startDate,
                 endDate: endDate,
                 isActive: isActive,
@@ -4373,6 +4460,7 @@ class $$HabitsTableTableManager
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<String?> reminderTime = const Value.absent(),
+                Value<int?> reminderIntervalMinutes = const Value.absent(),
                 required DateTime startDate,
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -4395,6 +4483,7 @@ class $$HabitsTableTableManager
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
                 reminderTime: reminderTime,
+                reminderIntervalMinutes: reminderIntervalMinutes,
                 startDate: startDate,
                 endDate: endDate,
                 isActive: isActive,

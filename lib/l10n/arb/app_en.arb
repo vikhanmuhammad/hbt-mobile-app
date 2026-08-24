@@ -7,6 +7,7 @@
 
   "commonCancel": "Cancel",
   "commonDelete": "Delete",
+  "commonUndo": "Undo",
 
   "settingsLanguage": "Language",
   "@settingsLanguage": {
@@ -59,6 +60,10 @@
   "homeCommunity": "Community",
   "homeDeleteHabitTitle": "Delete this habit?",
   "homeDeleteHabitBody": "\"{name}\" and all of its progress history will be permanently deleted and will no longer count toward your Dashboard stats. This cannot be undone.",
+  "homeHabitDeleted": "\"{name}\" deleted.",
+  "@homeHabitDeleted": {
+    "placeholders": { "name": { "type": "String" } }
+  },
   "@homeDeleteHabitBody": {
     "placeholders": { "name": { "type": "String" } }
   },
@@ -98,6 +103,20 @@
   "financeOnTrack": "On Track",
   "financeOverspending": "Overspending",
   "financeDailySpendingTrend": "Daily Spending Trend",
+  "financeWeeklySpendingTrend": "Weekly Spending Trend",
+  "financeMonthlySpendingTrend": "Monthly Spending Trend",
+  "financeSpendingByCategory": "Spending by Category",
+  "financeAddSpendingLimit": "Add Spending Limit",
+  "commonProgress": "Progress",
+  "commonGoal": "Goal",
+  "genderLabel": "Gender",
+  "genderHint": "Select a gender",
+  "addHabitReminderRepeat": "Repeat",
+  "addHabitReminderOnce": "Once",
+  "addHabitReminderEveryMinutes": "Every {minutes} min",
+  "@addHabitReminderEveryMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
   "financeNoDataYet": "No data yet",
 
   "dashboardFailedToLoadCalendar": "Failed to load calendar: {error}",
@@ -141,6 +160,8 @@
     "placeholders": { "limit": { "type": "int" } }
   },
   "addHabitNoRecommendations": "No recommendations for this category yet.",
+  "addHabitAlreadyAdded": "Already added",
+  "addHabitDuplicateName": "You already have a habit with this name.",
   "addHabitAdd": "Add",
   "addHabitAddCustomHabit": "+ Add Custom Habit",
   "addHabitAdded": "Habit added",

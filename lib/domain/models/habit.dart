@@ -17,6 +17,7 @@ class Habit {
     required this.timeRange,
     required this.reminderEnabled,
     this.reminderTime,
+    this.reminderIntervalMinutes,
     required this.startDate,
     this.endDate,
     required this.isActive,
@@ -40,6 +41,11 @@ class Habit {
   final TimeRange timeRange;
   final bool reminderEnabled;
   final String? reminderTime;
+
+  /// Minutes between repeats starting at [reminderTime] — null means a
+  /// single reminder at that time (the original behavior). No end time:
+  /// repeats until the end of the day.
+  final int? reminderIntervalMinutes;
   final DateTime startDate;
   final DateTime? endDate;
   final bool isActive;
