@@ -61,7 +61,9 @@ class FinanceSummaryScreen extends ConsumerWidget {
       ),
       body: FadeSlideIn(
         child: ListView(
-        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
+        // Extra bottom padding clears the "Add Spending Limit" FAB (#27) so
+        // it doesn't sit on top of the last card in the list.
+        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 96),
         children: [
           SegmentedPillToggle<FinancePeriod>(
             segments: [

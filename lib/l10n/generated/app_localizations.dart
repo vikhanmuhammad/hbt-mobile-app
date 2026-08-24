@@ -554,6 +554,12 @@ abstract class AppLocalizations {
   /// **'Select a gender'**
   String get genderHint;
 
+  /// No description provided for @settingsAgeYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{age} y/o'**
+  String settingsAgeYears(int age);
+
   /// No description provided for @addHabitReminderRepeat.
   ///
   /// In en, this message translates to:

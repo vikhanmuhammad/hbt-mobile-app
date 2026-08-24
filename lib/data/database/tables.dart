@@ -146,8 +146,14 @@ class HabitGroupLinks extends Table {
   /// versa. Nullable only for rows written before this column existed.
   TextColumn get uid => text().nullable()();
 
+  // Scoped by `uid` too, not just (habitId, groupHabitId) — otherwise only
+  // ONE account could ever link a given local habit to a given Group Habit
+  // on this device; a second account signing in and linking that exact same
+  // pair (a real scenario: same local habit, same already-published Group
+  // Habit, different account) hit a UNIQUE constraint violation instead of
+  // getting its own link row.
   @override
   List<Set<Column>> get uniqueKeys => [
-        {habitId, groupHabitId},
+        {habitId, groupHabitId, uid},
       ];
 }

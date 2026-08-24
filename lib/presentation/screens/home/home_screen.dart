@@ -354,7 +354,12 @@ class _HabitList extends ConsumerWidget {
       } else {
         final value = await showQuickProgressSheet(context, item);
         if (value == null) return;
-        await repo.setProgress(habit: habit, date: selectedDate, progressValue: value);
+        await repo.applyPeriodAwareEdit(
+          habit: habit,
+          date: selectedDate,
+          previousPeriodTotal: item.progressValue,
+          newPeriodTotal: value,
+        );
       }
       _invalidateSummaries(ref);
       unawaited(syncCommunityHabit(ref, habit.id, selectedDate));

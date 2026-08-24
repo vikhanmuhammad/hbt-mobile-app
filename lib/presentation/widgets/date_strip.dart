@@ -141,26 +141,45 @@ class _DateStripItem extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                selected
-                    ? DailyProgressRing(
-                        done: (ratio * 100).round(),
-                        total: hasData ? 100 : 0,
-                        size: 40,
-                        strokeWidth: 3,
-                        centerLabel: '${day.day}',
-                      )
-                    : Container(
-                        width: 36,
-                        height: 36,
-                        alignment: Alignment.center,
-                        decoration: isToday
-                            ? BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: theme.dividerColor, width: 1.5),
-                              )
-                            : null,
-                        child: Text('${day.day}', style: theme.textTheme.bodyMedium),
+                // Every day with logged progress gets its own ring (#3) —
+                // not just the selected one — so scrolling back through the
+                // month still shows how each day went, matching the
+                // Dashboard's monthly calendar grid. The selected day's ring
+                // is just drawn a bit bigger/bolder to stay the obvious focal
+                // point.
+                if (hasData)
+                  DailyProgressRing(
+                    done: (ratio * 100).round(),
+                    total: 100,
+                    size: selected ? 40 : 36,
+                    strokeWidth: selected ? 3 : 2.5,
+                    centerLabel: '${day.day}',
+                    centerLabelStyle: selected
+                        ? null
+                        : theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700, fontSize: 12),
+                  )
+                else
+                  Container(
+                    width: selected ? 40 : 36,
+                    height: selected ? 40 : 36,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
+                      border: selected
+                          ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                          : isToday
+                              ? Border.all(color: theme.dividerColor, width: 1.5)
+                              : null,
+                    ),
+                    child: Text(
+                      '${day.day}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: selected ? theme.colorScheme.primary : null,
+                        fontWeight: selected ? FontWeight.w800 : null,
                       ),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -5,12 +5,14 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../domain/language.dart';
+import '../../../domain/models/onboarding_question.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/app_logo.dart';
+import '../../widgets/segmented_pill_toggle.dart';
 import '../../widgets/toggle_switch.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 import '../onboarding/onboarding_flow.dart';
@@ -38,6 +40,15 @@ class SettingsScreen extends ConsumerWidget {
 
     final profile = ref.watch(userProfileStreamProvider).value;
     final isPro = ref.watch(isProProvider);
+    final lang = ref.watch(appLanguageProvider);
+    final gender = Gender.fromValue(ref.watch(settingsRepositoryProvider).gender);
+    final age = profile?.age;
+    // Age & gender from onboarding (#22) — null pieces just get skipped
+    // instead of the whole line disappearing.
+    final ageGenderLabel = [
+      if (age != null) l10n.settingsAgeYears(age),
+      if (gender != null) gender.label(lang == AppLang.id),
+    ].join(' • ');
 
     return Scaffold(
       body: Center(
@@ -61,6 +72,10 @@ class SettingsScreen extends ConsumerWidget {
                           profile?.name.isNotEmpty == true ? profile!.name : l10n.settingsNoName,
                           style: theme.textTheme.headlineSmall,
                         ),
+                        if (ageGenderLabel.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(ageGenderLabel, style: theme.textTheme.bodySmall),
+                        ],
                         if (isPro) ...[
                           const SizedBox(height: 6),
                           Container(
@@ -142,18 +157,21 @@ class SettingsScreen extends ConsumerWidget {
                         l10n.settingsLanguage,
                         style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      SegmentedButton<AppLang>(
-                        segments: const [
-                          ButtonSegment(value: AppLang.en, label: Text('EN')),
-                          ButtonSegment(value: AppLang.id, label: Text('ID')),
-                        ],
-                        selected: {ref.watch(appLanguageProvider)},
-                        onSelectionChanged: (selection) => ref
-                            .read(appLanguageProvider.notifier)
-                            .setLanguage(selection.first),
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
+                      // `SegmentedPillToggle`, not the stock Material
+                      // `SegmentedButton` — its boxy black-outlined segments
+                      // clashed with the rest of the app's rounded-pill
+                      // toggles (same fix already applied to Finance's
+                      // Daily/Weekly/Monthly toggle).
+                      SizedBox(
+                        width: 120,
+                        child: SegmentedPillToggle<AppLang>(
+                          segments: const [
+                            PillSegment(value: AppLang.en, label: 'EN'),
+                            PillSegment(value: AppLang.id, label: 'ID'),
+                          ],
+                          selected: ref.watch(appLanguageProvider),
+                          onChanged: (value) =>
+                              ref.read(appLanguageProvider.notifier).setLanguage(value),
                         ),
                       ),
                     ],

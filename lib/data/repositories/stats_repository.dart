@@ -1,3 +1,4 @@
+import '../../domain/date_utils.dart';
 import '../../domain/habit_schedule.dart';
 import '../../domain/models/category.dart';
 import '../../domain/models/dashboard_summary.dart';
@@ -51,6 +52,14 @@ class StatsRepository {
   /// [habitIds] kosong berarti tanpa filter (semua habit ikut dihitung) —
   /// non-kosong membatasi agregasi cuma ke habit yang id-nya ada di set itu
   /// (dipakai filter icon habit di layar Dashboard gabungan).
+  ///
+  /// Iterasi dari sisi HABIT × hari terjadwal (sama seperti
+  /// [computeMonthSummaries]/[computeDaySummary]), bukan dari sisi log —
+  /// kalau tidak, habit yang baru dibuat dan belum pernah dilog sama sekali
+  /// tidak akan pernah muncul di agregasi (dianggap "tidak ada" alih-alih
+  /// "ada tapi 0%"), yang bikin rata-rata per kategori & Monthly Trend jadi
+  /// bias ke atas karena diam-diam mengecualikan habit yang justru paling
+  /// butuh terlihat progresnya masih 0.
   Future<DashboardSummary> computeDashboard({Set<int> habitIds = const {}}) async {
     final allHabits = await _dashboardEligibleHabits();
     final habits = habitIds.isEmpty
@@ -58,36 +67,52 @@ class StatsRepository {
         : allHabits.where((h) => habitIds.contains(h.id)).toList();
     final categories =
         (await _db.categoryDao.getAllActive()).map(mapCategory).toList();
-    final logs = (await _db.habitLogDao.getAllLogs()).map(mapHabitLog).toList();
 
-    if (habits.isEmpty || logs.isEmpty) return DashboardSummary.empty;
+    if (habits.isEmpty) return DashboardSummary.empty;
 
-    final habitById = {for (final h in habits) h.id: h};
-    final trackedDays = <DateTime>{};
+    final now = dateOnly(DateTime.now());
+    // Dibatasi 6 bulan terakhir (selaras dengan _MonthlyTrend yang cuma
+    // menampilkan 6 bar) supaya biaya komputasi sebanding dengan aktivitas
+    // baru-baru ini, bukan seluruh umur habit sejak dibuat.
+    final windowStart = DateTime(now.year, now.month - 5, 1);
+    final allLogs = (await _db.habitLogDao.getLogsInRange(windowStart, now))
+        .map(mapHabitLog)
+        .toList();
+    final periodProgress = _periodProgressByHabit(habits, allLogs);
+
+    // "Hari tercatat" tetap berarti hari yang benar-benar ada log-nya (bukan
+    // hari yang cuma "terjadwal") — dipakai buat statistik "X Days Tracked",
+    // jadi dihitung terpisah dari agregasi per-hari-terjadwal di bawah.
+    final trackedDays = <DateTime>{
+      for (final log in allLogs) dateOnly(log.date),
+    };
+
     var totalLogs = 0;
     var doneLogs = 0.0;
-
     final habitTotals = <int, (int total, double done)>{};
     final monthTotals = <DateTime, (int total, double done)>{};
 
-    for (final log in logs) {
-      final habit = habitById[log.habitId];
-      if (habit == null) continue;
+    for (final habit in habits) {
+      for (var day = windowStart; !day.isAfter(now); day = day.add(const Duration(days: 1))) {
+        if (!isHabitActiveOn(habit, day)) continue;
 
-      final credit = habit.progressCredit(log.progressValue);
+        final periodStart = periodBoundsFor(habit.goalPeriod, day).$1;
+        final sum = periodProgress[_periodKey(habit.id, periodStart)] ?? 0;
+        final credit = habit.progressCredit(sum);
 
-      trackedDays.add(DateTime(log.date.year, log.date.month, log.date.day));
-      totalLogs++;
-      doneLogs += credit;
+        totalLogs++;
+        doneLogs += credit;
 
-      final habitPrev = habitTotals[habit.id] ?? (0, 0.0);
-      habitTotals[habit.id] = (habitPrev.$1 + 1, habitPrev.$2 + credit);
+        final habitPrev = habitTotals[habit.id] ?? (0, 0.0);
+        habitTotals[habit.id] = (habitPrev.$1 + 1, habitPrev.$2 + credit);
 
-      final monthKey = DateTime(log.date.year, log.date.month);
-      final monthPrev = monthTotals[monthKey] ?? (0, 0.0);
-      monthTotals[monthKey] = (monthPrev.$1 + 1, monthPrev.$2 + credit);
+        final monthKey = DateTime(day.year, day.month);
+        final monthPrev = monthTotals[monthKey] ?? (0, 0.0);
+        monthTotals[monthKey] = (monthPrev.$1 + 1, monthPrev.$2 + credit);
+      }
     }
 
+    final habitById = {for (final h in habits) h.id: h};
     final habitStats = habitTotals.entries
         .map((e) => HabitStat(
               habit: habitById[e.key]!,

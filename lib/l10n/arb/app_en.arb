@@ -111,6 +111,10 @@
   "commonGoal": "Goal",
   "genderLabel": "Gender",
   "genderHint": "Select a gender",
+  "settingsAgeYears": "{age} y/o",
+  "@settingsAgeYears": {
+    "placeholders": { "age": { "type": "int" } }
+  },
   "addHabitReminderRepeat": "Repeat",
   "addHabitReminderOnce": "Once",
   "addHabitReminderEveryMinutes": "Every {minutes} min",

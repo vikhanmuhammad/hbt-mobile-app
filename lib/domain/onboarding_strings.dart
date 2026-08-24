@@ -26,26 +26,26 @@ class OnboardingStrings {
           'Catat progresmu dalam hitungan detik',
           'Lihat konsistensimu sekilas pandang',
           'Bertumbuh bersama teman',
-          'Rayakan setiap streak-mu',
+          'Semua kebiasaanmu, dalam satu layar',
         ]
       : const [
           'Log your progress in seconds',
           'See your consistency at a glance',
           'Grow together with friends',
-          'Celebrate every streak',
+          'Every habit, right on one screen',
         ];
   List<String> get introSubtitles => _id
       ? const [
           'Tap untuk selesaikan kebiasaan sederhana, atau tambahkan angka untuk yang kamu ukur.',
           'Kalender bulanan dengan ring progress menunjukkan seberapa konsisten kamu selama ini.',
           'Gabung Community, lacak kebiasaan bareng, dan naik di papan peringkat bersama.',
-          'Setiap hari kamu konsisten menambah streak-mu — langkah kecil yang berarti besar.',
+          'Beranda menunjukkan progres dan target tiap kebiasaan dengan jelas, setiap hari.',
         ]
       : const [
           'Tap to check off simple habits, or add a quick number for the ones you measure.',
           'A monthly calendar with progress rings shows exactly how consistent you\'ve been.',
           'Join a Community group, track shared habits, and climb the leaderboard together.',
-          'Every day you show up adds to your streak — small steps that add up to real change.',
+          'Home shows your progress against each goal clearly, right from the first glance.',
         ];
   String get getStarted => _t('Get Started', 'Mulai');
 

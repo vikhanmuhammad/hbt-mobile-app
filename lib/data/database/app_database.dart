@@ -31,7 +31,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -92,6 +92,19 @@ class AppDatabase extends _$AppDatabase {
             // starting at reminderTime, instead of just once/day. Nullable,
             // defaults to null (single reminder, unchanged behavior).
             await m.addColumn(habits, habits.reminderIntervalMinutes);
+          }
+          if (from < 9) {
+            // v9: HabitGroupLinks.uniqueKeys now includes `uid`, not just
+            // (habitId, groupHabitId) — the old constraint meant only ONE
+            // account could ever link a given local habit to a given Group
+            // Habit on this device; a second account trying to link that
+            // exact same pair hit a UNIQUE constraint crash instead of
+            // getting its own link row. Link rows are just re-creatable
+            // pointers (tap "Link" again), not valuable historical data, so
+            // recreate the table with the corrected constraint rather than a
+            // more complex in-place migration.
+            await m.deleteTable('habit_group_links');
+            await m.createTable(habitGroupLinks);
           }
         },
       );

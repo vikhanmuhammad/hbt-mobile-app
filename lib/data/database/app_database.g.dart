@@ -3024,7 +3024,7 @@ class $HabitGroupLinksTable extends HabitGroupLinks
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
-    {habitId, groupHabitId},
+    {habitId, groupHabitId, uid},
   ];
   @override
   HabitGroupLink map(Map<String, dynamic> data, {String? tablePrefix}) {

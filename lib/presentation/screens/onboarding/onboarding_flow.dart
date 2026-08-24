@@ -437,7 +437,7 @@ class _FeatureHighlightStepState extends ConsumerState<_FeatureHighlightStep> {
     _HabitDetailScreenMock(),
     _CalendarScreenMock(),
     _CommunityScreenMock(),
-    _HomeStreakScreenMock(),
+    _HomeListScreenMock(),
   ];
 
   @override
@@ -620,10 +620,13 @@ class _PhoneFrame extends StatelessWidget {
   }
 }
 
-/// Slide 1 mock: a screenshot-style recreation of the single-habit quick-log
-/// screen (§6.2's stepper/quick-add pattern). Plays a one-shot animation —
-/// the "+200" chip highlights, then the number and glass fill rise — as if
-/// the feature had just been tapped.
+/// Slide 1 mock: a screenshot-style recreation of the real quick-progress
+/// bottom sheet (`quick_progress_sheet.dart`, opened by tapping a
+/// measured habit on Beranda) — title + "Target: X" subtitle, a −/+
+/// stepper around the current value, then "Mark Achieved"/"Save" buttons,
+/// shown sliding up over a dimmed glimpse of the habit row it was opened
+/// from. Plays a one-shot animation: the number rises as if the + button
+/// had just been tapped a couple of times.
 class _HabitDetailScreenMock extends StatefulWidget {
   const _HabitDetailScreenMock();
 
@@ -634,16 +637,11 @@ class _HabitDetailScreenMock extends StatefulWidget {
 class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
   static const _goal = 2000;
   int _value = 1200;
-  bool _chipActive = false;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-      setState(() => _chipActive = true);
-    });
-    Future.delayed(const Duration(milliseconds: 750), () {
+    Future.delayed(const Duration(milliseconds: 650), () {
       if (!mounted) return;
       setState(() => _value = 1400);
     });
@@ -653,122 +651,133 @@ class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return _PhoneFrame(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
-        child: Column(
-          children: [
-            Row(
+      child: Column(
+        children: [
+          // Dimmed glimpse of the Beranda row this sheet was opened from —
+          // matches how the real sheet appears as an overlay, not its own
+          // full screen.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 26, 18, 0),
+            child: Opacity(
+              opacity: 0.35,
+              child: _MockHabitRow(
+                icon: 'glass-water',
+                name: 'Drink Water',
+                progressLabel: 'Progress $_value ml • Goal $_goal ml',
+                progress: (_value / _goal).clamp(0.0, 1.0),
+                color: Colors.blue,
+                done: _value >= _goal,
+              ),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 14,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  size: 14,
-                  color: theme.textTheme.bodySmall?.color,
-                ),
-                const Spacer(),
-                const HabitIcon(
-                  icon: 'glass-water',
-                  size: 14,
-                  color: Colors.blue,
-                ),
-                const SizedBox(width: 6),
                 Text(
                   'Drink Water',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const Spacer(),
-                Icon(
-                  Icons.more_horiz_rounded,
-                  size: 16,
-                  color: theme.textTheme.bodySmall?.color,
-                ),
-              ],
-            ),
-            const Spacer(),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: _value.toDouble()),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOut,
-              builder: (context, value, _) => RichText(
-                text: TextSpan(
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                const SizedBox(height: 2),
+                Text('Target: $_goal ml', style: theme.textTheme.labelSmall),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TextSpan(text: '${value.round()}'),
-                    TextSpan(text: ' ml', style: theme.textTheme.titleSmall),
-                  ],
-                ),
-              ),
-            ),
-            Text('/$_goal ml', style: theme.textTheme.bodySmall),
-            const SizedBox(height: 18),
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: _value / _goal),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.easeOut,
-              builder: (context, ratio, _) => Container(
-                width: 64,
-                height: 92,
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.blue.withValues(alpha: 0.4),
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: FractionallySizedBox(
-                    heightFactor: ratio.clamp(0.0, 1.0),
-                    child: Container(
-                      color: Colors.blue.withValues(alpha: 0.55),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final amount in const ['+200', '+500', '+1000'])
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: AnimatedScale(
-                      scale: amount == '+200' && _chipActive ? 1.12 : 1.0,
-                      duration: const Duration(milliseconds: 250),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: amount == '+200' && _chipActive
-                              ? theme.colorScheme.primary
-                              : theme.colorScheme.primary.withValues(
-                                  alpha: 0.1,
-                                ),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          amount,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: amount == '+200' && _chipActive
-                                ? Colors.white
-                                : theme.colorScheme.primary,
-                          ),
-                        ),
+                    const _MockStepButton(icon: Icons.remove_rounded),
+                    const SizedBox(width: 18),
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0, end: _value.toDouble()),
+                      duration: const Duration(milliseconds: 550),
+                      curve: Curves.easeOut,
+                      builder: (context, value, _) => Text(
+                        '${value.round()}',
+                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 18),
+                    const _MockStepButton(icon: Icons.add_rounded),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: _MockPillButton(label: 'Mark Achieved', filled: false)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _MockPillButton(label: 'Save', filled: true)),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small circular −/+ button matching `_StepButton` in the real
+/// `quick_progress_sheet.dart`.
+class _MockStepButton extends StatelessWidget {
+  const _MockStepButton({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: 34,
+      height: 34,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: theme.cardColor,
+        border: Border.all(color: theme.dividerColor),
+      ),
+      child: Icon(icon, size: 16),
+    );
+  }
+}
+
+/// Matches the real sheet's "Mark Achieved" (outlined) / "Save" (filled)
+/// button pair.
+class _MockPillButton extends StatelessWidget {
+  const _MockPillButton({required this.label, required this.filled});
+
+  final String label;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      height: 34,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: filled ? theme.colorScheme.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        border: filled ? null : Border.all(color: theme.dividerColor),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: filled ? Colors.white : theme.textTheme.bodyMedium?.color,
         ),
       ),
     );
@@ -849,10 +858,8 @@ class _MockHabitRow extends StatelessWidget {
                     ),
                   ),
                   Icon(
-                    done
-                        ? Icons.check_circle_rounded
-                        : Icons.chevron_right_rounded,
-                    color: done ? color : theme.textTheme.bodySmall?.color,
+                    done ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    color: done ? color : theme.dividerColor,
                     size: 22,
                   ),
                 ],
@@ -865,10 +872,11 @@ class _MockHabitRow extends StatelessWidget {
   }
 }
 
-/// Slide 2 mock: a screenshot-style recreation of the History/Kalender
-/// screen (§7) — a week strip of dates plus the real `DailyProgressRing`.
-/// One-shot: the selected date and ring both animate to a new value once,
-/// as if a different date had just been tapped.
+/// Slide 2 mock: a screenshot-style recreation of the Dashboard's monthly
+/// calendar (`monthly_calendar_grid.dart`) — a 7-column grid where each day
+/// that has data gets its own small `DailyProgressRing`, matching the real
+/// widget exactly rather than a single big ring. One-shot: one more day's
+/// ring fills in, as if progress had just synced in.
 class _CalendarScreenMock extends StatefulWidget {
   const _CalendarScreenMock();
 
@@ -877,12 +885,14 @@ class _CalendarScreenMock extends StatefulWidget {
 }
 
 class _CalendarScreenMockState extends State<_CalendarScreenMock> {
-  static const _labels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  static const _dates = [16, 17, 18, 19, 20, 21, 22];
-  static const _filled = [true, true, true, true, false, false, false];
-
-  int _selected = 3;
-  int _done = 4;
+  static const _weekdayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  // 14 days starting the 17th — null = no data yet (plain number, like the
+  // real grid), a value = that day's success ratio.
+  final List<double?> _ratios = [
+    1, 1, 0.8, 0.5, null, null, null,
+    0.9, 0.6, null, null, null, null, null,
+  ];
+  int _highlightIndex = 3;
 
   @override
   void initState() {
@@ -890,8 +900,8 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
     Future.delayed(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       setState(() {
-        _selected = 4;
-        _done = 6;
+        _ratios[4] = 0.75;
+        _highlightIndex = 4;
       });
     });
   }
@@ -901,39 +911,71 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
     final theme = Theme.of(context);
     return _PhoneFrame(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'August 2026',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-              ),
+              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                for (var i = 0; i < _labels.length; i++)
-                  _DateCell(
-                    label: _labels[i],
-                    date: _dates[i],
-                    selected: i == _selected,
-                    filled: _filled[i] || i == _selected,
+                for (final h in _weekdayHeaders)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        h,
+                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    ),
                   ),
               ],
             ),
-            const Spacer(),
-            Center(
-              child: DailyProgressRing(
-                done: _done,
-                total: 7,
-                size: 116,
-                centerSubLabel: 'habits done',
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 4,
               ),
+              itemCount: _ratios.length,
+              itemBuilder: (context, i) {
+                final ratio = _ratios[i];
+                final selected = i == _highlightIndex;
+                return Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: selected
+                        ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                        : null,
+                  ),
+                  child: ratio != null
+                      ? TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0, end: ratio),
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, _) => DailyProgressRing(
+                            done: (value * 100).round(),
+                            total: 100,
+                            size: 28,
+                            strokeWidth: 2.5,
+                            centerLabel: '${17 + i}',
+                            centerLabelStyle: theme.textTheme.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w800, fontSize: 10),
+                          ),
+                        )
+                      : Text(
+                          '${17 + i}',
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                );
+              },
             ),
-            const Spacer(),
           ],
         ),
       ),
@@ -941,56 +983,12 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
   }
 }
 
-class _DateCell extends StatelessWidget {
-  const _DateCell({
-    required this.label,
-    required this.date,
-    required this.selected,
-    required this.filled,
-  });
-
-  final String label;
-  final int date;
-  final bool selected;
-  final bool filled;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      children: [
-        Text(label, style: theme.textTheme.labelSmall),
-        const SizedBox(height: 6),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 350),
-          width: 30,
-          height: 30,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: selected
-                ? theme.colorScheme.primary
-                : filled
-                ? theme.colorScheme.primary.withValues(alpha: 0.18)
-                : Colors.transparent,
-            border: selected ? null : Border.all(color: theme.dividerColor),
-          ),
-          child: Text(
-            '$date',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: selected ? Colors.white : theme.textTheme.bodySmall?.color,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Slide 3 mock: a screenshot-style recreation of a Community group's
-/// leaderboard (§14). One-shot: "You"'s progress bar animates up once, as
-/// if progress had just synced in.
+/// leaderboard tab (`_LeaderboardTile` in `group_detail_screen.dart`) — a
+/// rank-colored circle avatar, name + secondary stat line, and a big bold
+/// primary number + unit on the right. The real tile has no progress bar;
+/// this mock matches that instead of inventing one. One-shot: "You"'s value
+/// ticks up once, as if progress had just synced in.
 class _CommunityScreenMock extends StatefulWidget {
   const _CommunityScreenMock();
 
@@ -999,14 +997,14 @@ class _CommunityScreenMock extends StatefulWidget {
 }
 
 class _CommunityScreenMockState extends State<_CommunityScreenMock> {
-  double _youProgress = 0.45;
+  int _youValue = 8;
 
   @override
   void initState() {
     super.initState();
     Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
-      setState(() => _youProgress = 0.9);
+      setState(() => _youValue = 12);
     });
   }
 
@@ -1014,13 +1012,13 @@ class _CommunityScreenMockState extends State<_CommunityScreenMock> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final members = [
-      (name: 'You', color: theme.colorScheme.primary, progress: _youProgress),
-      (name: 'Alex', color: Colors.orange, progress: 0.72),
-      (name: 'Sam', color: Colors.teal, progress: 0.58),
+      (rank: 1, name: 'Alex', value: 14, streak: 9, isMe: false),
+      (rank: 2, name: 'You', value: _youValue, streak: 5, isMe: true),
+      (rank: 3, name: 'Sam', value: 7, streak: 3, isMe: false),
     ];
     return _PhoneFrame(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1045,11 +1043,17 @@ class _CommunityScreenMockState extends State<_CommunityScreenMock> {
               'Reading — Weekly Leaderboard',
               style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 22),
-            for (var i = 0; i < members.length; i++)
+            const SizedBox(height: 18),
+            for (final m in members)
               Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _MemberRow(rank: i + 1, member: members[i]),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _MockLeaderboardTile(
+                  rank: m.rank,
+                  name: m.name,
+                  isMe: m.isMe,
+                  value: m.value,
+                  streak: m.streak,
+                ),
               ),
           ],
         ),
@@ -1058,95 +1062,93 @@ class _CommunityScreenMockState extends State<_CommunityScreenMock> {
   }
 }
 
-class _MemberRow extends StatelessWidget {
-  const _MemberRow({required this.rank, required this.member});
+class _MockLeaderboardTile extends StatelessWidget {
+  const _MockLeaderboardTile({
+    required this.rank,
+    required this.name,
+    required this.isMe,
+    required this.value,
+    required this.streak,
+  });
 
   final int rank;
-  final ({String name, Color color, double progress}) member;
+  final String name;
+  final bool isMe;
+  final int value;
+  final int streak;
 
-  static const _rankColors = [Colors.amber, Colors.blueGrey, Colors.brown];
+  // Gold / silver / bronze — matches `_rankColors` in group_detail_screen.dart.
+  static const _rankColors = {1: Color(0xFFD4AF37), 2: Color(0xFFA8A9AD), 3: Color(0xFFCD7F32)};
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: _rankColors[rank - 1],
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                '$rank',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 11,
+    final rankColor = _rankColors[rank];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.08) : theme.cardColor,
+        borderRadius: BorderRadius.circular(14),
+        border: isMe ? Border.all(color: theme.colorScheme.primary, width: 1.5) : null,
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: rankColor ?? theme.colorScheme.surfaceContainerHighest,
+            foregroundColor: rankColor != null ? Colors.white : null,
+            child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isMe ? '$name (You)' : name,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 24,
-              height: 24,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: member.color,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                member.name[0],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(member.name, style: theme.textTheme.labelLarge),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: member.progress),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOut,
-            builder: (context, value, _) => LinearProgressIndicator(
-              value: value,
-              minHeight: 6,
-              backgroundColor: theme.dividerColor,
-              valueColor: AlwaysStoppedAnimation(member.color),
+                Text('$streak day streak', style: theme.textTheme.labelSmall),
+              ],
             ),
           ),
-        ),
-      ],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: value.toDouble()),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+                builder: (context, v, _) => Text(
+                  '${v.round()}',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800, color: theme.colorScheme.primary),
+                ),
+              ),
+              Text('books', style: theme.textTheme.labelSmall),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// Slide 4 mock: a screenshot-style recreation of the Beranda flat-list
-/// (§6), reusing `_MockHabitRow`. One-shot: the top row flips from
-/// in-progress to done, with the header streak count ticking up, as if it
-/// had just been checked off.
-class _HomeStreakScreenMock extends StatefulWidget {
-  const _HomeStreakScreenMock();
+/// top bar (month pill + "Today" pill) and habit rows, reusing
+/// `_MockHabitRow`. The app has no streak feature — each row's label is
+/// "Progress X • Goal Y", matching the real `HabitProgressCard` (#25), not
+/// the streak-count framing this mock used to show. One-shot: the top row
+/// flips from in-progress to done, as if it had just been checked off.
+class _HomeListScreenMock extends StatefulWidget {
+  const _HomeListScreenMock();
 
   @override
-  State<_HomeStreakScreenMock> createState() => _HomeStreakScreenMockState();
+  State<_HomeListScreenMock> createState() => _HomeListScreenMockState();
 }
 
-class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
+class _HomeListScreenMockState extends State<_HomeListScreenMock> {
   bool _yogaDone = false;
 
   @override
@@ -1163,29 +1165,38 @@ class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
     final theme = Theme.of(context);
     return _PhoneFrame(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 30, 18, 20),
+        padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  'Today',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        'August 2026',
+                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Icon(
-                  Icons.local_fire_department_rounded,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  _yogaDone ? '20' : '19',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                  ),
+                  child: Text(
+                    'Today',
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
@@ -1194,8 +1205,8 @@ class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
             _MockHabitRow(
               icon: 'person-running',
               name: 'Yoga',
-              progressLabel: _yogaDone ? '20 day streak' : '19 day streak',
-              progress: _yogaDone ? 1 : 0.85,
+              progressLabel: _yogaDone ? 'Progress 1x • Goal 1x' : 'Progress 0x • Goal 1x',
+              progress: _yogaDone ? 1 : 0,
               color: theme.colorScheme.primary,
               done: _yogaDone,
             ),
@@ -1203,7 +1214,7 @@ class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
             const _MockHabitRow(
               icon: 'glass-water',
               name: 'Drink Water',
-              progressLabel: '6 day streak',
+              progressLabel: 'Progress 2000 ml • Goal 2000 ml',
               progress: 1,
               color: Colors.blue,
               done: true,
@@ -1212,7 +1223,7 @@ class _HomeStreakScreenMockState extends State<_HomeStreakScreenMock> {
             const _MockHabitRow(
               icon: 'spa',
               name: 'Meditation',
-              progressLabel: 'Not started',
+              progressLabel: 'Progress 0 min • Goal 10 min',
               progress: 0,
               color: Colors.deepPurple,
               done: false,

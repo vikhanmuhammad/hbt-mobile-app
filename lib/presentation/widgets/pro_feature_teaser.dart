@@ -54,10 +54,25 @@ class ProFeatureTeaser extends ConsumerWidget {
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 9, sigmaY: 9),
-              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.62)),
+              // Toned back down from an earlier pass that went too far —
+              // sigma 16 + alpha 0.58 wiped the preview out into a flat gray
+              // with no silhouette left at all. This keeps a "frosted glass"
+              // look: shapes/colors of the preview still read faintly
+              // through it, just clearly darker/less legible than before.
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(color: Colors.black.withValues(alpha: 0.45)),
             ),
           ),
+          // Tapping anywhere on the dimmed backdrop also goes back, not just
+          // the small corner icon below — matches how a modal over content
+          // is expected to dismiss.
+          if (Navigator.of(context).canPop())
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
           if (Navigator.of(context).canPop())
             SafeArea(
               child: Padding(
@@ -69,7 +84,13 @@ class ProFeatureTeaser extends ConsumerWidget {
               ),
             ),
           Center(
-            child: SingleChildScrollView(
+            // Absorbs taps on the dialog itself so they don't fall through
+            // to the full-backdrop dismiss layer behind it — only tapping
+            // outside this card should count as "tap outside to go back".
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(32),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
@@ -126,6 +147,7 @@ class ProFeatureTeaser extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ],

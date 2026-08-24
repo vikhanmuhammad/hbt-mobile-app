@@ -264,6 +264,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get genderHint => 'Select a gender';
 
   @override
+  String settingsAgeYears(int age) {
+    return '$age y/o';
+  }
+
+  @override
   String get addHabitReminderRepeat => 'Repeat';
 
   @override

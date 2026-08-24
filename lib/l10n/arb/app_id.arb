@@ -81,6 +81,7 @@
   "commonGoal": "Target",
   "genderLabel": "Jenis kelamin",
   "genderHint": "Pilih jenis kelamin",
+  "settingsAgeYears": "{age} tahun",
   "addHabitReminderRepeat": "Ulangi",
   "addHabitReminderOnce": "Sekali",
   "addHabitReminderEveryMinutes": "Tiap {minutes} menit",

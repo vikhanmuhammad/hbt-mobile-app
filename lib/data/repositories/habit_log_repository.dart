@@ -91,6 +91,35 @@ class HabitLogRepository {
     );
   }
 
+  /// Applies an edit made against the *period total* (what the quick-
+  /// progress sheet shows/edits for weekly/monthly habits — the sum across
+  /// every day in the current period, see `progress_providers.dart`) onto
+  /// [date]'s own log specifically, instead of overwriting that single
+  /// day's log with the whole new total.
+  ///
+  /// Without this, saving the sheet for a weekly/monthly habit would stuff
+  /// the *entire* new period total into just [date]'s log while every other
+  /// day already contributing to that period keeps its own log untouched —
+  /// so the period's real sum balloons by the old total on every single
+  /// edit (openly visible once synced to a Community leaderboard, since
+  /// that number is exactly this same period-sum, recomputed the same
+  /// broken way). Applying just the delta (`newPeriodTotal -
+  /// previousPeriodTotal`) on top of whatever [date] already had keeps the
+  /// other days' contributions intact. For a `daily` habit, [date] IS the
+  /// whole period, so `previousPeriodTotal` already equals its current log
+  /// value and this reduces to a plain `setProgress` — same as before.
+  Future<void> applyPeriodAwareEdit({
+    required Habit habit,
+    required DateTime date,
+    required int previousPeriodTotal,
+    required int newPeriodTotal,
+  }) async {
+    final delta = newPeriodTotal - previousPeriodTotal;
+    final todayLog = await getLog(habit.id, date);
+    final newTodayValue = (todayLog?.progressValue ?? 0) + delta;
+    await setProgress(habit: habit, date: date, progressValue: newTodayValue);
+  }
+
   Future<void> incrementProgress({
     required Habit habit,
     required DateTime date,
