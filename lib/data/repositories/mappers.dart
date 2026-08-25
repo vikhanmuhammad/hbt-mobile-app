@@ -4,6 +4,7 @@ import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart' as domain;
 import '../../domain/models/habit_log.dart' as domain;
 import '../../domain/models/onboarding_response.dart' as domain;
+import '../../domain/models/spending_breakdown.dart' as domain;
 import '../../domain/models/task_days.dart';
 import '../../domain/models/user_profile.dart' as domain;
 import '../database/app_database.dart' as db;
@@ -79,4 +80,16 @@ domain.HabitGroupLink mapHabitGroupLink(db.HabitGroupLink row) =>
       groupHabitId: row.groupHabitId,
       linkedAt: row.linkedAt,
       lastSyncedAt: row.lastSyncedAt,
+    );
+
+domain.SpendingBreakdownEntry mapSpendingBreakdownEntry(
+  db.HabitSpendingBreakdown row,
+) =>
+    domain.SpendingBreakdownEntry(
+      id: row.id,
+      habitId: row.habitId,
+      date: row.date,
+      category: SpendingBreakdownCategory.fromValue(row.categoryKey),
+      label: row.label,
+      amount: row.amount,
     );

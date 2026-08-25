@@ -190,8 +190,7 @@ class _HabitList extends ConsumerWidget {
   final DateTime selectedDate;
 
   /// Habits published/linked to a community group — drives the "My Habits"
-  /// vs "Community" split below. Ignored in Edit Mode, where reordering
-  /// needs one flat, unambiguous index order across every habit.
+  /// vs "Community" split below, in both normal and Edit Mode.
   final Set<int> linkedHabitIds;
 
   Color _accentFor(int categoryId) {
@@ -206,17 +205,56 @@ class _HabitList extends ConsumerWidget {
     final padding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 0, isTablet ? 32 : 16, 110);
     final crossAxisCount = isWide ? 2 : 1;
 
-    if (!isEditMode) {
-      // Separate "My Habits" (local-only) from "Community" (published/
-      // linked to a group) — only worth the extra headers when there's
-      // actually a mix; a user with zero community habits (the common
-      // case) still just sees one plain list.
-      final communityItems = items.where((i) => linkedHabitIds.contains(i.habit.id)).toList();
-      final localItems = items.where((i) => !linkedHabitIds.contains(i.habit.id)).toList();
-      final showSections = communityItems.isNotEmpty && localItems.isNotEmpty;
+    // Separate "My Habits" (local-only) from "Community" (published/linked
+    // to a group) — only worth the extra headers when there's actually a
+    // mix; a user with zero community habits (the common case) still just
+    // sees one plain list. Applies in both normal and Edit Mode so the
+    // grouping stays consistent regardless of mode (#edit-mode-split).
+    final communityItems = items.where((i) => linkedHabitIds.contains(i.habit.id)).toList();
+    final localItems = items.where((i) => !linkedHabitIds.contains(i.habit.id)).toList();
+    final showSections = communityItems.isNotEmpty && localItems.isNotEmpty;
 
+    if (isEditMode) {
       if (!showSections) {
-        if (crossAxisCount == 1) {
+        return _buildReorderableSection(
+          context,
+          ref,
+          items,
+          padding: padding,
+          shrinkWrap: false,
+          onReorder: (oldIndex, newIndex) => _onReorderSection(ref, items, oldIndex, newIndex),
+        );
+      }
+      return ListView(
+        padding: padding,
+        children: [
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+          const SizedBox(height: 8),
+          _buildReorderableSection(
+            context,
+            ref,
+            localItems,
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, localItems, oldIndex, newIndex),
+          ),
+          const SizedBox(height: 20),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
+          const SizedBox(height: 8),
+          _buildReorderableSection(
+            context,
+            ref,
+            communityItems,
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, communityItems, oldIndex, newIndex),
+          ),
+        ],
+      );
+    }
+
+    if (!showSections) {
+      if (crossAxisCount == 1) {
           return ListView.separated(
             padding: padding,
             itemCount: items.length,
@@ -288,14 +326,29 @@ class _HabitList extends ConsumerWidget {
           sectionGrid(communityItems, localItems.length),
         ],
       );
-    }
+  }
 
+  /// Edit-mode reorderable list for one section (all items, or just the
+  /// local/community half of a split view). `shrinkWrap`+non-scrollable
+  /// physics let two of these live inside an outer `ListView` when the
+  /// sections are shown side by side (#edit-mode-split); the unsplit case
+  /// passes `shrinkWrap: false` to keep the original full-scroll behavior.
+  Widget _buildReorderableSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<HabitWithProgress> sectionItems, {
+    required EdgeInsets padding,
+    required bool shrinkWrap,
+    required void Function(int oldIndex, int newIndex) onReorder,
+  }) {
     return ReorderableListView.builder(
       padding: padding,
-      itemCount: items.length,
-      onReorder: (oldIndex, newIndex) => _onReorder(ref, oldIndex, newIndex),
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+      itemCount: sectionItems.length,
+      onReorder: onReorder,
       itemBuilder: (context, index) {
-        final item = items[index];
+        final item = sectionItems[index];
         return Padding(
           key: ValueKey(item.habit.id),
           padding: const EdgeInsets.only(bottom: 10),
@@ -352,14 +405,21 @@ class _HabitList extends ConsumerWidget {
       if (isSimple) {
         await repo.toggleDone(habit: habit, date: selectedDate, currentlyDone: item.isDone);
       } else {
-        final value = await showQuickProgressSheet(context, item);
-        if (value == null) return;
+        final result = await showQuickProgressSheet(context, item);
+        if (result == null) return;
         await repo.applyPeriodAwareEdit(
           habit: habit,
           date: selectedDate,
           previousPeriodTotal: item.progressValue,
-          newPeriodTotal: value,
+          newPeriodTotal: result.value,
         );
+        if (result.breakdownItems.isNotEmpty) {
+          await ref.read(spendingBreakdownRepositoryProvider).addEntries(
+                habitId: habit.id,
+                date: selectedDate,
+                entries: result.breakdownItems,
+              );
+        }
       }
       _invalidateSummaries(ref);
       unawaited(syncCommunityHabit(ref, habit.id, selectedDate));
@@ -433,8 +493,19 @@ class _HabitList extends ConsumerWidget {
     _invalidateSummaries(ref);
   }
 
-  void _onReorder(WidgetRef ref, int oldIndex, int newIndex) {
-    final reordered = [...items];
+  /// Reorders within a single section (local-only, community-only, or the
+  /// flat unsplit list) so dragging in one section never moves an item into
+  /// the other (#edit-mode-split). `sortOrder` values are only used for
+  /// ordering, and which section a habit belongs to is decided by
+  /// `linkedHabitIds`, not by any `sortOrder` range — so overlapping
+  /// `sortOrder` values between the two sections are harmless.
+  void _onReorderSection(
+    WidgetRef ref,
+    List<HabitWithProgress> sectionItems,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final reordered = [...sectionItems];
     if (newIndex > oldIndex) newIndex -= 1;
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, moved);

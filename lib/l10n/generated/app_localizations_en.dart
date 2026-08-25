@@ -1101,6 +1101,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickProgressMarkAchieved => 'Mark Achieved';
 
   @override
+  String get quickProgressEntryModeDirect => 'Enter total';
+
+  @override
+  String get quickProgressEntryModeBreakdown => 'Break down by category';
+
+  @override
+  String get spendingBreakdownAddItem => 'Add breakdown item';
+
+  @override
+  String get spendingBreakdownCustomLabelHint => 'Description';
+
+  @override
+  String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
   String get commonSave => 'Save';
 
   @override

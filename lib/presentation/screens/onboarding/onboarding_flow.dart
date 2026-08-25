@@ -1933,6 +1933,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                 'Track spending & savings with the Finance summary',
                                 'Join or create Community groups & leaderboards',
                               ],
+                              showBackButton: true,
                             ),
                           ),
                         ),
@@ -2010,6 +2011,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                 ],
                                 previewBuilder: (context) =>
                                     const FinancePreviewMock(),
+                                showBackButton: true,
                               ),
                             ),
                           ),

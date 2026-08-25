@@ -9,6 +9,7 @@ import 'daos/category_dao.dart';
 import 'daos/habit_dao.dart';
 import 'daos/habit_group_link_dao.dart';
 import 'daos/habit_log_dao.dart';
+import 'daos/habit_spending_breakdown_dao.dart';
 import 'daos/profile_dao.dart';
 import 'tables.dart';
 
@@ -22,8 +23,16 @@ part 'app_database.g.dart';
     UserProfile,
     OnboardingResponses,
     HabitGroupLinks,
+    HabitSpendingBreakdowns,
   ],
-  daos: [CategoryDao, HabitDao, HabitLogDao, ProfileDao, HabitGroupLinkDao],
+  daos: [
+    CategoryDao,
+    HabitDao,
+    HabitLogDao,
+    ProfileDao,
+    HabitGroupLinkDao,
+    HabitSpendingBreakdownDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -31,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -106,6 +115,13 @@ class AppDatabase extends _$AppDatabase {
             await m.deleteTable('habit_group_links');
             await m.createTable(habitGroupLinks);
           }
+          if (from < 10) {
+            // v10: HabitSpendingBreakdowns — rincian opsional (kategori +
+            // jumlah) dari progress habit pengeluaran, mis. Rp50.000 dipecah
+            // Rp30.000 "Kebutuhan Harian" + Rp20.000 kustom "Bensin". Tabel
+            // baru, tidak ada data lama untuk dimigrasikan.
+            await m.createTable(habitSpendingBreakdowns);
+          }
         },
       );
 
@@ -123,6 +139,7 @@ class AppDatabase extends _$AppDatabase {
       // could never re-link, and its progress would silently stop
       // reaching Firestore since no *current* habitId had a link anymore.
       await delete(habitGroupLinks).go();
+      await delete(habitSpendingBreakdowns).go();
       await delete(habitLogs).go();
       await delete(habits).go();
       await delete(categories).go();

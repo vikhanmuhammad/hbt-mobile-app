@@ -101,6 +101,54 @@ enum GoalDirection {
       };
 }
 
+/// Optional category for a single spending-breakdown entry (see
+/// `SpendingBreakdownEntry`) — lets a user optionally split one logged
+/// expense (e.g. Rp50.000) into where it actually went (e.g. Rp30.000 food +
+/// Rp20.000 fuel), each tagged with one of these templates, or `custom` with
+/// a free-text label.
+enum SpendingBreakdownCategory {
+  dailyNeeds,
+  urgent,
+  health,
+  custom;
+
+  static SpendingBreakdownCategory fromValue(String value) =>
+      SpendingBreakdownCategory.values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => SpendingBreakdownCategory.custom,
+      );
+
+  String label(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'Daily Needs',
+            SpendingBreakdownCategory.urgent => 'Unexpected Needs',
+            SpendingBreakdownCategory.health => 'Health',
+            SpendingBreakdownCategory.custom => 'Custom',
+          },
+        AppLang.id => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'Kebutuhan Harian',
+            SpendingBreakdownCategory.urgent => 'Kebutuhan Mendadak',
+            SpendingBreakdownCategory.health => 'Kesehatan',
+            SpendingBreakdownCategory.custom => 'Kustom',
+          },
+      };
+
+  /// Short example text shown under the category chip, e.g. "food,
+  /// transport" — purely descriptive, not stored anywhere.
+  String? hint(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'e.g. food, transport',
+            SpendingBreakdownCategory.health => 'e.g. gym membership',
+            _ => null,
+          },
+        AppLang.id => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'mis. makan, transport',
+            SpendingBreakdownCategory.health => 'mis. membership gym',
+            _ => null,
+          },
+      };
+}
+
 /// Weekday keys Monday..Sunday, aligned with `DateTime.weekday` (1 = Monday).
 const List<String> weekdayKeys = [
   'mon',

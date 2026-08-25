@@ -689,6 +689,37 @@ class _HabitFinanceRow extends ConsumerWidget {
             valueColor: AlwaysStoppedAnimation(overBudget ? theme.colorScheme.error : theme.colorScheme.primary),
           ),
         ),
+        if (stat.breakdown.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(left: 42),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final entry in stat.breakdown)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            entry.category == SpendingBreakdownCategory.custom && entry.label != null
+                                ? entry.label!
+                                : entry.category.label(lang),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(formatRupiah(entry.totalAmount), style: theme.textTheme.labelSmall),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

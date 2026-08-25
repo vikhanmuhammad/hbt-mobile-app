@@ -124,6 +124,29 @@ class HabitLogs extends Table {
       ];
 }
 
+/// Rincian opsional dari satu progress habit pengeluaran (rupiah, `atMost`)
+/// pada satu tanggal — mis. dari Rp50.000 yang di-log, Rp30.000 ditandai
+/// "Kebutuhan Harian" dan Rp20.000 "Kustom: Bensin". Murni informasional,
+/// tidak wajib totalnya sama dengan `HabitLogs.progressValue` hari itu.
+/// Satu (habitId, date) bisa punya banyak baris — tiap kali user
+/// menyimpan quick progress sheet dengan rincian, baris baru ditambahkan
+/// (bukan replace), supaya beberapa kali input di hari yang sama (mis.
+/// makan siang lalu isi bensin) tetap tercatat terpisah.
+@TableIndex(name: 'idx_habit_spending_breakdowns_habit_date', columns: {#habitId, #date})
+class HabitSpendingBreakdowns extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get habitId =>
+      integer().references(Habits, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get date => dateTime()();
+  // dailyNeeds / urgent / health / custom — lihat SpendingBreakdownCategory.
+  TextColumn get categoryKey => text()();
+  /// Teks bebas, hanya diisi kalau categoryKey == 'custom'.
+  TextColumn get label => text().nullable()();
+  IntColumn get amount => integer()();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime)();
+}
+
 /// Relasi habit lokal ke Group Habit di Firestore (fitur Community, Pro-only)
 /// — `groupId`/`groupHabitId` adalah document ID Firestore (text), bukan FK
 /// lokal. Lihat update_v2.md §8.

@@ -764,22 +764,72 @@ class _CategoryBreakdown extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(AppLocalizations.of(context)!.commonByCategory, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final stat in summary.categoryStats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ProgressRow(
-                  label: stat.category.displayName(lang),
-                  ratio: stat.successRate,
-                  color: AppColors.categoryColorFromHex(
-                    stat.category.colorHex,
-                    indexById[stat.category.id] ?? 0,
-                  ),
-                  showDot: true,
-                ),
+            const SizedBox(height: 20),
+            // Horizontally scrollable instead of wrapping — with many
+            // categories, a Wrap would keep growing the card's height
+            // (and this section's rings out of alignment with the ones in
+            // `_HabitBreakdown` below it); scrolling keeps every ring the
+            // same size and the card height fixed regardless of count.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final stat in summary.categoryStats)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 18),
+                      child: _CategoryProgressRing(
+                        label: stat.category.displayName(lang),
+                        ratio: stat.successRate,
+                        color: AppColors.categoryColorFromHex(
+                          stat.category.colorHex,
+                          indexById[stat.category.id] ?? 0,
+                        ),
+                      ),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryProgressRing extends StatelessWidget {
+  const _CategoryProgressRing({required this.label, required this.ratio, required this.color});
+
+  final String label;
+  final double ratio;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final percent = (ratio.clamp(0, 1) * 100).round();
+    return SizedBox(
+      width: 84,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DailyProgressRing(
+            done: percent,
+            total: 100,
+            size: 64,
+            strokeWidth: 7,
+            color: color,
+            centerLabel: '$percent%',
+            centerLabelStyle: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -794,6 +844,21 @@ class _HabitBreakdown extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final lang = ref.watch(appLanguageProvider);
+    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categoryById = {for (final c in categories) c.id: c};
+    final indexById = {
+      for (var i = 0; i < categories.length; i++) categories[i].id: i,
+    };
+
+    // Same accent-color logic as Home's `_accentFor` (home_screen.dart) —
+    // keeps a habit's color consistent between its Home card and its row
+    // here, instead of every row using one flat theme color.
+    Color habitColor(int categoryId) {
+      final category = categoryById[categoryId];
+      if (category == null) return AppColors.gold;
+      return AppColors.categoryColorFromHex(category.colorHex, indexById[categoryId] ?? 0);
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -808,7 +873,7 @@ class _HabitBreakdown extends ConsumerWidget {
                 child: _ProgressRow(
                   label: stat.habit.displayName(lang),
                   ratio: stat.successRate,
-                  color: theme.colorScheme.primary,
+                  color: habitColor(stat.habit.categoryId),
                 ),
               ),
           ],
@@ -912,13 +977,11 @@ class _ProgressRow extends StatelessWidget {
     required this.label,
     required this.ratio,
     required this.color,
-    this.showDot = false,
   });
 
   final String label;
   final double ratio;
   final Color color;
-  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
@@ -932,17 +995,6 @@ class _ProgressRow extends StatelessWidget {
             Expanded(
               child: Row(
                 children: [
-                  if (showDot) ...[
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   Flexible(
                     child: Text(
                       label,

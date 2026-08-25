@@ -11,6 +11,7 @@ import '../data/repositories/habit_repository.dart';
 import '../data/repositories/habit_template_repository.dart';
 import '../data/repositories/profile_repository.dart';
 import '../data/repositories/settings_repository.dart';
+import '../data/repositories/spending_breakdown_repository.dart';
 import '../data/repositories/stats_repository.dart';
 import '../services/notification_service.dart';
 
@@ -55,6 +56,11 @@ StatsRepository statsRepository(Ref ref) {
 @riverpod
 FinanceRepository financeRepository(Ref ref) {
   return FinanceRepository(ref.watch(appDatabaseProvider));
+}
+
+@riverpod
+SpendingBreakdownRepository spendingBreakdownRepository(Ref ref) {
+  return SpendingBreakdownRepository(ref.watch(appDatabaseProvider));
 }
 
 @riverpod

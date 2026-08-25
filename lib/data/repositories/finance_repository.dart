@@ -2,6 +2,7 @@ import '../../domain/habit_schedule.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/models/finance_summary.dart';
 import '../../domain/models/habit_log.dart';
+import '../../domain/models/spending_breakdown.dart';
 import '../database/app_database.dart' as db;
 import 'mappers.dart';
 
@@ -33,6 +34,16 @@ class FinanceRepository {
     final logsByHabit = <int, List<HabitLog>>{};
     for (final log in logs) {
       logsByHabit.putIfAbsent(log.habitId, () => []).add(log);
+    }
+
+    final breakdownEntries =
+        (await _db.habitSpendingBreakdownDao.getEntriesInRange(start, endInclusive))
+            .map(mapSpendingBreakdownEntry)
+            .where((e) => habitIds.contains(e.habitId))
+            .toList();
+    final breakdownByHabit = <int, List<SpendingBreakdownEntry>>{};
+    for (final entry in breakdownEntries) {
+      breakdownByHabit.putIfAbsent(entry.habitId, () => []).add(entry);
     }
 
     var totalExpense = 0;
@@ -84,6 +95,7 @@ class FinanceRepository {
         totalTarget: totalTarget,
         loggedPeriods: loggedPeriods,
         achievedPeriods: achievedPeriods,
+        breakdown: _aggregateBreakdown(breakdownByHabit[habit.id] ?? const []),
       ));
     }
     habitStats.sort((a, b) => b.totalValue.compareTo(a.totalValue));
@@ -113,5 +125,28 @@ class FinanceRepository {
       habitStats: habitStats,
       dailyTrend: dailyTrend,
     );
+  }
+
+  /// Sums [entries] by (category, label) — template categories (dailyNeeds/
+  /// urgent/health) collapse into one row each since [label] is always null
+  /// for them, while distinct custom labels ("Bensin" vs "Parkir") stay
+  /// separate rows.
+  List<FinanceSpendingCategoryStat> _aggregateBreakdown(
+    List<SpendingBreakdownEntry> entries,
+  ) {
+    if (entries.isEmpty) return const [];
+    final totals = <String, FinanceSpendingCategoryStat>{};
+    for (final entry in entries) {
+      final key = '${entry.category.name}::${entry.label ?? ''}';
+      final existing = totals[key];
+      totals[key] = FinanceSpendingCategoryStat(
+        category: entry.category,
+        label: entry.label,
+        totalAmount: (existing?.totalAmount ?? 0) + entry.amount,
+      );
+    }
+    final stats = totals.values.toList()
+      ..sort((a, b) => b.totalAmount.compareTo(a.totalAmount));
+    return stats;
   }
 }

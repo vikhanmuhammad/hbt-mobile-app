@@ -1964,6 +1964,36 @@ abstract class AppLocalizations {
   /// **'Mark Achieved'**
   String get quickProgressMarkAchieved;
 
+  /// No description provided for @quickProgressEntryModeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter total'**
+  String get quickProgressEntryModeDirect;
+
+  /// No description provided for @quickProgressEntryModeBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Break down by category'**
+  String get quickProgressEntryModeBreakdown;
+
+  /// No description provided for @spendingBreakdownAddItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add breakdown item'**
+  String get spendingBreakdownAddItem;
+
+  /// No description provided for @spendingBreakdownCustomLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get spendingBreakdownCustomLabelHint;
+
+  /// No description provided for @spendingBreakdownTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get spendingBreakdownTotalLabel;
+
   /// No description provided for @commonSave.
   ///
   /// In en, this message translates to:

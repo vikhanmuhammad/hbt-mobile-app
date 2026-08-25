@@ -3331,6 +3331,460 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
   }
 }
 
+class $HabitSpendingBreakdownsTable extends HabitSpendingBreakdowns
+    with TableInfo<$HabitSpendingBreakdownsTable, HabitSpendingBreakdown> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitSpendingBreakdownsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<int> habitId = GeneratedColumn<int>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habits (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryKeyMeta = const VerificationMeta(
+    'categoryKey',
+  );
+  @override
+  late final GeneratedColumn<String> categoryKey = GeneratedColumn<String>(
+    'category_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    habitId,
+    date,
+    categoryKey,
+    label,
+    amount,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_spending_breakdowns';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitSpendingBreakdown> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('category_key')) {
+      context.handle(
+        _categoryKeyMeta,
+        categoryKey.isAcceptableOrUnknown(
+          data['category_key']!,
+          _categoryKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryKeyMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HabitSpendingBreakdown map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitSpendingBreakdown(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      categoryKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_key'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      ),
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitSpendingBreakdownsTable createAlias(String alias) {
+    return $HabitSpendingBreakdownsTable(attachedDatabase, alias);
+  }
+}
+
+class HabitSpendingBreakdown extends DataClass
+    implements Insertable<HabitSpendingBreakdown> {
+  final int id;
+  final int habitId;
+  final DateTime date;
+  final String categoryKey;
+
+  /// Teks bebas, hanya diisi kalau categoryKey == 'custom'.
+  final String? label;
+  final int amount;
+  final DateTime createdAt;
+  const HabitSpendingBreakdown({
+    required this.id,
+    required this.habitId,
+    required this.date,
+    required this.categoryKey,
+    this.label,
+    required this.amount,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['habit_id'] = Variable<int>(habitId);
+    map['date'] = Variable<DateTime>(date);
+    map['category_key'] = Variable<String>(categoryKey);
+    if (!nullToAbsent || label != null) {
+      map['label'] = Variable<String>(label);
+    }
+    map['amount'] = Variable<int>(amount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  HabitSpendingBreakdownsCompanion toCompanion(bool nullToAbsent) {
+    return HabitSpendingBreakdownsCompanion(
+      id: Value(id),
+      habitId: Value(habitId),
+      date: Value(date),
+      categoryKey: Value(categoryKey),
+      label: label == null && nullToAbsent
+          ? const Value.absent()
+          : Value(label),
+      amount: Value(amount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory HabitSpendingBreakdown.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitSpendingBreakdown(
+      id: serializer.fromJson<int>(json['id']),
+      habitId: serializer.fromJson<int>(json['habitId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      categoryKey: serializer.fromJson<String>(json['categoryKey']),
+      label: serializer.fromJson<String?>(json['label']),
+      amount: serializer.fromJson<int>(json['amount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'habitId': serializer.toJson<int>(habitId),
+      'date': serializer.toJson<DateTime>(date),
+      'categoryKey': serializer.toJson<String>(categoryKey),
+      'label': serializer.toJson<String?>(label),
+      'amount': serializer.toJson<int>(amount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  HabitSpendingBreakdown copyWith({
+    int? id,
+    int? habitId,
+    DateTime? date,
+    String? categoryKey,
+    Value<String?> label = const Value.absent(),
+    int? amount,
+    DateTime? createdAt,
+  }) => HabitSpendingBreakdown(
+    id: id ?? this.id,
+    habitId: habitId ?? this.habitId,
+    date: date ?? this.date,
+    categoryKey: categoryKey ?? this.categoryKey,
+    label: label.present ? label.value : this.label,
+    amount: amount ?? this.amount,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  HabitSpendingBreakdown copyWithCompanion(
+    HabitSpendingBreakdownsCompanion data,
+  ) {
+    return HabitSpendingBreakdown(
+      id: data.id.present ? data.id.value : this.id,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      date: data.date.present ? data.date.value : this.date,
+      categoryKey: data.categoryKey.present
+          ? data.categoryKey.value
+          : this.categoryKey,
+      label: data.label.present ? data.label.value : this.label,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitSpendingBreakdown(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('date: $date, ')
+          ..write('categoryKey: $categoryKey, ')
+          ..write('label: $label, ')
+          ..write('amount: $amount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, habitId, date, categoryKey, label, amount, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitSpendingBreakdown &&
+          other.id == this.id &&
+          other.habitId == this.habitId &&
+          other.date == this.date &&
+          other.categoryKey == this.categoryKey &&
+          other.label == this.label &&
+          other.amount == this.amount &&
+          other.createdAt == this.createdAt);
+}
+
+class HabitSpendingBreakdownsCompanion
+    extends UpdateCompanion<HabitSpendingBreakdown> {
+  final Value<int> id;
+  final Value<int> habitId;
+  final Value<DateTime> date;
+  final Value<String> categoryKey;
+  final Value<String?> label;
+  final Value<int> amount;
+  final Value<DateTime> createdAt;
+  const HabitSpendingBreakdownsCompanion({
+    this.id = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.categoryKey = const Value.absent(),
+    this.label = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  HabitSpendingBreakdownsCompanion.insert({
+    this.id = const Value.absent(),
+    required int habitId,
+    required DateTime date,
+    required String categoryKey,
+    this.label = const Value.absent(),
+    required int amount,
+    this.createdAt = const Value.absent(),
+  }) : habitId = Value(habitId),
+       date = Value(date),
+       categoryKey = Value(categoryKey),
+       amount = Value(amount);
+  static Insertable<HabitSpendingBreakdown> custom({
+    Expression<int>? id,
+    Expression<int>? habitId,
+    Expression<DateTime>? date,
+    Expression<String>? categoryKey,
+    Expression<String>? label,
+    Expression<int>? amount,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (habitId != null) 'habit_id': habitId,
+      if (date != null) 'date': date,
+      if (categoryKey != null) 'category_key': categoryKey,
+      if (label != null) 'label': label,
+      if (amount != null) 'amount': amount,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  HabitSpendingBreakdownsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? habitId,
+    Value<DateTime>? date,
+    Value<String>? categoryKey,
+    Value<String?>? label,
+    Value<int>? amount,
+    Value<DateTime>? createdAt,
+  }) {
+    return HabitSpendingBreakdownsCompanion(
+      id: id ?? this.id,
+      habitId: habitId ?? this.habitId,
+      date: date ?? this.date,
+      categoryKey: categoryKey ?? this.categoryKey,
+      label: label ?? this.label,
+      amount: amount ?? this.amount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<int>(habitId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (categoryKey.present) {
+      map['category_key'] = Variable<String>(categoryKey.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitSpendingBreakdownsCompanion(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('date: $date, ')
+          ..write('categoryKey: $categoryKey, ')
+          ..write('label: $label, ')
+          ..write('amount: $amount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3343,6 +3797,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HabitGroupLinksTable habitGroupLinks = $HabitGroupLinksTable(
     this,
   );
+  late final $HabitSpendingBreakdownsTable habitSpendingBreakdowns =
+      $HabitSpendingBreakdownsTable(this);
   late final Index idxHabitLogsDate = Index(
     'idx_habit_logs_date',
     'CREATE INDEX idx_habit_logs_date ON habit_logs (date)',
@@ -3355,6 +3811,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_habit_group_links_habit_id',
     'CREATE INDEX idx_habit_group_links_habit_id ON habit_group_links (habit_id)',
   );
+  late final Index idxHabitSpendingBreakdownsHabitDate = Index(
+    'idx_habit_spending_breakdowns_habit_date',
+    'CREATE INDEX idx_habit_spending_breakdowns_habit_date ON habit_spending_breakdowns (habit_id, date)',
+  );
   late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
   late final HabitDao habitDao = HabitDao(this as AppDatabase);
   late final HabitLogDao habitLogDao = HabitLogDao(this as AppDatabase);
@@ -3362,6 +3822,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final HabitGroupLinkDao habitGroupLinkDao = HabitGroupLinkDao(
     this as AppDatabase,
   );
+  late final HabitSpendingBreakdownDao habitSpendingBreakdownDao =
+      HabitSpendingBreakdownDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3373,9 +3835,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userProfile,
     onboardingResponses,
     habitGroupLinks,
+    habitSpendingBreakdowns,
     idxHabitLogsDate,
     idxHabitLogsHabitId,
     idxHabitGroupLinksHabitId,
+    idxHabitSpendingBreakdownsHabitDate,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3392,6 +3856,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('habit_group_links', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'habits',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('habit_spending_breakdowns', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -3879,6 +4352,34 @@ final class $$HabitsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $HabitSpendingBreakdownsTable,
+    List<HabitSpendingBreakdown>
+  >
+  _habitSpendingBreakdownsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.habitSpendingBreakdowns,
+        aliasName: $_aliasNameGenerator(
+          db.habits.id,
+          db.habitSpendingBreakdowns.habitId,
+        ),
+      );
+
+  $$HabitSpendingBreakdownsTableProcessedTableManager
+  get habitSpendingBreakdownsRefs {
+    final manager = $$HabitSpendingBreakdownsTableTableManager(
+      $_db,
+      $_db.habitSpendingBreakdowns,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _habitSpendingBreakdownsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$HabitsTableFilterComposer
@@ -4065,6 +4566,32 @@ class $$HabitsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> habitSpendingBreakdownsRefs(
+    Expression<bool> Function($$HabitSpendingBreakdownsTableFilterComposer f) f,
+  ) {
+    final $$HabitSpendingBreakdownsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.habitSpendingBreakdowns,
+          getReferencedColumn: (t) => t.habitId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HabitSpendingBreakdownsTableFilterComposer(
+                $db: $db,
+                $table: $db.habitSpendingBreakdowns,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -4365,6 +4892,33 @@ class $$HabitsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> habitSpendingBreakdownsRefs<T extends Object>(
+    Expression<T> Function($$HabitSpendingBreakdownsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$HabitSpendingBreakdownsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.habitSpendingBreakdowns,
+          getReferencedColumn: (t) => t.habitId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HabitSpendingBreakdownsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.habitSpendingBreakdowns,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$HabitsTableTableManager
@@ -4384,6 +4938,7 @@ class $$HabitsTableTableManager
             bool categoryId,
             bool habitLogsRefs,
             bool habitGroupLinksRefs,
+            bool habitSpendingBreakdownsRefs,
           })
         > {
   $$HabitsTableTableManager(_$AppDatabase db, $HabitsTable table)
@@ -4504,12 +5059,14 @@ class $$HabitsTableTableManager
                 categoryId = false,
                 habitLogsRefs = false,
                 habitGroupLinksRefs = false,
+                habitSpendingBreakdownsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (habitLogsRefs) db.habitLogs,
                     if (habitGroupLinksRefs) db.habitGroupLinks,
+                    if (habitSpendingBreakdownsRefs) db.habitSpendingBreakdowns,
                   ],
                   addJoins:
                       <
@@ -4587,6 +5144,27 @@ class $$HabitsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (habitSpendingBreakdownsRefs)
+                        await $_getPrefetchedData<
+                          Habit,
+                          $HabitsTable,
+                          HabitSpendingBreakdown
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitsTableReferences
+                              ._habitSpendingBreakdownsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).habitSpendingBreakdownsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4611,6 +5189,7 @@ typedef $$HabitsTableProcessedTableManager =
         bool categoryId,
         bool habitLogsRefs,
         bool habitGroupLinksRefs,
+        bool habitSpendingBreakdownsRefs,
       })
     >;
 typedef $$HabitLogsTableCreateCompanionBuilder =
@@ -5698,6 +6277,380 @@ typedef $$HabitGroupLinksTableProcessedTableManager =
       HabitGroupLink,
       PrefetchHooks Function({bool habitId})
     >;
+typedef $$HabitSpendingBreakdownsTableCreateCompanionBuilder =
+    HabitSpendingBreakdownsCompanion Function({
+      Value<int> id,
+      required int habitId,
+      required DateTime date,
+      required String categoryKey,
+      Value<String?> label,
+      required int amount,
+      Value<DateTime> createdAt,
+    });
+typedef $$HabitSpendingBreakdownsTableUpdateCompanionBuilder =
+    HabitSpendingBreakdownsCompanion Function({
+      Value<int> id,
+      Value<int> habitId,
+      Value<DateTime> date,
+      Value<String> categoryKey,
+      Value<String?> label,
+      Value<int> amount,
+      Value<DateTime> createdAt,
+    });
+
+final class $$HabitSpendingBreakdownsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $HabitSpendingBreakdownsTable,
+          HabitSpendingBreakdown
+        > {
+  $$HabitSpendingBreakdownsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitsTable _habitIdTable(_$AppDatabase db) => db.habits.createAlias(
+    $_aliasNameGenerator(db.habitSpendingBreakdowns.habitId, db.habits.id),
+  );
+
+  $$HabitsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<int>('habit_id')!;
+
+    final manager = $$HabitsTableTableManager(
+      $_db,
+      $_db.habits,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$HabitSpendingBreakdownsTableFilterComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitsTableFilterComposer get habitId {
+    final $$HabitsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableFilterComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitsTableOrderingComposer get habitId {
+    final $$HabitsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$HabitsTableAnnotationComposer get habitId {
+    final $$HabitsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HabitSpendingBreakdownsTable,
+          HabitSpendingBreakdown,
+          $$HabitSpendingBreakdownsTableFilterComposer,
+          $$HabitSpendingBreakdownsTableOrderingComposer,
+          $$HabitSpendingBreakdownsTableAnnotationComposer,
+          $$HabitSpendingBreakdownsTableCreateCompanionBuilder,
+          $$HabitSpendingBreakdownsTableUpdateCompanionBuilder,
+          (HabitSpendingBreakdown, $$HabitSpendingBreakdownsTableReferences),
+          HabitSpendingBreakdown,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$HabitSpendingBreakdownsTableTableManager(
+    _$AppDatabase db,
+    $HabitSpendingBreakdownsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitSpendingBreakdownsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$HabitSpendingBreakdownsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HabitSpendingBreakdownsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> habitId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> categoryKey = const Value.absent(),
+                Value<String?> label = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitSpendingBreakdownsCompanion(
+                id: id,
+                habitId: habitId,
+                date: date,
+                categoryKey: categoryKey,
+                label: label,
+                amount: amount,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int habitId,
+                required DateTime date,
+                required String categoryKey,
+                Value<String?> label = const Value.absent(),
+                required int amount,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitSpendingBreakdownsCompanion.insert(
+                id: id,
+                habitId: habitId,
+                date: date,
+                categoryKey: categoryKey,
+                label: label,
+                amount: amount,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HabitSpendingBreakdownsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable:
+                                    $$HabitSpendingBreakdownsTableReferences
+                                        ._habitIdTable(db),
+                                referencedColumn:
+                                    $$HabitSpendingBreakdownsTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$HabitSpendingBreakdownsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HabitSpendingBreakdownsTable,
+      HabitSpendingBreakdown,
+      $$HabitSpendingBreakdownsTableFilterComposer,
+      $$HabitSpendingBreakdownsTableOrderingComposer,
+      $$HabitSpendingBreakdownsTableAnnotationComposer,
+      $$HabitSpendingBreakdownsTableCreateCompanionBuilder,
+      $$HabitSpendingBreakdownsTableUpdateCompanionBuilder,
+      (HabitSpendingBreakdown, $$HabitSpendingBreakdownsTableReferences),
+      HabitSpendingBreakdown,
+      PrefetchHooks Function({bool habitId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5714,4 +6667,9 @@ class $AppDatabaseManager {
       $$OnboardingResponsesTableTableManager(_db, _db.onboardingResponses);
   $$HabitGroupLinksTableTableManager get habitGroupLinks =>
       $$HabitGroupLinksTableTableManager(_db, _db.habitGroupLinks);
+  $$HabitSpendingBreakdownsTableTableManager get habitSpendingBreakdowns =>
+      $$HabitSpendingBreakdownsTableTableManager(
+        _db,
+        _db.habitSpendingBreakdowns,
+      );
 }

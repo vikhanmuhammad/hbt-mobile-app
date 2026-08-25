@@ -23,6 +23,7 @@ class ProFeatureTeaser extends ConsumerWidget {
     required this.description,
     required this.benefits,
     this.previewBuilder,
+    this.showBackButton,
   });
 
   final IconData icon;
@@ -35,9 +36,19 @@ class ProFeatureTeaser extends ConsumerWidget {
   /// unlock. Falls back to a plain icon backdrop when omitted.
   final WidgetBuilder? previewBuilder;
 
+  /// Overrides whether the top-left back button/tap-to-dismiss backdrop are
+  /// shown. `null` (default) falls back to `Navigator.of(context).canPop()`
+  /// — correct for the Finance/Community tab-root usages, which are never
+  /// pushed onto a navigator stack and have nothing to pop back to. Callers
+  /// that push this via `Navigator.push` (e.g. the onboarding "Save Money"
+  /// paywall) pass `true` explicitly so the back button is always there
+  /// regardless of how deep the stack happens to be at that point.
+  final bool? showBackButton;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final showBack = showBackButton ?? Navigator.of(context).canPop();
     ref.listen(purchaseErrorsProvider, (previous, next) {
       final message = next.asData?.value;
       if (message != null && context.mounted) {
@@ -66,14 +77,14 @@ class ProFeatureTeaser extends ConsumerWidget {
           // Tapping anywhere on the dimmed backdrop also goes back, not just
           // the small corner icon below — matches how a modal over content
           // is expected to dismiss.
-          if (Navigator.of(context).canPop())
+          if (showBack)
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => Navigator.of(context).pop(),
               ),
             ),
-          if (Navigator.of(context).canPop())
+          if (showBack)
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(4),

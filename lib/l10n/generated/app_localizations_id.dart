@@ -1104,6 +1104,21 @@ class AppLocalizationsId extends AppLocalizations {
   String get quickProgressMarkAchieved => 'Tandai Tercapai';
 
   @override
+  String get quickProgressEntryModeDirect => 'Catat langsung';
+
+  @override
+  String get quickProgressEntryModeBreakdown => 'Rincian per kategori';
+
+  @override
+  String get spendingBreakdownAddItem => 'Tambah rincian';
+
+  @override
+  String get spendingBreakdownCustomLabelHint => 'Keterangan';
+
+  @override
+  String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
   String get commonSave => 'Simpan';
 
   @override

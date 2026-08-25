@@ -1,3 +1,4 @@
+import 'enums.dart';
 import 'habit.dart';
 
 /// Result of comparing "how far through the period we are" against "how
@@ -12,6 +13,25 @@ class BudgetPace {
   final bool onTrack;
   final double expectedRatio;
   final double actualRatio;
+}
+
+/// Total pada satu kategori rincian pengeluaran (lihat
+/// `SpendingBreakdownCategory`), diagregasi lintas semua entri
+/// `SpendingBreakdownEntry` sebuah habit dalam satu window Finance. Untuk
+/// `category == custom`, [label] adalah teks bebas yang diisi user (baris
+/// custom dengan label berbeda diagregasi terpisah); untuk kategori
+/// template, [label] selalu null dan nama tampilan diambil dari
+/// `category.label(lang)`.
+class FinanceSpendingCategoryStat {
+  const FinanceSpendingCategoryStat({
+    required this.category,
+    required this.label,
+    required this.totalAmount,
+  });
+
+  final SpendingBreakdownCategory category;
+  final String? label;
+  final int totalAmount;
 }
 
 /// Agregat satu habit keuangan (bersatuan rupiah) dalam suatu window Finance
@@ -29,6 +49,7 @@ class FinanceHabitStat {
     required this.totalTarget,
     required this.loggedPeriods,
     required this.achievedPeriods,
+    this.breakdown = const [],
   });
 
   final Habit habit;
@@ -42,6 +63,11 @@ class FinanceHabitStat {
   /// Dari [loggedPeriods] itu, berapa yang goalValue-nya tercapai (dihitung
   /// dari total progress dalam periode itu, bukan dari satu log harian).
   final int achievedPeriods;
+
+  /// Rincian opsional (lihat `SpendingBreakdownEntry`) yang user isi untuk
+  /// habit ini di window ini — kosong kalau user tidak pernah mengisi
+  /// rincian, yang jadi kasus umum.
+  final List<FinanceSpendingCategoryStat> breakdown;
 
   double get successRate => loggedPeriods == 0 ? 0 : achievedPeriods / loggedPeriods;
 }
