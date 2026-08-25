@@ -41,10 +41,6 @@ class HomeScreen extends ConsumerWidget {
     final month = DateTime(selectedDate.year, selectedDate.month);
     final isEditMode = ref.watch(homeEditModeProvider);
 
-    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
-    final items = [...ref.watch(habitsWithProgressForDateProvider(selectedDate))]
-      ..removeWhere((item) => pendingDeleteIds.contains(item.habit.id))
-      ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
     final categoriesAsync = ref.watch(categoriesProvider);
     final categories = categoriesAsync.value ?? [];
     final categoryById = {for (final c in categories) c.id: c};
@@ -68,14 +64,14 @@ class HomeScreen extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         '${monthFullName(month.month, lang)} ${month.year}',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -128,23 +124,18 @@ class HomeScreen extends ConsumerWidget {
           const Divider(height: 1),
           const SizedBox(height: 8),
           Expanded(
-            child: _SwipeableDateBody(
+            child: _DateSwipeView(
               selectedDate: selectedDate,
               enabled: !isEditMode,
-              onSwipe: (delta) => ref.read(selectedHomeDateProvider.notifier).state =
-                  selectedDate.add(Duration(days: delta)),
-              child: items.isEmpty
-                  ? const _EmptyState()
-                  : _HabitList(
-                      items: items,
-                      categoryById: categoryById,
-                      categories: categories,
-                      isEditMode: isEditMode,
-                      isWide: isWide,
-                      isTablet: isTablet,
-                      selectedDate: selectedDate,
-                      linkedHabitIds: ref.watch(linkedHabitIdsProvider).value ?? const <int>{},
-                    ),
+              onDateChanged: (d) => ref.read(selectedHomeDateProvider.notifier).state = d,
+              pageBuilder: (date) => _DayPage(
+                date: date,
+                categoryById: categoryById,
+                categories: categories,
+                isEditMode: isEditMode,
+                isWide: isWide,
+                isTablet: isTablet,
+              ),
             ),
           ),
         ],
@@ -159,105 +150,128 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Wraps the habit list area with the day-swipe gesture and an animated
-/// slide+fade transition on [selectedDate] change — previously the date
-/// changed (via swipe, DateStrip tap, or the month arrows) but the list
-/// below just snapped to the new day's content with zero visual feedback,
-/// making the swipe feel unresponsive/like nothing happened (#30). Also
-/// used for DateStrip taps and the month nav arrows (any `selectedDate`
-/// change), not just the swipe gesture itself, so the transition is
-/// consistent everywhere the day changes.
-class _SwipeableDateBody extends StatefulWidget {
-  const _SwipeableDateBody({
+/// Real `PageView`-backed day swiper — replaces an earlier hand-rolled
+/// `GestureDetector` + `AnimatedSwitcher` attempt (#30/#31): that only
+/// reacted *after* the drag gesture ended and played a fixed-duration
+/// transition unrelated to the drag itself, so it never actually tracked
+/// the finger and felt stiff. A real `PageView` gives native per-frame
+/// finger-tracking, velocity-based fling, and edge resistance for free —
+/// the same mechanism a native calendar-style day swiper would use. Each
+/// page index maps to a real calendar day via [_epoch]; disabled (page
+/// becomes un-swipeable, but still shown) in Edit Mode since that's
+/// reorder-by-drag territory (ReorderableListView already owns
+/// horizontal-ish gestures there).
+class _DateSwipeView extends StatefulWidget {
+  const _DateSwipeView({
     required this.selectedDate,
     required this.enabled,
-    required this.onSwipe,
-    required this.child,
+    required this.onDateChanged,
+    required this.pageBuilder,
   });
 
   final DateTime selectedDate;
   final bool enabled;
-
-  /// Called with +1 (next day) or -1 (previous day).
-  final ValueChanged<int> onSwipe;
-  final Widget child;
+  final ValueChanged<DateTime> onDateChanged;
+  final Widget Function(DateTime date) pageBuilder;
 
   @override
-  State<_SwipeableDateBody> createState() => _SwipeableDateBodyState();
+  State<_DateSwipeView> createState() => _DateSwipeViewState();
 }
 
-class _SwipeableDateBodyState extends State<_SwipeableDateBody> {
-  bool _forward = true;
-  double _dragDistance = 0;
+class _DateSwipeViewState extends State<_DateSwipeView> {
+  // Arbitrary far-past anchor so every page index maps to a real calendar
+  // day. Range covers 1970 through ~2244 — far more than this app will
+  // ever need; PageView.builder only ever builds pages near the viewport,
+  // so the large itemCount itself costs nothing.
+  static final DateTime _epoch = DateTime(1970, 1, 1);
+  static const int _pageCount = 100000;
+
+  late final PageController _controller = PageController(initialPage: _pageForDate(widget.selectedDate));
+
+  int _pageForDate(DateTime date) {
+    final day = DateTime(date.year, date.month, date.day);
+    return day.difference(_epoch).inDays;
+  }
+
+  DateTime _dateForPage(int page) => _epoch.add(Duration(days: page));
 
   @override
-  void didUpdateWidget(_SwipeableDateBody oldWidget) {
+  void didUpdateWidget(_DateSwipeView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!isSameDay(oldWidget.selectedDate, widget.selectedDate)) {
-      _forward = widget.selectedDate.isAfter(oldWidget.selectedDate);
-    }
+    if (isSameDay(oldWidget.selectedDate, widget.selectedDate)) return;
+    if (!_controller.hasClients) return;
+    final targetPage = _pageForDate(widget.selectedDate);
+    // If the controller's current page already matches, this update came
+    // from our own `onPageChanged` (the user physically swiped) — nothing
+    // to animate, PageView already did it natively. Only DateStrip taps,
+    // the month-nav arrows, and "Today" reach this branch.
+    if ((_controller.page ?? targetPage.toDouble()).round() == targetPage) return;
+    _controller.animateToPage(
+      targetPage,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      // Swipe left/right to move a day, mirroring the DateStrip tap
-      // interaction (#21) — disabled in Edit Mode since that's
-      // reorder-by-drag territory (ReorderableListView already owns
-      // horizontal-ish gestures there).
-      onHorizontalDragStart: widget.enabled ? (_) => _dragDistance = 0 : null,
-      onHorizontalDragUpdate: widget.enabled ? (details) => _dragDistance += details.delta.dx : null,
-      onHorizontalDragEnd: widget.enabled
-          ? (details) {
-              final velocity = details.primaryVelocity ?? 0;
-              // Either a decisive flick (lowered from 200 — the old
-              // threshold made a lot of otherwise-clear swipes not
-              // register at all) or a slower but sufficiently long drag
-              // triggers the change, whichever the user actually did.
-              final triggeredByVelocity = velocity.abs() > 100;
-              final triggeredByDistance = _dragDistance.abs() > 60;
-              if (!triggeredByVelocity && !triggeredByDistance) return;
-              final delta = (triggeredByVelocity ? velocity : _dragDistance) < 0 ? 1 : -1;
-              widget.onSwipe(delta);
-            }
-          : null,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        // Default `layoutBuilder` stacks old/new as *non-positioned*
-        // children, which only get a loose constraint — `_HabitList`'s
-        // inner ListView then just shrink-wraps to its content's width
-        // instead of filling the screen, so the SlideTransition's
-        // fractional 1.0 offset (one full *child* width) ended up tiny and
-        // the whole thing read as a plain crossfade instead of a slide.
-        // `Positioned.fill` forces both children to the switcher's actual
-        // full size so the slide distance is the real screen width.
-        layoutBuilder: (currentChild, previousChildren) => Stack(
-          children: [
-            for (final child in previousChildren) Positioned.fill(child: child),
-            if (currentChild != null) Positioned.fill(child: currentChild),
-          ],
-        ),
-        // Full-width horizontal slide (not just a subtle nudge) so it
-        // clearly reads as "paging" left/right the same direction as the
-        // swipe, instead of looking like a near-static crossfade (#30).
-        transitionBuilder: (child, animation) => SlideTransition(
-          position: Tween<Offset>(
-            begin: Offset(_forward ? 1 : -1, 0),
-            end: Offset.zero,
-          ).animate(animation),
-          child: FadeTransition(
-            opacity: animation,
-            child: child,
-          ),
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
-          child: widget.child,
-        ),
-      ),
+    return PageView.builder(
+      controller: _controller,
+      itemCount: _pageCount,
+      physics: widget.enabled ? const PageScrollPhysics() : const NeverScrollableScrollPhysics(),
+      onPageChanged: (page) => widget.onDateChanged(_dateForPage(page)),
+      itemBuilder: (context, index) => widget.pageBuilder(_dateForPage(index)),
     );
+  }
+}
+
+/// One page of [_DateSwipeView] — independently watches its own [date]'s
+/// habit progress (rather than [HomeScreen] computing just the single
+/// selected day's `items`), since `PageView.builder` builds the current
+/// page's immediate neighbors too (both are visible mid-drag).
+class _DayPage extends ConsumerWidget {
+  const _DayPage({
+    required this.date,
+    required this.categoryById,
+    required this.categories,
+    required this.isEditMode,
+    required this.isWide,
+    required this.isTablet,
+  });
+
+  final DateTime date;
+  final Map<int, Category> categoryById;
+  final List<Category> categories;
+  final bool isEditMode;
+  final bool isWide;
+  final bool isTablet;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
+    final items = [...ref.watch(habitsWithProgressForDateProvider(date))]
+      ..removeWhere((item) => pendingDeleteIds.contains(item.habit.id))
+      ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
+    final linkedHabitIds = ref.watch(linkedHabitIdsProvider).value ?? const <int>{};
+
+    return items.isEmpty
+        ? const _EmptyState()
+        : _HabitList(
+            items: items,
+            categoryById: categoryById,
+            categories: categories,
+            isEditMode: isEditMode,
+            isWide: isWide,
+            isTablet: isTablet,
+            selectedDate: date,
+            linkedHabitIds: linkedHabitIds,
+          );
   }
 }
 
