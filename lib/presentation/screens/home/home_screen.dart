@@ -452,30 +452,45 @@ class _HabitList extends ConsumerWidget {
 
     // Deferred delete (#12): hide immediately via `pendingDeleteHabitIdsProvider`
     // (filtered out of `items` in build()), but only actually touch the
-    // database 5s later. Undo just un-hides it — no row is ever deleted if
-    // the user undoes in time, so unlike a real delete+recreate, the habit
-    // keeps its original id and any Community link stays intact.
+    // database once the snackbar below is gone. Undo just un-hides it — no
+    // row is ever deleted if the user undoes in time, so unlike a real
+    // delete+recreate, the habit keeps its original id and any Community
+    // link stays intact.
     ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s, habitId});
 
-    var undone = false;
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.homeHabitDeleted(habit.displayName(lang))),
-          duration: const Duration(seconds: 5),
-          action: SnackBarAction(
-            label: l10n.commonUndo,
-            onPressed: () {
-              undone = true;
-              ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
-            },
-          ),
+    if (!context.mounted) return;
+    // Clear any snackbar still animating out from a previous action first —
+    // otherwise this one queues behind it instead of showing right away.
+    ScaffoldMessenger.of(context).clearSnackBars();
+    final controller = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.homeHabitDeleted(habit.displayName(lang))),
+        // Effectively "no auto-dismiss from SnackBar itself" — its built-in
+        // duration-based timer turned out not to reliably fire in this app
+        // (reports of it staying open 10s+), so instead of trusting it we
+        // close the snackbar ourselves below via a plain `Timer`, which
+        // isn't tied to any animation/ticker machinery that could be the
+        // culprit.
+        duration: const Duration(days: 1),
+        action: SnackBarAction(
+          label: l10n.commonUndo,
+          onPressed: () {
+            ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
+          },
         ),
-      );
-    }
+      ),
+    );
+    final undoTimer = Timer(const Duration(seconds: 5), controller.close);
 
-    await Future.delayed(const Duration(seconds: 5));
-    if (undone) return;
+    // The permanent delete below is driven by the snackbar's own `.closed`
+    // future instead of a separately-ticking `Future.delayed` timer, so the
+    // two can never drift apart: whatever actually keeps the snackbar (and
+    // its Undo button) visible also delays the real delete by exactly that
+    // long — tapping Undo any time before the snackbar closes always works,
+    // and there's no window where Undo is still on screen but too late.
+    final closedReason = await controller.closed;
+    undoTimer.cancel();
+    if (closedReason == SnackBarClosedReason.action) return;
 
     try {
       await ref.read(notificationServiceProvider).cancelForHabit(habitId);

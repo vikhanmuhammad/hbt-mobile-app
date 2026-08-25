@@ -1321,6 +1321,12 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
             initialSelection: _selectedGender,
             hintText: lang.genderHint,
             expandedInsets: EdgeInsets.zero,
+            // `DropdownMenu` doesn't automatically pick up the ambient
+            // `Theme.inputDecorationTheme` the way `TextField` does, so
+            // without this it fell back to Material's default (unfilled,
+            // different border) instead of matching the Name/Age fields
+            // above it.
+            inputDecorationTheme: theme.inputDecorationTheme,
             onSelected: (value) {
               if (value == null) return;
               setState(() => _selectedGender = value);

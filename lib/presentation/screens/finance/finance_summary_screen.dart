@@ -188,12 +188,21 @@ class _PeriodNav extends ConsumerWidget {
       children: [
         _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
         Expanded(
-          child: Text(
-            _label(lang),
-            style: theme.textTheme.titleLarge,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          // The weekly label ("31 Agustus–6 September 2026") can run long
+          // enough at titleLarge to get clipped by maxLines:1 ellipsis —
+          // FittedBox scales the whole label down to fit instead of cutting
+          // it off, so the full date range always stays readable.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _label(lang),
+                style: theme.textTheme.titleLarge,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+              ),
+            ),
           ),
         ),
         _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),

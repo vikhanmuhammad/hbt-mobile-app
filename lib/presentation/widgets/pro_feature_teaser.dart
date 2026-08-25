@@ -85,12 +85,34 @@ class ProFeatureTeaser extends ConsumerWidget {
               ),
             ),
           if (showBack)
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back_rounded),
-                  onPressed: () => Navigator.of(context).pop(),
+            // `Positioned` (not a bare non-positioned child) — the parent
+            // Stack uses `fit: StackFit.expand`, which forces every
+            // *non*-positioned child to stretch to the Stack's full size.
+            // A bare `SafeArea(...)` here was silently stretching all the
+            // way down through Padding/Material/IconButton to fill the
+            // entire screen, centering the actual arrow glyph in the
+            // middle of the screen (hidden behind the card) instead of
+            // pinning a small chip to the corner — exactly the "no back
+            // button, but a big circle behind the dialog" bug (#28).
+            // `Positioned` children are exempt from that stretching, so
+            // this now sizes to its own content and sits at the corner.
+            Positioned(
+              top: 0,
+              left: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Material(
+                    // Explicit white-on-dark chip instead of the default
+                    // (theme-colored, often dark-on-dark) IconButton — that
+                    // was nearly invisible against the darkened backdrop.
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
                 ),
               ),
             ),

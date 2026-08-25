@@ -44,6 +44,14 @@ class SettingsRepository {
   Future<void> setGender(String genderName) =>
       _prefs.setString(_genderKey, genderName);
 
+  /// Clears the previously chosen gender — used when replaying onboarding
+  /// from Settings ("Lihat ulang alur onboarding (demo)"). Without this,
+  /// `deleteAllData()` wipes the Drift DB but leaves this SharedPreferences
+  /// key behind, so the "What's your name?" step's gender dropdown comes
+  /// back pre-selected with the old value instead of its "select gender"
+  /// hint, even though every habit/category/profile was reset.
+  Future<void> clearGender() => _prefs.remove(_genderKey);
+
   /// Point 10 — Health/Calendar/Alarm sync toggles, each independently
   /// opt-in and defaulting to off (a device permission prompt is only
   /// triggered the moment the user turns one on).

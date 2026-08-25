@@ -415,6 +415,11 @@ class SettingsScreen extends ConsumerWidget {
     // unlinked, since the local link is gone — "Add to My Habits" resumes
     // syncing from wherever a freshly re-created local habit's progress is).
     await habitRepo.deleteAllData();
+    // deleteAllData() only wipes the Drift DB — the onboarding gender pick
+    // lives in SharedPreferences (SettingsRepository) and survives that,
+    // which made the "What's your name?" step come back with the old
+    // gender pre-selected instead of its placeholder.
+    await ref.read(settingsRepositoryProvider).clearGender();
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);

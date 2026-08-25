@@ -140,6 +140,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     initialSelection: _gender,
                     hintText: l10n.genderHint,
                     expandedInsets: EdgeInsets.zero,
+                    // Match the Name/Age fields' fill/border above — see the
+                    // same fix's comment in onboarding_flow.dart.
+                    inputDecorationTheme: theme.inputDecorationTheme,
                     onSelected: (value) => setState(() => _gender = value),
                     dropdownMenuEntries: [
                       for (final g in Gender.values)
