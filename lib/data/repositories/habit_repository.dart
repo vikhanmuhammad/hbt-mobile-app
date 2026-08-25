@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart';
+import '../../domain/models/habit_draft.dart';
 import '../../domain/models/habit_template.dart';
 import '../../domain/models/task_days.dart';
 import '../database/app_database.dart' as db;
@@ -60,30 +61,56 @@ class HabitRepository {
     bool isCustom = true,
     String? templateKey,
   }) {
-    return _db.habitDao.insertHabit(
-      db.HabitsCompanion.insert(
-        categoryId: categoryId,
-        name: name,
-        nameId: Value(nameId),
-        description: Value(description),
-        icon: Value(icon),
-        goalPeriod: goalPeriod.name,
-        goalValue: Value(goalValue),
-        goalUnit: Value(goalUnit),
-        goalDirection: Value(goalDirection.name),
-        taskDays: TaskDays.encode(taskDays),
-        timeRange: Value(timeRange.name),
-        reminderEnabled: Value(reminderEnabled),
-        reminderTime: Value(reminderTime),
-        reminderIntervalMinutes: Value(reminderIntervalMinutes),
-        startDate: startDate,
-        endDate: Value(endDate),
-        sortOrder: Value(sortOrder),
-        isCustom: Value(isCustom),
-        templateKey: Value(templateKey),
-      ),
-    );
+    return _db.habitDao.insertHabit(_companionFor(HabitDraft(
+      categoryId: categoryId,
+      name: name,
+      nameId: nameId,
+      description: description,
+      icon: icon,
+      goalPeriod: goalPeriod,
+      goalValue: goalValue,
+      goalUnit: goalUnit,
+      goalDirection: goalDirection,
+      taskDays: taskDays,
+      timeRange: timeRange,
+      reminderEnabled: reminderEnabled,
+      reminderTime: reminderTime,
+      reminderIntervalMinutes: reminderIntervalMinutes,
+      startDate: startDate,
+      endDate: endDate,
+      sortOrder: sortOrder,
+      isCustom: isCustom,
+      templateKey: templateKey,
+    )));
   }
+
+  /// Bulk version of [createHabit] — see `HabitDao.insertHabits` for why
+  /// this matters (one batch/transaction instead of N separate commits).
+  Future<void> createHabitsBatch(List<HabitDraft> drafts) {
+    return _db.habitDao.insertHabits(drafts.map(_companionFor).toList());
+  }
+
+  db.HabitsCompanion _companionFor(HabitDraft d) => db.HabitsCompanion.insert(
+        categoryId: d.categoryId,
+        name: d.name,
+        nameId: Value(d.nameId),
+        description: Value(d.description),
+        icon: Value(d.icon),
+        goalPeriod: d.goalPeriod.name,
+        goalValue: Value(d.goalValue),
+        goalUnit: Value(d.goalUnit),
+        goalDirection: Value(d.goalDirection.name),
+        taskDays: TaskDays.encode(d.taskDays),
+        timeRange: Value(d.timeRange.name),
+        reminderEnabled: Value(d.reminderEnabled),
+        reminderTime: Value(d.reminderTime),
+        reminderIntervalMinutes: Value(d.reminderIntervalMinutes),
+        startDate: d.startDate,
+        endDate: Value(d.endDate),
+        sortOrder: Value(d.sortOrder),
+        isCustom: Value(d.isCustom),
+        templateKey: Value(d.templateKey),
+      );
 
   Future<void> updateHabit(Habit habit) async {
     await _db.habitDao.updateHabit(

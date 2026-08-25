@@ -18,7 +18,6 @@ import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_progress_card.dart';
@@ -129,20 +128,11 @@ class HomeScreen extends ConsumerWidget {
           const Divider(height: 1),
           const SizedBox(height: 8),
           Expanded(
-            child: GestureDetector(
-              // Swipe left/right to move a day, mirroring the DateStrip tap
-              // interaction (#21) — disabled in Edit Mode since that's
-              // reorder-by-drag territory (ReorderableListView already owns
-              // horizontal-ish gestures there).
-              onHorizontalDragEnd: isEditMode
-                  ? null
-                  : (details) {
-                      final velocity = details.primaryVelocity ?? 0;
-                      if (velocity.abs() < 200) return;
-                      final delta = velocity < 0 ? 1 : -1;
-                      ref.read(selectedHomeDateProvider.notifier).state =
-                          selectedDate.add(Duration(days: delta));
-                    },
+            child: _SwipeableDateBody(
+              selectedDate: selectedDate,
+              enabled: !isEditMode,
+              onSwipe: (delta) => ref.read(selectedHomeDateProvider.notifier).state =
+                  selectedDate.add(Duration(days: delta)),
               child: items.isEmpty
                   ? const _EmptyState()
                   : _HabitList(
@@ -166,6 +156,108 @@ class HomeScreen extends ConsumerWidget {
   void _shiftMonth(WidgetRef ref, DateTime month, int delta) {
     final next = DateTime(month.year, month.month + delta, 1);
     ref.read(selectedHomeDateProvider.notifier).state = next;
+  }
+}
+
+/// Wraps the habit list area with the day-swipe gesture and an animated
+/// slide+fade transition on [selectedDate] change — previously the date
+/// changed (via swipe, DateStrip tap, or the month arrows) but the list
+/// below just snapped to the new day's content with zero visual feedback,
+/// making the swipe feel unresponsive/like nothing happened (#30). Also
+/// used for DateStrip taps and the month nav arrows (any `selectedDate`
+/// change), not just the swipe gesture itself, so the transition is
+/// consistent everywhere the day changes.
+class _SwipeableDateBody extends StatefulWidget {
+  const _SwipeableDateBody({
+    required this.selectedDate,
+    required this.enabled,
+    required this.onSwipe,
+    required this.child,
+  });
+
+  final DateTime selectedDate;
+  final bool enabled;
+
+  /// Called with +1 (next day) or -1 (previous day).
+  final ValueChanged<int> onSwipe;
+  final Widget child;
+
+  @override
+  State<_SwipeableDateBody> createState() => _SwipeableDateBodyState();
+}
+
+class _SwipeableDateBodyState extends State<_SwipeableDateBody> {
+  bool _forward = true;
+  double _dragDistance = 0;
+
+  @override
+  void didUpdateWidget(_SwipeableDateBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!isSameDay(oldWidget.selectedDate, widget.selectedDate)) {
+      _forward = widget.selectedDate.isAfter(oldWidget.selectedDate);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      // Swipe left/right to move a day, mirroring the DateStrip tap
+      // interaction (#21) — disabled in Edit Mode since that's
+      // reorder-by-drag territory (ReorderableListView already owns
+      // horizontal-ish gestures there).
+      onHorizontalDragStart: widget.enabled ? (_) => _dragDistance = 0 : null,
+      onHorizontalDragUpdate: widget.enabled ? (details) => _dragDistance += details.delta.dx : null,
+      onHorizontalDragEnd: widget.enabled
+          ? (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              // Either a decisive flick (lowered from 200 — the old
+              // threshold made a lot of otherwise-clear swipes not
+              // register at all) or a slower but sufficiently long drag
+              // triggers the change, whichever the user actually did.
+              final triggeredByVelocity = velocity.abs() > 100;
+              final triggeredByDistance = _dragDistance.abs() > 60;
+              if (!triggeredByVelocity && !triggeredByDistance) return;
+              final delta = (triggeredByVelocity ? velocity : _dragDistance) < 0 ? 1 : -1;
+              widget.onSwipe(delta);
+            }
+          : null,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        // Default `layoutBuilder` stacks old/new as *non-positioned*
+        // children, which only get a loose constraint — `_HabitList`'s
+        // inner ListView then just shrink-wraps to its content's width
+        // instead of filling the screen, so the SlideTransition's
+        // fractional 1.0 offset (one full *child* width) ended up tiny and
+        // the whole thing read as a plain crossfade instead of a slide.
+        // `Positioned.fill` forces both children to the switcher's actual
+        // full size so the slide distance is the real screen width.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          children: [
+            for (final child in previousChildren) Positioned.fill(child: child),
+            if (currentChild != null) Positioned.fill(child: currentChild),
+          ],
+        ),
+        // Full-width horizontal slide (not just a subtle nudge) so it
+        // clearly reads as "paging" left/right the same direction as the
+        // swipe, instead of looking like a near-static crossfade (#30).
+        transitionBuilder: (child, animation) => SlideTransition(
+          position: Tween<Offset>(
+            begin: Offset(_forward ? 1 : -1, 0),
+            end: Offset.zero,
+          ).animate(animation),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(DateTime(widget.selectedDate.year, widget.selectedDate.month, widget.selectedDate.day)),
+          child: widget.child,
+        ),
+      ),
+    );
   }
 }
 
@@ -380,17 +472,22 @@ class _HabitList extends ConsumerWidget {
     );
   }
 
+  // Deliberately no per-card FadeSlideIn/stagger here (unlike other list
+  // screens) — `_SwipeableDateBody` now wraps the whole list in its own
+  // page-level slide+fade on every date change, and since that forces a
+  // full remount of every card underneath it (new `KeyedSubtree` per date),
+  // a per-card entrance animation would re-trigger on every single swipe
+  // too — a cascading staggered fade-in on top of the page slide, which
+  // visually drowned out the slide and just read as "everything fading in"
+  // instead of "the page sliding" (#30).
   Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item, int index) {
-    return FadeSlideIn(
-      delay: staggeredDelay(index),
-      child: TapScale(
-        child: HabitProgressCard(
-          key: ValueKey(item.habit.id),
-          item: item,
-          accentColor: _accentFor(item.habit.categoryId),
-          isEditMode: false,
-          onTap: () => _onTapCard(context, ref, item),
-        ),
+    return TapScale(
+      child: HabitProgressCard(
+        key: ValueKey(item.habit.id),
+        item: item,
+        accentColor: _accentFor(item.habit.categoryId),
+        isEditMode: false,
+        onTap: () => _onTapCard(context, ref, item),
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
+import '../../../domain/models/habit_draft.dart';
 import '../../../domain/models/habit_template.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
@@ -810,29 +811,32 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
-      for (final entry in entries) {
-        final template = entry.template;
-        final id = await repo.createHabit(
-          categoryId: entry.categoryId,
-          name: template.name,
-          nameId: template.nameId,
-          isCustom: false,
-          templateKey: template.key,
-          icon: template.icon,
-          goalPeriod: template.goalPeriod,
-          goalValue: template.goalValue,
-          goalUnit: template.goalUnit,
-          goalDirection: template.goalDirection,
-          taskDays: const [allDaysKey],
-          timeRange: template.timeRange,
-          reminderEnabled: false,
-          startDate: today(),
-        );
-        final created = await repo.getById(id);
-        if (created != null) {
-          await _tryScheduleNotification(created);
-        }
-      }
+      final startDate = today();
+      // One batch insert instead of a create+read-back+notification-reschedule
+      // loop per habit (previously ~1-2s per habit in a multi-select batch,
+      // #29). No notification scheduling here either — every template habit
+      // is created with reminderEnabled: false, so the per-habit
+      // `_tryScheduleNotification` call was always just a no-op
+      // cancel-then-return platform-channel round trip; safe to drop.
+      await repo.createHabitsBatch([
+        for (final entry in entries)
+          HabitDraft(
+            categoryId: entry.categoryId,
+            name: entry.template.name,
+            nameId: entry.template.nameId,
+            isCustom: false,
+            templateKey: entry.template.key,
+            icon: entry.template.icon,
+            goalPeriod: entry.template.goalPeriod,
+            goalValue: entry.template.goalValue,
+            goalUnit: entry.template.goalUnit,
+            goalDirection: entry.template.goalDirection,
+            taskDays: const [allDaysKey],
+            timeRange: entry.template.timeRange,
+            reminderEnabled: false,
+            startDate: startDate,
+          ),
+      ]);
       await _finishAndReturn(
         toastMessage: entries.length == 1
             ? l10n.addHabitAdded
