@@ -27,12 +27,14 @@ class OnboardingStrings {
           'Lihat konsistensimu sekilas pandang',
           'Bertumbuh bersama teman',
           'Semua kebiasaanmu, dalam satu layar',
+          'Kelola keuanganmu juga',
         ]
       : const [
           'Log your progress in seconds',
           'See your consistency at a glance',
           'Grow together with friends',
           'Every habit, right on one screen',
+          'Manage your finances too',
         ];
   List<String> get introSubtitles => _id
       ? const [
@@ -40,12 +42,14 @@ class OnboardingStrings {
           'Kalender bulanan dengan ring progress menunjukkan seberapa konsisten kamu selama ini.',
           'Gabung Community, lacak kebiasaan bareng, dan naik di papan peringkat bersama.',
           'Beranda menunjukkan progres dan target tiap kebiasaan dengan jelas, setiap hari.',
+          'Lacak pengeluaran, tabungan, dan target finansialmu. Fitur khusus pengguna Pro.',
         ]
       : const [
           'Tap to check off simple habits, or add a quick number for the ones you measure.',
           'A monthly calendar with progress rings shows exactly how consistent you\'ve been.',
           'Join a Community group, track shared habits, and climb the leaderboard together.',
           'Home shows your progress against each goal clearly, right from the first glance.',
+          'Track spending, savings, and financial goals. A Pro-only feature.',
         ];
   String get getStarted => _t('Get Started', 'Mulai');
 

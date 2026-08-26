@@ -12,6 +12,7 @@ import 'presentation/screens/onboarding/onboarding_flow.dart';
 import 'presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/widgets/app_logo.dart';
+import 'presentation/widgets/pro_upgrade_celebration.dart';
 import 'providers/core_providers.dart';
 import 'providers/settings_providers.dart';
 
@@ -65,7 +66,7 @@ class HabitTrackerApp extends ConsumerWidget {
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 0.85,
         maxScaleFactor: 1.3,
-        child: child!,
+        child: ProUpgradeCelebration(child: child!),
       ),
       home: const AppBootstrap(),
     );
@@ -81,13 +82,49 @@ class AppBootstrap extends ConsumerStatefulWidget {
   ConsumerState<AppBootstrap> createState() => _AppBootstrapState();
 }
 
+/// Background illustrations for onboarding's personal-info step and the 3
+/// lifestyle questions (`_StepScaffold.backgroundLayers` in
+/// onboarding_flow.dart) — warmed into Flutter's image cache during the
+/// splash screen (see `didChangeDependencies` below) so they render
+/// instantly the first time each step appears instead of popping in a beat
+/// late while the PNG decodes.
+const _onboardingBackgroundAssets = [
+  'assets/background/form_page/composed.png',
+  'assets/background/questionare_1/11.png',
+  'assets/background/questionare_1/12.png',
+  'assets/background/questionare_1/13.png',
+  'assets/background/questionare_1/14.png',
+  'assets/background/questionare_2/7.png',
+  'assets/background/questionare_2/8.png',
+  'assets/background/questionare_2/9.png',
+  'assets/background/questionare_3/2.png',
+  'assets/background/questionare_3/3.png',
+  'assets/background/questionare_3/4.png',
+];
+
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   late final Future<void> _initFuture;
+  bool _precachedBackgrounds = false;
 
   @override
   void initState() {
     super.initState();
     _initFuture = _init();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Fire-and-forget, runs alongside `_initFuture` rather than gating it —
+    // needs a real `BuildContext` (for device pixel ratio etc., so the
+    // cache key matches what `Image.asset` resolves later) which isn't
+    // reliably available yet in `initState`.
+    if (!_precachedBackgrounds) {
+      _precachedBackgrounds = true;
+      for (final asset in _onboardingBackgroundAssets) {
+        precacheImage(AssetImage(asset), context);
+      }
+    }
   }
 
   Future<void> _init() async {

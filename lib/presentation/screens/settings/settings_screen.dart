@@ -11,9 +11,9 @@ import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/app_logo.dart';
 import '../../widgets/segmented_pill_toggle.dart';
 import '../../widgets/toggle_switch.dart';
+import '../../widgets/user_avatar.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'faq_screen.dart';
@@ -62,7 +62,11 @@ class SettingsScreen extends ConsumerWidget {
               // reference app's Settings layout (point 16).
               Row(
                 children: [
-                  const AppLogo(size: 52),
+                  UserAvatar(
+                    photoPath: profile?.photoPath,
+                    displayName: profile?.name.isNotEmpty == true ? profile!.name : '?',
+                    size: 52,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(

@@ -56,6 +56,7 @@ class CommunityRepository {
     required String creatorUid,
     required String creatorDisplayName,
     String? creatorAvatarIcon,
+    String? creatorPhotoBase64,
   }) async {
     final groupRef = _groups.doc();
     final code = _generateInviteCode();
@@ -64,6 +65,7 @@ class CommunityRepository {
     final memberEntry = {
       'displayName': creatorDisplayName,
       'avatarIcon': creatorAvatarIcon,
+      'photoBase64': creatorPhotoBase64,
       'role': GroupRole.admin.name,
       'joinedAt': Timestamp.fromDate(now),
     };
@@ -99,6 +101,7 @@ class CommunityRepository {
           uid: creatorUid,
           displayName: creatorDisplayName,
           avatarIcon: creatorAvatarIcon,
+          photoBase64: creatorPhotoBase64,
           role: GroupRole.admin,
           joinedAt: now,
         ),
@@ -115,6 +118,7 @@ class CommunityRepository {
     required String uid,
     required String displayName,
     String? avatarIcon,
+    String? photoBase64,
   }) async {
     final inviteDoc = await _invites.doc(code.trim().toUpperCase()).get();
     if (!inviteDoc.exists) throw const InviteCodeNotFound();
@@ -133,6 +137,7 @@ class CommunityRepository {
       'members.$uid': {
         'displayName': displayName,
         'avatarIcon': avatarIcon,
+        'photoBase64': photoBase64,
         'role': GroupRole.member.name,
         'joinedAt': Timestamp.fromDate(DateTime.now()),
       },
@@ -140,6 +145,25 @@ class CommunityRepository {
     });
 
     return groupId;
+  }
+
+  /// Fans a changed profile photo out to every group the user belongs to —
+  /// there's no central `users/{uid}` profile doc that groups reference
+  /// (member data is denormalized per-group, matching `displayName`'s
+  /// existing pattern), so a photo change has to be pushed to each group's
+  /// `members.{uid}.photoBase64` individually. Called from Settings right
+  /// after a new photo is picked.
+  Future<void> updateMyPhotoAcrossGroups({
+    required String uid,
+    required String? photoBase64,
+  }) async {
+    final mine = await _groups.where('memberUids', arrayContains: uid).get();
+    if (mine.docs.isEmpty) return;
+    final batch = _firestore.batch();
+    for (final doc in mine.docs) {
+      batch.update(doc.reference, {'members.$uid.photoBase64': photoBase64});
+    }
+    await batch.commit();
   }
 
   Future<void> setMemberRole({
@@ -375,6 +399,7 @@ class CommunityRepository {
           uid: e.key,
           displayName: m['displayName'] as String? ?? '',
           avatarIcon: m['avatarIcon'] as String?,
+          photoBase64: m['photoBase64'] as String?,
           role: GroupRole.fromValue(m['role'] as String? ?? 'member'),
           joinedAt: (m['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );

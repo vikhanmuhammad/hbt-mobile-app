@@ -1808,6 +1808,24 @@ abstract class AppLocalizations {
   /// **'Profile photo is not available in this version yet'**
   String get profilePhotoNotAvailable;
 
+  /// No description provided for @avatarPickCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get avatarPickCamera;
+
+  /// No description provided for @avatarPickGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get avatarPickGallery;
+
+  /// No description provided for @profilePhotoCommunitySyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved, but couldn\'t sync to your groups yet: {error}'**
+  String profilePhotoCommunitySyncFailed(String error);
+
   /// No description provided for @profileNameLabel.
   ///
   /// In en, this message translates to:
@@ -1892,6 +1910,24 @@ abstract class AppLocalizations {
   /// **'Calendar access'**
   String get healthSyncFeatureCalendar;
 
+  /// No description provided for @healthConnectNotInstalledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect required'**
+  String get healthConnectNotInstalledTitle;
+
+  /// No description provided for @healthConnectNotInstalledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing steps needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.'**
+  String get healthConnectNotInstalledMessage;
+
+  /// No description provided for @healthConnectInstallButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Health Connect'**
+  String get healthConnectInstallButton;
+
   /// No description provided for @iconPickerChooseIcon.
   ///
   /// In en, this message translates to:
@@ -1915,6 +1951,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upgrade to Pro'**
   String get proFeatureUpgradeButton;
+
+  /// No description provided for @proUpgradeCelebrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re Pro now!'**
+  String get proUpgradeCelebrationTitle;
+
+  /// No description provided for @proUpgradeCelebrationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited habits, Finance tracking, and Community are all unlocked.'**
+  String get proUpgradeCelebrationSubtitle;
+
+  /// No description provided for @proUpgradeCelebrationButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s go'**
+  String get proUpgradeCelebrationButton;
 
   /// No description provided for @proFeatureSignInFailed.
   ///

@@ -1017,6 +1017,17 @@ class AppLocalizationsId extends AppLocalizations {
       'Foto profil belum tersedia di versi ini';
 
   @override
+  String get avatarPickCamera => 'Ambil foto';
+
+  @override
+  String get avatarPickGallery => 'Pilih dari galeri';
+
+  @override
+  String profilePhotoCommunitySyncFailed(String error) {
+    return 'Foto tersimpan, tapi belum bisa disinkronkan ke grup kamu: $error';
+  }
+
+  @override
   String get profileNameLabel => 'Nama';
 
   @override
@@ -1062,6 +1073,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get healthSyncFeatureCalendar => 'Akses Kalender';
 
   @override
+  String get healthConnectNotInstalledTitle => 'Health Connect diperlukan';
+
+  @override
+  String get healthConnectNotInstalledMessage =>
+      'Sinkronisasi langkah membutuhkan aplikasi Health Connect, yang belum terpasang di perangkat ini. Pasang dulu, lalu coba lagi.';
+
+  @override
+  String get healthConnectInstallButton => 'Pasang Health Connect';
+
+  @override
   String get iconPickerChooseIcon => 'Pilih Ikon';
 
   @override
@@ -1072,6 +1093,16 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get proFeatureUpgradeButton => 'Upgrade ke Pro';
+
+  @override
+  String get proUpgradeCelebrationTitle => 'Kamu sekarang Pro!';
+
+  @override
+  String get proUpgradeCelebrationSubtitle =>
+      'Habit tanpa batas, pelacakan Finansial, dan Community sudah terbuka semua.';
+
+  @override
+  String get proUpgradeCelebrationButton => 'Lanjutkan';
 
   @override
   String proFeatureSignInFailed(String error) {

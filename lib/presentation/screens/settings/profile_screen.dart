@@ -5,15 +5,16 @@ import '../../../domain/language.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../../services/avatar_image_service.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/app_logo.dart';
+import '../../widgets/avatar_picker.dart';
 
-/// Edit the user's name & age profile. Profile photo (CLAUDE.md v3 §8) is
-/// not yet implemented — marked "not available yet" following the
-/// Export/Import pattern in Settings, to avoid adding a native picker
-/// dependency outside this iteration's scope.
+/// Edit the user's name, age, gender & profile photo. Photo picking/
+/// processing lives in `AvatarImageService`/`AvatarPicker` (base64 inline
+/// in Firestore, not Firebase Storage — the project is on the Spark plan).
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -49,6 +50,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _loaded = true;
     _nameController.text = profile.name;
     _ageController.text = profile.age?.toString() ?? '';
+  }
+
+  Future<void> _onPhotoPicked(ProcessedAvatar avatar, UserProfile current) async {
+    final l10n = AppLocalizations.of(context)!;
+    await ref.read(profileRepositoryProvider).updateProfile(
+          UserProfile(
+            id: current.id,
+            name: current.name,
+            age: current.age,
+            photoPath: avatar.localFile.path,
+            themeKey: current.themeKey,
+            createdAt: current.createdAt,
+          ),
+        );
+    final uid = ref.read(currentUidProvider);
+    if (uid != null) {
+      try {
+        await ref.read(communityRepositoryProvider).updateMyPhotoAcrossGroups(
+              uid: uid,
+              photoBase64: avatar.base64Thumbnail,
+            );
+      } catch (e) {
+        // Local photo already saved above — don't lose that success message
+        // over a Community sync failure, but surface it distinctly instead
+        // of failing silently (this previously had no error handling at
+        // all, making a sync failure indistinguishable from success).
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.profilePhotoCommunitySyncFailed('$e'))),
+          );
+        }
+        return;
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
+    }
   }
 
   Future<void> _save(UserProfile current) async {
@@ -107,14 +145,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Center(
                     child: Column(
                       children: [
-                        const AppLogo(size: 64),
-                        const SizedBox(height: 10),
-                        TextButton(
-                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.profilePhotoNotAvailable)),
-                          ),
-                          child: Text(l10n.profileChangePhoto),
+                        AvatarPicker(
+                          photoPath: profile.photoPath,
+                          displayName: profile.name,
+                          size: 72,
+                          onPicked: (avatar) => _onPhotoPicked(avatar, profile),
                         ),
+                        const SizedBox(height: 10),
+                        Text(l10n.profileChangePhoto, style: theme.textTheme.labelMedium),
                       ],
                     ),
                   ),

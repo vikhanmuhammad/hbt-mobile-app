@@ -19,6 +19,16 @@ service cloud.firestore {
         groupOf(groupId).members[request.auth.uid].role == 'admin';
     }
 
+    // `photoBase64` is an inline base64 JPEG thumbnail of a member's profile
+    // photo (no Firebase Storage on the Spark plan, so it travels as data
+    // rather than an uploaded file/URL) — size-capped so a client bug or a
+    // tampered request can't bloat the group doc that every member's
+    // listener re-downloads on every change.
+    function validPhotoBase64(memberData) {
+      return !('photoBase64' in memberData) || memberData.photoBase64 == null ||
+        (memberData.photoBase64 is string && memberData.photoBase64.size() < 20000);
+    }
+
     // Lookup kode invite -> groupId (dokumen `id` = kode). Hanya bisa dibaca
     // per-ID (harus tahu kode persisnya) — tidak ada `list` supaya tidak jadi
     // direktori grup publik (Group tetap private & invite-based).
@@ -50,7 +60,8 @@ service cloud.firestore {
       allow create: if isSignedIn() &&
         request.resource.data.createdBy == request.auth.uid &&
         request.resource.data.members[request.auth.uid].role == 'admin' &&
-        request.auth.uid in request.resource.data.memberUids;
+        request.auth.uid in request.resource.data.memberUids &&
+        validPhotoBase64(request.resource.data.members[request.auth.uid]);
       // Admin bisa update apapun (nama, foto, kick/promote member, dst).
       // Non-admin cuma boleh menambahkan dirinya sendiri sebagai member baru
       // (self-join via invite code) — tidak boleh mengubah field lain atau
@@ -64,7 +75,8 @@ service cloud.firestore {
            .affectedKeys().hasOnly([request.auth.uid]) &&
          request.resource.data.members[request.auth.uid].role == 'member' &&
          request.resource.data.memberUids.hasAll(resource.data.memberUids) &&
-         request.resource.data.memberUids.hasAny([request.auth.uid])) ||
+         request.resource.data.memberUids.hasAny([request.auth.uid]) &&
+         validPhotoBase64(request.resource.data.members[request.auth.uid])) ||
         // Self-leave: any current member (including an admin, as long as
         // another admin remains — enforced client-side since rules can't
         // easily scan the remaining members map for another admin) may
@@ -78,7 +90,23 @@ service cloud.firestore {
          request.resource.data.members.diff(resource.data.members)
            .affectedKeys().hasOnly([request.auth.uid]) &&
          !(request.auth.uid in request.resource.data.members) &&
-         !(request.auth.uid in request.resource.data.memberUids));
+         !(request.auth.uid in request.resource.data.memberUids)) ||
+        // Self-update: any current member (admin or not) may update ONLY
+        // the `photoBase64` field of their own entry — used when a user
+        // changes their profile photo in Settings and it's fanned out to
+        // every group they belong to. Size-capped since photoBase64 is an
+        // inline base64 thumbnail (no Firebase Storage on the Spark plan),
+        // not a validated-elsewhere uploaded file.
+        (isSignedIn() &&
+         request.auth.uid in resource.data.members &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['members']) &&
+         request.resource.data.members.diff(resource.data.members)
+           .affectedKeys().hasOnly([request.auth.uid]) &&
+         request.resource.data.members[request.auth.uid]
+           .diff(resource.data.members[request.auth.uid]).affectedKeys()
+           .hasOnly(['photoBase64']) &&
+         validPhotoBase64(request.resource.data.members[request.auth.uid]));
       allow delete: if isAdminOfGroup(groupId);
 
       match /groupHabits/{habitId} {

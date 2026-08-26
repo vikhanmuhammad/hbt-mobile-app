@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
+import '../../../providers/core_providers.dart';
+import '../../../services/avatar_image_service.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import 'group_detail_screen.dart';
 
@@ -33,10 +35,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
       final displayName = ref.read(currentDisplayNameProvider);
       if (uid == null) return;
 
+      final localProfile = await ref.read(profileRepositoryProvider).getProfile();
+      final photoBase64 =
+          await AvatarImageService().thumbnailBase64FromFile(localProfile?.photoPath);
+
       final group = await ref.read(communityRepositoryProvider).createGroup(
             name: name,
             creatorUid: uid,
             creatorDisplayName: displayName,
+            creatorPhotoBase64: photoBase64,
           );
 
       if (!mounted) return;

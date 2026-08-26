@@ -770,6 +770,66 @@ final class CommunitySyncServiceProvider
 String _$communitySyncServiceHash() =>
     r'847b162b7f484d845e7bcd90a40e6d0d592b4356';
 
+/// Fans the local profile photo out to every Community group the user
+/// belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set a profile photo
+/// (in onboarding or Settings) before ever joining/creating a group, so
+/// their photo shows up in Community without needing a manual re-save in
+/// Settings. `keepAlive: true` so it runs once per session rather than on
+/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
+/// itself a no-op if the user isn't in any groups yet.
+
+@ProviderFor(profilePhotoCommunitySync)
+final profilePhotoCommunitySyncProvider = ProfilePhotoCommunitySyncProvider._();
+
+/// Fans the local profile photo out to every Community group the user
+/// belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set a profile photo
+/// (in onboarding or Settings) before ever joining/creating a group, so
+/// their photo shows up in Community without needing a manual re-save in
+/// Settings. `keepAlive: true` so it runs once per session rather than on
+/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
+/// itself a no-op if the user isn't in any groups yet.
+
+final class ProfilePhotoCommunitySyncProvider
+    extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
+    with $FutureModifier<void>, $FutureProvider<void> {
+  /// Fans the local profile photo out to every Community group the user
+  /// belongs to the first time they open Community in this app session —
+  /// covers a fresh install/login where the user already set a profile photo
+  /// (in onboarding or Settings) before ever joining/creating a group, so
+  /// their photo shows up in Community without needing a manual re-save in
+  /// Settings. `keepAlive: true` so it runs once per session rather than on
+  /// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
+  /// itself a no-op if the user isn't in any groups yet.
+  ProfilePhotoCommunitySyncProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profilePhotoCommunitySyncProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$profilePhotoCommunitySyncHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<void> create(Ref ref) {
+    return profilePhotoCommunitySync(ref);
+  }
+}
+
+String _$profilePhotoCommunitySyncHash() =>
+    r'931c47d2e777acb684624ee076cb659a6ecae14b';
+
 @ProviderFor(myGroups)
 final myGroupsProvider = MyGroupsProvider._();
 

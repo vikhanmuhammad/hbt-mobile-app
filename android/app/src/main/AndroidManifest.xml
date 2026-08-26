@@ -3,6 +3,12 @@
          alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Profile photo upload (onboarding + Settings) — camera capture, and
+         legacy gallery access on API <33 (API 33+ uses image_picker's
+         system Photo Picker, which needs no runtime permission). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+
     <!-- Point 10 — Health/Calendar/Alarm sync (opt-in via Settings). -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>

@@ -23,6 +23,7 @@ import '../../../providers/template_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/avatar_picker.dart';
 import '../../widgets/dashed_border.dart';
 import '../../widgets/daily_progress_ring.dart';
 import '../../widgets/finance_preview_mock.dart';
@@ -47,6 +48,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final _pageController = PageController();
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
+  String? _photoPath;
   final Map<String, String> _lifestyleAnswers = {};
   final Set<int> _selectedCategoryIds = {};
   final Map<int, Set<HabitTemplate>> _selectedTemplates = {};
@@ -83,6 +85,15 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // The step background illustration (`_StepScaffold`) must stay fully
+      // static when the keyboard opens — with the default `true`, the
+      // Scaffold shrinks its whole body (background included) to dodge the
+      // keyboard, which visibly shifts the bottom-anchored illustration
+      // upward. Disabled here; `_StepScaffold` instead pads only its
+      // foreground content by the keyboard inset, so the background layer
+      // never resizes at all while focused fields/buttons still clear the
+      // keyboard.
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: FadeSlideIn(
           child: Column(
@@ -138,6 +149,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                     _PersonalInfoStep(
                       nameController: _nameController,
                       ageController: _ageController,
+                      photoPath: _photoPath,
+                      onPhotoPicked: (path) => setState(() => _photoPath = path),
                       onNext: () => _goTo(3),
                     ),
                     for (var i = 0; i < lifestyleQuestions.length; i++)
@@ -230,6 +243,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
         .completeOnboarding(
           name: _nameController.text.trim(),
           age: age,
+          photoPath: _photoPath,
           responses: responses,
         );
 
@@ -279,68 +293,137 @@ class _StepScaffold extends StatelessWidget {
     required this.child,
     required this.bottomButton,
     this.topBar,
-    this.background,
+    this.backgroundLayers,
+    this.backgroundCanvasSize = const Size(3375, 6000),
+    this.backgroundVerticalOffset = 0,
+    this.showBackgroundGradient = false,
   });
 
   final Widget child;
   final Widget bottomButton;
   final Widget? topBar;
 
-  /// Undraw artwork painted behind the step's content — anchored to the
-  /// bottom of the content column (where the form/question content leaves
-  /// empty space) so it reads as page background texture rather than a
-  /// discrete "added" illustration competing with the content on top of it.
-  final UndrawIllustration? background;
+  /// Pixel size of the design canvas [backgroundLayers] were authored
+  /// against — the questionnaire sets all share the original 3375x6000
+  /// canvas (default), but `form_page`'s pre-composed illustration was
+  /// cropped tight to its own content afterward (so it reaches closer to
+  /// the screen edges instead of leaving the source canvas's unused
+  /// margins visible), giving it a different size.
+  final Size backgroundCanvasSize;
+
+  /// Fades the illustration into the page background near the bottom of
+  /// the screen — only meaningful (and only requested) for the personal-
+  /// info step; the questionnaire steps leave their illustration as-is.
+  final bool showBackgroundGradient;
+
+  /// Canvas-space (of the shared 3375x6000 design canvas) vertical shift
+  /// applied on top of the bottom-anchor below — positive pushes the
+  /// illustration further down, negative pulls it up. Needed because each
+  /// illustration set leaves a different amount of transparent margin below
+  /// its own content, so a uniform bottom-anchor alone lands each one at a
+  /// visually different height; this equalizes them against one reference
+  /// set's margin (see `_LifestyleQuestionStep._illustrationSets`).
+  final double backgroundVerticalOffset;
+
+  /// Full-color layered PNG illustration painted behind the step's content
+  /// (back-to-front order) — every asset shares the same 3375x6000 design
+  /// canvas (form_page's is pre-composed from its 3 differently-sized
+  /// source layers at build time, see `assets/background/form_page/
+  /// composed.png`), so they can all just be scaled to the available width
+  /// and bottom-anchored, keeping the illustration (which sits in the
+  /// canvas's lower portion) maximally visible instead of being
+  /// symmetrically center-cropped.
+  final List<String>? backgroundLayers;
 
   @override
   Widget build(BuildContext context) {
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
-    final theme = Theme.of(context);
     return Stack(
       children: [
-        if (background != null)
+        if (backgroundLayers != null)
+          // The parent Scaffold has `resizeToAvoidBottomInset: false`, so
+          // this `Positioned.fill` never shrinks when the keyboard opens —
+          // the illustration stays completely still. Only the foreground
+          // content below is padded to dodge the keyboard.
           Positioned.fill(
             child: IgnorePointer(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxWidth),
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 100),
-                      child: SizedBox(
-                        height: 300,
-                        width: double.infinity,
-                        child: Opacity(
-                          opacity: 0.18,
-                          child: Undraw(
-                            illustration: background!,
-                            color: theme.colorScheme.primary,
+              child: Opacity(
+                opacity: 0.55,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final scale = constraints.maxWidth / backgroundCanvasSize.width;
+                    final renderHeight = backgroundCanvasSize.height * scale;
+                    // <= 0: bottom-anchored, so only the (transparent) top
+                    // of the canvas gets cropped away, never the
+                    // illustration itself near the bottom.
+                    final offsetY = constraints.maxHeight -
+                        renderHeight +
+                        backgroundVerticalOffset * scale;
+                    return Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        for (final asset in backgroundLayers!)
+                          Positioned(
+                            left: 0,
+                            top: offsetY,
+                            width: backgroundCanvasSize.width * scale,
+                            height: backgroundCanvasSize.height * scale,
+                            child: Image.asset(asset, fit: BoxFit.fill),
                           ),
-                        ),
-                      ),
-                    ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        if (showBackgroundGradient)
+          // Fades the illustration into the page background near the
+          // bottom of the screen — color follows the theme automatically
+          // (white in light mode, dark surface in dark mode) since it
+          // targets `scaffoldBackgroundColor`, not a fixed color. Kept
+          // subtle: starts low (only the bottom ~28%) and never reaches
+          // full opacity, so it blends the edge rather than washing out
+          // most of the illustration.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const [0.72, 1.0],
+                    colors: [
+                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
+                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
-        Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(
-              children: [
-                if (topBar != null)
+        Padding(
+          // Stands in for the disabled `resizeToAvoidBottomInset` — shrinks
+          // just the foreground (not the background illustration above) so
+          // focused fields and the bottom button still clear the keyboard.
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: Column(
+                children: [
+                  if (topBar != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                      child: topBar,
+                    ),
+                  Expanded(child: child),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    child: topBar,
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                    child: bottomButton,
                   ),
-                Expanded(child: child),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                  child: bottomButton,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -438,6 +521,7 @@ class _FeatureHighlightStepState extends ConsumerState<_FeatureHighlightStep> {
     _CalendarScreenMock(),
     _CommunityScreenMock(),
     _HomeListScreenMock(),
+    _FinanceScreenMock(),
   ];
 
   @override
@@ -872,11 +956,14 @@ class _MockHabitRow extends StatelessWidget {
   }
 }
 
-/// Slide 2 mock: a screenshot-style recreation of the Dashboard's monthly
-/// calendar (`monthly_calendar_grid.dart`) — a 7-column grid where each day
-/// that has data gets its own small `DailyProgressRing`, matching the real
-/// widget exactly rather than a single big ring. One-shot: one more day's
-/// ring fills in, as if progress had just synced in.
+/// Slide 2 mock: a screenshot-style recreation of the real Dashboard
+/// (`dashboard_screen.dart`) — a full-month calendar grid matching
+/// `monthly_calendar_grid.dart` (nav arrows, weekday header, all 31 days,
+/// only the most recent few carrying a `DailyProgressRing`), followed by
+/// the same stats section: summary ring card, "By Category" ring, "By
+/// Habit" progress bars, and the "Monthly Trend" bar chart. Scrollable
+/// (`ListView`) since the real screen is too, and one-shot: the newest
+/// day's ring fills in, as if progress had just synced in.
 class _CalendarScreenMock extends StatefulWidget {
   const _CalendarScreenMock();
 
@@ -886,13 +973,13 @@ class _CalendarScreenMock extends StatefulWidget {
 
 class _CalendarScreenMockState extends State<_CalendarScreenMock> {
   static const _weekdayHeaders = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  // 14 days starting the 17th — null = no data yet (plain number, like the
-  // real grid), a value = that day's success ratio.
-  final List<double?> _ratios = [
-    1, 1, 0.8, 0.5, null, null, null,
-    0.9, 0.6, null, null, null, null, null,
-  ];
-  int _highlightIndex = 3;
+  static const _leadingBlanks = 5; // Aug 1 2026 falls on a Saturday.
+  static const _daysInMonth = 31;
+  // day -> success ratio, only for the most recent days (the rest render as
+  // plain numbers, matching the real grid's `hasData` check).
+  final Map<int, double> _ratios = {27: 0.2, 28: 0.15, 29: 0.4, 30: 0.25, 31: 0.1};
+  static const _selectedDay = 26;
+  double _selectedRatio = 0.83;
 
   @override
   void initState() {
@@ -900,8 +987,8 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
     Future.delayed(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       setState(() {
-        _ratios[4] = 0.75;
-        _highlightIndex = 4;
+        _ratios[31] = 0.55;
+        _selectedRatio = 0.86;
       });
     });
   }
@@ -910,75 +997,299 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return _PhoneFrame(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'August 2026',
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                for (final h in _weekdayHeaders)
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        h,
-                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
+        physics: const ClampingScrollPhysics(),
+        children: [
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _MockNavCircle(icon: Icons.chevron_left_rounded),
+                      Text(
+                        'August 2026',
+                        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
                       ),
+                      _MockNavCircle(icon: Icons.chevron_right_rounded),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      for (final h in _weekdayHeaders)
+                        Expanded(
+                          child: Center(
+                            child: Text(
+                              h,
+                              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 7,
+                      mainAxisSpacing: 2,
+                      crossAxisSpacing: 2,
+                    ),
+                    itemCount: _leadingBlanks + _daysInMonth,
+                    itemBuilder: (context, i) {
+                      if (i < _leadingBlanks) return const SizedBox.shrink();
+                      final day = i - _leadingBlanks + 1;
+                      final selected = day == _selectedDay;
+                      final ratio = selected ? _selectedRatio : _ratios[day];
+                      return Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
+                          border: selected
+                              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                              : null,
+                        ),
+                        child: ratio != null
+                            ? TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: ratio),
+                                duration: const Duration(milliseconds: 450),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, value, _) => DailyProgressRing(
+                                  done: (value * 100).round(),
+                                  total: 100,
+                                  size: 22,
+                                  strokeWidth: 2,
+                                  centerLabel: '$day',
+                                  centerLabelStyle: theme.textTheme.bodySmall
+                                      ?.copyWith(fontWeight: FontWeight.w800, fontSize: 9),
+                                ),
+                              )
+                            : Text(
+                                '$day',
+                                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: _selectedRatio),
+                    duration: const Duration(milliseconds: 450),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => DailyProgressRing(
+                      done: (value * 100).round(),
+                      total: 100,
+                      size: 60,
+                      strokeWidth: 7,
+                      centerLabel: '${(value * 100).round()}%',
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 4,
-              ),
-              itemCount: _ratios.length,
-              itemBuilder: (context, i) {
-                final ratio = _ratios[i];
-                final selected = i == _highlightIndex;
-                return Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: selected
-                        ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-                        : null,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('1 days tracked', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: 2),
+                        Text('Overall average success rate', style: theme.textTheme.labelSmall),
+                      ],
+                    ),
                   ),
-                  child: ratio != null
-                      ? TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: ratio),
-                          duration: const Duration(milliseconds: 450),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, value, _) => DailyProgressRing(
-                            done: (value * 100).round(),
-                            total: 100,
-                            size: 28,
-                            strokeWidth: 2.5,
-                            centerLabel: '${17 + i}',
-                            centerLabelStyle: theme.textTheme.bodySmall
-                                ?.copyWith(fontWeight: FontWeight.w800, fontSize: 10),
-                          ),
-                        )
-                      : Text(
-                          '${17 + i}',
-                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                );
-              },
+                ],
+              ),
             ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('By Category', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 12),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DailyProgressRing(
+                        done: 83,
+                        total: 100,
+                        size: 44,
+                        strokeWidth: 5,
+                        color: Colors.green,
+                        centerLabel: '83%',
+                        centerLabelStyle: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Be Healthy',
+                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('By Habit', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 10),
+                  const _MockProgressRow(label: 'Walk', ratio: 1),
+                  const SizedBox(height: 10),
+                  const _MockProgressRow(label: 'Drink less caffeine', ratio: 1),
+                  const SizedBox(height: 10),
+                  const _MockProgressRow(label: 'Eat vegetables & fruit', ratio: 0.67),
+                  const SizedBox(height: 10),
+                  const _MockProgressRow(label: 'Stand up & move', ratio: 0.5),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Monthly Trend', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 70,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Text('83%', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 4),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: FractionallySizedBox(
+                                    heightFactor: 0.83,
+                                    child: ConstrainedBox(
+                                      constraints: const BoxConstraints(maxWidth: 30),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.primary,
+                                          borderRadius: const BorderRadius.only(
+                                            topLeft: Radius.circular(8),
+                                            topRight: Radius.circular(8),
+                                            bottomLeft: Radius.circular(3),
+                                            bottomRight: Radius.circular(3),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text('Aug', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small non-interactive stand-in for `monthly_calendar_grid.dart`'s
+/// `_NavCircleButton` — decorative only in the onboarding mock.
+class _MockNavCircle extends StatelessWidget {
+  const _MockNavCircle({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: Theme.of(context).cardColor),
+      child: Icon(icon, size: 16),
+    );
+  }
+}
+
+/// Matches the real Dashboard's `_ProgressRow` (label + percentage +
+/// linear progress bar) used by the "By Habit" card.
+class _MockProgressRow extends StatelessWidget {
+  const _MockProgressRow({required this.label, required this.ratio});
+
+  final String label;
+  final double ratio;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Text('${(ratio * 100).round()}%', style: theme.textTheme.labelSmall),
           ],
         ),
-      ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: ratio,
+            minHeight: 7,
+            backgroundColor: theme.brightness == Brightness.light
+                ? AppColors.lightSurfaceAlt
+                : AppColors.darkSurfaceAlt,
+            valueColor: const AlwaysStoppedAnimation(Colors.green),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1235,6 +1546,333 @@ class _HomeListScreenMockState extends State<_HomeListScreenMock> {
   }
 }
 
+/// Slide 5 mock: a blurred, screenshot-style recreation of the real Finance
+/// summary screen (`FinancePreviewMock`, also reused by the Finance
+/// `ProFeatureTeaser` paywall and `_FinanceLockedPreview`) with a "PRO"
+/// badge and lock message layered on top, so the intro carousel makes clear
+/// up front that Finance tracking is a Pro-only feature.
+/// Slide 5 mock: a screenshot-style recreation of the real Finance summary
+/// screen (`finance_summary_screen.dart`) — the Daily/Weekly/Monthly pill
+/// toggle, the date nav, the "Total Spending" card with its budget-pace
+/// chip and progress bar, "Total Saved", the daily spending trend bar
+/// chart, "Spending by Category", and the "+ Add Spending Limit" FAB —
+/// shown clearly and unobscured (no blur) so the intro actually
+/// demonstrates the feature. A small "PRO" chip in the corner and a
+/// one-line caption underneath make clear this page is Pro-only, without
+/// blocking the preview itself.
+class _FinanceScreenMock extends StatelessWidget {
+  const _FinanceScreenMock();
+
+  static const _onTrackGreen = Color(0xFF3E9B5C);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final altSurface =
+        theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _PhoneFrame(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 26, 18, 20),
+                    physics: const ClampingScrollPhysics(),
+                    children: [
+                      // Daily/Weekly/Monthly pill toggle, mirroring
+                      // `SegmentedPillToggle` with "Daily" selected.
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: altSurface, borderRadius: BorderRadius.circular(999)),
+                        child: Row(
+                          children: [
+                            for (final label in const ['Daily', 'Weekly', 'Monthly'])
+                              Expanded(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: label == 'Daily' ? theme.colorScheme.primary : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    label,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                      color: label == 'Daily' ? Colors.white : theme.textTheme.bodySmall?.color,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const _MockNavCircle(icon: Icons.chevron_left_rounded),
+                          Text(
+                            '26 August 2026',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const _MockNavCircle(icon: Icons.chevron_right_rounded),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('Total Spending', style: theme.textTheme.bodySmall),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _onTrackGreen.withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.trending_down_rounded, size: 12, color: _onTrackGreen),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          'On Track',
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: _onTrackGreen,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Rp 18.000',
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  value: 0.18,
+                                  minHeight: 7,
+                                  backgroundColor: altSurface,
+                                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text('of Rp 100.000 budget', style: theme.textTheme.labelSmall),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Icon(Icons.savings_rounded, size: 18, color: theme.colorScheme.primary),
+                              const SizedBox(width: 10),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('Total Saved', style: theme.textTheme.labelSmall),
+                                  Text(
+                                    'Rp 82.000',
+                                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Daily Spending Trend', style: theme.textTheme.titleSmall),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                height: 70,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        children: [
+                                          Expanded(
+                                            child: Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: FractionallySizedBox(
+                                                heightFactor: 0.18,
+                                                child: ConstrainedBox(
+                                                  constraints: const BoxConstraints(maxWidth: 20),
+                                                  child: Container(
+                                                    decoration: BoxDecoration(
+                                                      color: theme.colorScheme.primary,
+                                                      borderRadius: const BorderRadius.vertical(
+                                                        top: Radius.circular(4),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text('26', style: theme.textTheme.labelSmall),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Spending by Category', style: theme.textTheme.titleSmall),
+                              const SizedBox(height: 14),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Track expenses',
+                                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  Text('Rp 9.000 (50%)', style: theme.textTheme.bodySmall),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(999),
+                                child: LinearProgressIndicator(
+                                  value: 0.5,
+                                  minHeight: 6,
+                                  backgroundColor: altSurface,
+                                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 14,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.add_rounded, size: 14, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Add Spending Limit',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    borderRadius: BorderRadius.circular(999),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.workspace_premium_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'PRO',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lock_rounded, size: 15, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              AppLocalizations.of(context)!.onboardingFinanceProFeature,
+              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 /// Step 2 (no progress bar): name (required) + age (optional) + gender.
 /// CLAUDE.md v3 §4.1 step 2. The gender dropdown replaces an earlier
 /// "Choose your goals" dropdown that was effectively dead — the real goal
@@ -1243,11 +1881,15 @@ class _PersonalInfoStep extends ConsumerStatefulWidget {
   const _PersonalInfoStep({
     required this.nameController,
     required this.ageController,
+    required this.photoPath,
+    required this.onPhotoPicked,
     required this.onNext,
   });
 
   final TextEditingController nameController;
   final TextEditingController ageController;
+  final String? photoPath;
+  final ValueChanged<String> onPhotoPicked;
   final VoidCallback onNext;
 
   @override
@@ -1271,14 +1913,35 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
     final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
     return _StepScaffold(
-      background: UndrawIllustration.sharedGoals,
+      // `composed.png` is a single pre-baked flattening of the 3 source
+      // sub-illustrations (16 blob, 18 hand+phone, 17 checkmark+finger) —
+      // those aren't exported at a shared canvas size the way the
+      // questionnaire sets are, so composing them once at build time
+      // (matching `example_of_implementation.png` exactly) is far more
+      // reliable than positioning 3 separately-sized layers against each
+      // other at runtime.
+      backgroundLayers: const ['assets/background/form_page/composed.png'],
+      // composed.png was cropped tight to its own content (see the file's
+      // regeneration script), so it no longer matches the shared
+      // 3375x6000 canvas the questionnaire sets use.
+      backgroundCanvasSize: const Size(3329, 4277),
+      showBackgroundGradient: true,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
           Text(lang.whatsYourName, style: theme.textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text(lang.soWeCanGreet, style: theme.textTheme.bodyLarge),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          Center(
+            child: AvatarPicker(
+              photoPath: widget.photoPath,
+              displayName: widget.nameController.text,
+              size: 84,
+              onPicked: (avatar) => widget.onPhotoPicked(avatar.localFile.path),
+            ),
+          ),
+          const SizedBox(height: 20),
           Text(
             lang.nameLabel,
             style: theme.textTheme.titleSmall?.copyWith(
@@ -1375,14 +2038,37 @@ class _LifestyleQuestionStep extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
-  /// One fitting undraw.co illustration per question (point 5) — cycled by
+  /// One layered illustration set per question (point 5) — cycled by
   /// `stepIndex` rather than hand-picked per question key, so it stays in
-  /// sync automatically if the question list is reordered.
-  static const _illustrations = [
-    UndrawIllustration.questions,
-    UndrawIllustration.timeManagement,
-    UndrawIllustration.feelingProud,
+  /// sync automatically if the question list is reordered. Each inner list
+  /// is back-to-front (blob background first, foreground details last).
+  static const _illustrationSets = [
+    [
+      'assets/background/questionare_1/14.png',
+      'assets/background/questionare_1/11.png',
+      'assets/background/questionare_1/13.png',
+      'assets/background/questionare_1/12.png',
+    ],
+    [
+      'assets/background/questionare_2/9.png',
+      'assets/background/questionare_2/8.png',
+      'assets/background/questionare_2/7.png',
+    ],
+    [
+      'assets/background/questionare_3/4.png',
+      'assets/background/questionare_3/3.png',
+      'assets/background/questionare_3/2.png',
+    ],
   ];
+
+  /// Per-set canvas-space correction so every set's illustration content
+  /// (not just its canvas) lands at the same height on screen — each
+  /// source canvas leaves a different amount of transparent margin below
+  /// its own content (measured directly from the assets: set 1 leaves 1737
+  /// canvas px, set 2 leaves 1122px, set 3 (the reference, positioned
+  /// correctly by default) leaves 1334px), so a uniform bottom-anchor alone
+  /// makes set 1 sit too high and set 2 sit too low/clipped.
+  static const _illustrationVerticalOffsets = [403.0, -212.0, 0.0];
 
   @override
   Widget build(BuildContext context) {
@@ -1394,7 +2080,9 @@ class _LifestyleQuestionStep extends StatelessWidget {
             ref.watch(introLanguageProvider) == OnboardingLang.id;
         final options = question.optionsFor(indonesian);
         return _StepScaffold(
-          background: _illustrations[(stepIndex - 1) % _illustrations.length],
+          backgroundLayers: _illustrationSets[(stepIndex - 1) % _illustrationSets.length],
+          backgroundVerticalOffset:
+              _illustrationVerticalOffsets[(stepIndex - 1) % _illustrationVerticalOffsets.length],
           topBar: Align(
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: onSkip, child: Text(lang.skip)),

@@ -16,6 +16,7 @@ import '../domain/models/community/group_habit.dart';
 import '../domain/models/community/habit_group_link.dart';
 import '../domain/models/community/leaderboard_entry.dart';
 import '../services/auth_service.dart';
+import '../services/avatar_image_service.dart';
 import '../services/community_sync_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/purchase_service.dart';
@@ -254,6 +255,33 @@ Future<int> restoreCommunityHabitBackup({
     );
   }
   return logs.length;
+}
+
+// ---------------------------------------------------------------------
+// Photo auto-sync
+// ---------------------------------------------------------------------
+
+/// Fans the local profile photo out to every Community group the user
+/// belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set a profile photo
+/// (in onboarding or Settings) before ever joining/creating a group, so
+/// their photo shows up in Community without needing a manual re-save in
+/// Settings. `keepAlive: true` so it runs once per session rather than on
+/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
+/// itself a no-op if the user isn't in any groups yet.
+@Riverpod(keepAlive: true)
+Future<void> profilePhotoCommunitySync(Ref ref) async {
+  final uid = ref.watch(currentUidProvider);
+  if (uid == null) return;
+  final profile = await ref.watch(profileRepositoryProvider).getProfile();
+  final photoPath = profile?.photoPath;
+  if (photoPath == null) return;
+  final base64 = await AvatarImageService().thumbnailBase64FromFile(photoPath);
+  if (base64 == null) return;
+  await ref.watch(communityRepositoryProvider).updateMyPhotoAcrossGroups(
+        uid: uid,
+        photoBase64: base64,
+      );
 }
 
 // ---------------------------------------------------------------------

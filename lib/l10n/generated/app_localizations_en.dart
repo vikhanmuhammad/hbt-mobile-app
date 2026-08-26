@@ -1014,6 +1014,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Profile photo is not available in this version yet';
 
   @override
+  String get avatarPickCamera => 'Take a photo';
+
+  @override
+  String get avatarPickGallery => 'Choose from gallery';
+
+  @override
+  String profilePhotoCommunitySyncFailed(String error) {
+    return 'Photo saved, but couldn\'t sync to your groups yet: $error';
+  }
+
+  @override
   String get profileNameLabel => 'Name';
 
   @override
@@ -1059,6 +1070,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthSyncFeatureCalendar => 'Calendar access';
 
   @override
+  String get healthConnectNotInstalledTitle => 'Health Connect required';
+
+  @override
+  String get healthConnectNotInstalledMessage =>
+      'Syncing steps needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.';
+
+  @override
+  String get healthConnectInstallButton => 'Install Health Connect';
+
+  @override
   String get iconPickerChooseIcon => 'Choose Icon';
 
   @override
@@ -1069,6 +1090,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proFeatureUpgradeButton => 'Upgrade to Pro';
+
+  @override
+  String get proUpgradeCelebrationTitle => 'You\'re Pro now!';
+
+  @override
+  String get proUpgradeCelebrationSubtitle =>
+      'Unlimited habits, Finance tracking, and Community are all unlocked.';
+
+  @override
+  String get proUpgradeCelebrationButton => 'Let\'s go';
 
   @override
   String proFeatureSignInFailed(String error) {

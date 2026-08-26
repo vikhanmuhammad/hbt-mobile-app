@@ -26,6 +26,7 @@ class ProfileRepository {
   Future<void> completeOnboarding({
     required String name,
     int? age,
+    String? photoPath,
     required List<OnboardingResponse> responses,
   }) async {
     await _db.transaction(() async {
@@ -33,6 +34,7 @@ class ProfileRepository {
         db.UserProfileCompanion.insert(
           name: name,
           age: Value(age),
+          photoPath: Value(photoPath),
         ),
       );
       if (responses.isNotEmpty) {

@@ -35,12 +35,47 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
       return;
     }
     setState(() => _busy = true);
+    // On Android, `requestAuthorization` throws if Health Connect isn't
+    // installed — check first so we can offer to install it instead of
+    // just surfacing a generic "denied" message.
+    if (!await _health.isHealthConnectAvailable()) {
+      await repo.setStepsSyncEnabled(false);
+      if (mounted) {
+        setState(() => _busy = false);
+        _showHealthConnectMissing();
+      }
+      return;
+    }
     final granted = await _health.requestPermissions();
     await repo.setStepsSyncEnabled(granted);
     if (mounted) {
       setState(() => _busy = false);
       if (!granted) _showDenied(AppLocalizations.of(context)!.healthSyncFeatureHealth);
     }
+  }
+
+  void _showHealthConnectMissing() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.healthConnectNotInstalledTitle),
+        content: Text(l10n.healthConnectNotInstalledMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _health.installHealthConnect();
+            },
+            child: Text(l10n.healthConnectInstallButton),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleCalendar(bool value) async {

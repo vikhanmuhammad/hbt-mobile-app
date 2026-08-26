@@ -27,6 +27,11 @@ class CommunityEntryScreen extends ConsumerWidget {
     final user = authAsync.value;
     if (user == null) return const _CommunitySignInPrompt();
 
+    // Fire-and-forget: fans the local profile photo out to any groups the
+    // user is already in (see the provider's doc comment) — result isn't
+    // needed here, just needs to run once per session.
+    ref.watch(profilePhotoCommunitySyncProvider);
+
     return const _GroupListView();
   }
 }

@@ -26,6 +26,11 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Profile photo upload (onboarding + Settings). -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daily Habits needs access to your photo library to set your profile picture.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Daily Habits needs access to your camera to take a profile picture.</string>
 	<!-- Point 10 — Health/Calendar sync (opt-in via Settings). -->
 	<key>NSHealthShareUsageDescription</key>
 	<string>Daily Habits reads your step count to automatically fill in step-based habits.</string>

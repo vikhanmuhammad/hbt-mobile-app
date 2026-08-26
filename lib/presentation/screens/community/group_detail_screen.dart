@@ -30,6 +30,7 @@ import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/segmented_pill_toggle.dart';
+import '../../widgets/user_avatar.dart';
 
 class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -1075,6 +1076,20 @@ class _LeaderboardTile extends ConsumerWidget {
     // existing link there already belongs to the current user).
     final linksAsync = isMe ? null : ref.watch(habitGroupLinksForGroupHabitProvider(groupHabit.id));
     final alreadyLinked = isMe || (linksAsync?.value?.isNotEmpty ?? true);
+    // Leaderboard entries don't carry their own photo (see
+    // `CommunityRepository.updateMyPhotoAcrossGroups` doc comment) — looked
+    // up live from the group's member map instead, by uid, so it's always
+    // current even if the entry itself hasn't been rewritten recently.
+    final group = ref.watch(groupDetailProvider(groupHabit.groupId)).value;
+    String? memberPhoto;
+    if (group != null) {
+      for (final m in group.members) {
+        if (m.uid == entry.uid) {
+          memberPhoto = m.photoBase64;
+          break;
+        }
+      }
+    }
 
     return Card(
       color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
@@ -1088,11 +1103,37 @@ class _LeaderboardTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: rankColor ?? theme.colorScheme.surfaceContainerHighest,
-              foregroundColor: rankColor != null ? Colors.white : null,
-              child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.w800)),
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  UserAvatar(photoBase64: memberPhoto, displayName: entry.displayName, size: 36),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: rankColor ?? theme.colorScheme.surfaceContainerHighest,
+                        border: Border.all(color: theme.cardColor, width: 1.5),
+                      ),
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 9,
+                          color: rankColor != null ? Colors.white : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1496,8 +1537,11 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                         reverse: true,
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length,
-                        itemBuilder: (context, i) =>
-                            _ChatBubble(message: messages[i], isMe: messages[i].senderUid == myUid),
+                        itemBuilder: (context, i) => _ChatBubble(
+                          groupId: widget.groupId,
+                          message: messages[i],
+                          isMe: messages[i].senderUid == myUid,
+                        ),
                       ),
               );
             },
@@ -1533,35 +1577,63 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message, required this.isMe});
+class _ChatBubble extends ConsumerWidget {
+  const _ChatBubble({required this.groupId, required this.message, required this.isMe});
 
+  final String groupId;
   final ChatMessage message;
   final bool isMe;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
-        decoration: BoxDecoration(
-          color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isMe)
-              Text(message.senderName, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
-            Text(message.text, style: theme.textTheme.bodyMedium),
-          ],
-        ),
+    // Chat messages are immutable (rules deny update/delete) and don't
+    // carry their own photo — looked up live from the group's member map by
+    // senderUid instead, so a sender's avatar always reflects their current
+    // photo rather than freezing whatever it was when the message was sent.
+    String? senderPhoto;
+    if (!isMe) {
+      final group = ref.watch(groupDetailProvider(groupId)).value;
+      if (group != null) {
+        for (final m in group.members) {
+          if (m.uid == message.senderUid) {
+            senderPhoto = m.photoBase64;
+            break;
+          }
+        }
+      }
+    }
+
+    final bubble = Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.62),
+      decoration: BoxDecoration(
+        color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isMe)
+            Text(message.senderName, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+          Text(message.text, style: theme.textTheme.bodyMedium),
+        ],
+      ),
+    );
+
+    if (isMe) {
+      return Align(alignment: Alignment.centerRight, child: bubble);
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        UserAvatar(photoBase64: senderPhoto, displayName: message.senderName, size: 26),
+        const SizedBox(width: 6),
+        Flexible(child: bubble),
+      ],
     );
   }
 }
@@ -1694,7 +1766,7 @@ class _MemberTile extends ConsumerWidget {
     final lang = ref.watch(appLanguageProvider);
     return Card(
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
+        leading: UserAvatar(photoBase64: member.photoBase64, displayName: member.displayName, size: 40),
         title: Text(member.displayName),
         subtitle: Text(member.role.label(lang), style: theme.textTheme.bodySmall),
         trailing: canManage

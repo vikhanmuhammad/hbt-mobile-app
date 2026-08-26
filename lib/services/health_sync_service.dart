@@ -13,6 +13,16 @@ class HealthSyncService {
 
   static final _stepsType = [HealthDataType.STEPS];
 
+  /// Android only (always true on iOS): whether the Health Connect app is
+  /// installed. `requestAuthorization` throws `UnsupportedError` on Android
+  /// when it isn't, so callers should check this first and offer to install
+  /// it instead of surfacing a generic "denied" message.
+  Future<bool> isHealthConnectAvailable() => _health.isHealthConnectAvailable();
+
+  /// Opens the Play Store listing for Health Connect. Android only, no-op
+  /// on iOS.
+  Future<void> installHealthConnect() => _health.installHealthConnect();
+
   /// Requests read+write access for step count. Returns false if the
   /// platform has no Health provider, the user denies, or any other
   /// platform error occurs — callers should show a "couldn't connect"
