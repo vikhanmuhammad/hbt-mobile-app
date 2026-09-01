@@ -770,23 +770,35 @@ class _CategoryBreakdown extends ConsumerWidget {
             // (and this section's rings out of alignment with the ones in
             // `_HabitBreakdown` below it); scrolling keeps every ring the
             // same size and the card height fixed regardless of count.
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (final stat in summary.categoryStats)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 18),
-                      child: _CategoryProgressRing(
-                        label: stat.category.displayName(lang),
-                        ratio: stat.successRate,
-                        color: AppColors.categoryColorFromHex(
-                          stat.category.colorHex,
-                          indexById[stat.category.id] ?? 0,
+            //
+            // Fixed height + clamped text scaling: on some devices (large
+            // system font size / MIUI scaling) the ring + 2-line label grew
+            // taller than the Row's intrinsic height and got clipped by the
+            // card below it — pin the height and cap how much the label can
+            // grow so the ring itself is never cut off.
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: SizedBox(
+                height: 118,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final stat in summary.categoryStats)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 18),
+                          child: _CategoryProgressRing(
+                            label: stat.category.displayName(lang),
+                            ratio: stat.successRate,
+                            color: AppColors.categoryColorFromHex(
+                              stat.category.colorHex,
+                              indexById[stat.category.id] ?? 0,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ],
@@ -904,66 +916,108 @@ class _MonthlyTrend extends ConsumerWidget {
           children: [
             Text(AppLocalizations.of(context)!.dashboardMonthlyTrend, style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
-            SizedBox(
-              height: 160,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final point in points)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Column(
-                          children: [
-                            Text(
-                              '${(point.successRate.clamp(0, 1) * 100).round()}%',
-                              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 4),
-                            // Expanded gives this slot a bounded/tight height
-                            // so FractionallySizedBox has something to size
-                            // its heightFactor against — a bare Column doesn't
-                            // bound non-flex children, which crashes it.
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: FractionallySizedBox(
-                                  heightFactor: point.successRate.clamp(
-                                    0.03,
-                                    1,
-                                  ),
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 44,
-                                    ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primary,
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(10),
-                                          topRight: Radius.circular(10),
-                                          bottomLeft: Radius.circular(4),
-                                          bottomRight: Radius.circular(4),
+                  // Y-axis: 100/50/0% ticks aligned to the bar area below.
+                  SizedBox(
+                    width: 32,
+                    height: 140,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('100%', style: theme.textTheme.labelSmall),
+                        Text('50%', style: theme.textTheme.labelSmall),
+                        Text('0%', style: theme.textTheme.labelSmall),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        // Gridlines behind the bars at the 0/50/100% ticks so
+                        // each bar's height can be read against a scale.
+                        SizedBox(
+                          height: 140,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 140,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              for (final point in points)
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        // Expanded gives this slot a bounded/tight height
+                                        // so FractionallySizedBox has something to size
+                                        // its heightFactor against — a bare Column doesn't
+                                        // bound non-flex children, which crashes it.
+                                        Expanded(
+                                          child: Align(
+                                            alignment: Alignment.bottomCenter,
+                                            child: FractionallySizedBox(
+                                              heightFactor: point.successRate.clamp(
+                                                0.03,
+                                                1,
+                                              ),
+                                              child: ConstrainedBox(
+                                                constraints: const BoxConstraints(
+                                                  maxWidth: 44,
+                                                ),
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: theme.colorScheme.primary,
+                                                    borderRadius: const BorderRadius.only(
+                                                      topLeft: Radius.circular(10),
+                                                      topRight: Radius.circular(10),
+                                                      bottomLeft: Radius.circular(4),
+                                                      bottomRight: Radius.circular(4),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              monthShortName(point.month.month, lang),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
                 ],
               ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const SizedBox(width: 40),
+                for (final point in points)
+                  Expanded(
+                    child: Text(
+                      monthShortName(point.month.month, lang),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),

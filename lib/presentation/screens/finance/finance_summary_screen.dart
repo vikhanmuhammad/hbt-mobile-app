@@ -1,25 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../../domain/date_utils.dart';
 import '../../../domain/format_utils.dart';
 import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
-import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
+import '../../../domain/models/habit.dart';
+import '../../../domain/models/habit_with_progress.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
+import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
+import '../../../providers/habit_providers.dart';
+import '../../../providers/progress_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/category_breakdown_list.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/finance_preview_mock.dart';
-import '../../widgets/habit_icon.dart';
+import '../../widgets/habit_progress_card.dart';
 import '../../widgets/pro_feature_teaser.dart';
+import '../../widgets/quick_progress_sheet.dart';
 import '../../widgets/segmented_pill_toggle.dart';
+import '../../widgets/spending_distribution_pie_chart.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 
 /// Finance Summary: total expenses, amount saved, and savings deposits
@@ -50,105 +60,247 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final anchor = period == FinancePeriod.monthly
         ? ref.watch(selectedFinanceMonthProvider)
         : ref.watch(selectedFinanceAnchorDateProvider);
-    final summaryAsync = ref.watch(financeSummaryForPeriodProvider(period, anchor));
+    final summaryAsync = ref.watch(
+      financeSummaryForPeriodProvider(period, anchor),
+    );
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
+    // Kategori Save Money cuma boleh 1 habit aktif — dicek di sini supaya
+    // FAB bisa jadi jalan pintas edit begitu sudah ada (lihat di bawah).
+    final categories =
+        ref.watch(categoriesProvider).value ?? const <Category>[];
+    int? financeCategoryId;
+    for (final c in categories) {
+      if (isFinanceCategory(c)) {
+        financeCategoryId = c.id;
+        break;
+      }
+    }
+    final activeHabits =
+        ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
+    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
+    Habit? existingFinanceHabit;
+    for (final h in activeHabits) {
+      if (pendingDeleteIds.contains(h.id)) continue;
+      if (h.categoryId == financeCategoryId) {
+        existingFinanceHabit = h;
+        break;
+      }
+    }
+
     return Scaffold(
+      // Kategori Save Money cuma boleh 1 habit aktif — begitu sudah ada,
+      // FAB ini jadi jalan pintas edit yang sudah ada alih-alih membuka
+      // form tambah baru (yang toh akan diblokir oleh singleton guard).
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddSpendingLimitHabit(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: Text(l10n.financeAddSpendingLimit),
+        onPressed: () => existingFinanceHabit == null
+            ? _openAddSpendingLimitHabit(context, ref)
+            : openEditHabitFlow(context, existingFinanceHabit),
+        icon: Icon(
+          existingFinanceHabit == null ? Icons.add_rounded : Icons.edit_rounded,
+        ),
+        label: Text(
+          existingFinanceHabit == null
+              ? l10n.financeAddSpendingLimit
+              : l10n.financeEditSpendingLimit,
+        ),
       ),
       body: FadeSlideIn(
         child: ListView(
-        // Extra bottom padding clears the "Add Spending Limit" FAB (#27) so
-        // it doesn't sit on top of the last card in the list.
-        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 96),
-        children: [
-          SegmentedPillToggle<FinancePeriod>(
-            segments: [
-              PillSegment(value: FinancePeriod.daily, label: l10n.financePeriodDaily),
-              PillSegment(value: FinancePeriod.weekly, label: l10n.financePeriodWeekly),
-              PillSegment(value: FinancePeriod.monthly, label: l10n.financePeriodMonthly),
+          // Extra bottom padding clears the "Add Spending Limit" FAB (#27) so
+          // it doesn't sit on top of the last card in the list.
+          padding: EdgeInsets.fromLTRB(
+            isTablet ? 32 : 16,
+            isTablet ? 32 : 20,
+            isTablet ? 32 : 16,
+            96,
+          ),
+          children: [
+            SegmentedPillToggle<FinancePeriod>(
+              segments: [
+                PillSegment(
+                  value: FinancePeriod.daily,
+                  label: l10n.financePeriodDaily,
+                ),
+                PillSegment(
+                  value: FinancePeriod.weekly,
+                  label: l10n.financePeriodWeekly,
+                ),
+                PillSegment(
+                  value: FinancePeriod.monthly,
+                  label: l10n.financePeriodMonthly,
+                ),
+              ],
+              selected: period,
+              onChanged: (p) =>
+                  ref.read(selectedFinancePeriodProvider.notifier).state = p,
+            ),
+            const SizedBox(height: 14),
+            _PeriodNav(
+              period: period,
+              anchor: anchor,
+              onChangeAnchor: (d) {
+                if (period == FinancePeriod.monthly) {
+                  ref.read(selectedFinanceMonthProvider.notifier).state = d;
+                } else {
+                  ref.read(selectedFinanceAnchorDateProvider.notifier).state =
+                      d;
+                }
+              },
+            ),
+            if (existingFinanceHabit != null) ...[
+              const SizedBox(height: 16),
+              _TodayProgressCard(habit: existingFinanceHabit),
             ],
-            selected: period,
-            onChanged: (p) => ref.read(selectedFinancePeriodProvider.notifier).state = p,
-          ),
-          const SizedBox(height: 14),
-          _PeriodNav(
-            period: period,
-            anchor: anchor,
-            onChangeAnchor: (d) {
-              if (period == FinancePeriod.monthly) {
-                ref.read(selectedFinanceMonthProvider.notifier).state = d;
-              } else {
-                ref.read(selectedFinanceAnchorDateProvider.notifier).state = d;
-              }
-            },
-          ),
-          const SizedBox(height: 20),
-          summaryAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) => Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(l10n.financeFailedToLoad('$e')),
-            ),
-            data: (summary) {
-              if (!summary.hasData) return const _EmptyFinance();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TotalsSection(summary: summary),
-                  if (summary.dailyTrend.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            summaryAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, st) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(l10n.financeFailedToLoad('$e')),
+              ),
+              data: (summary) {
+                if (!summary.hasData) return const _EmptyFinance();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TotalsSection(summary: summary),
+                    if (summary.categoryBreakdown.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      SpendingDistributionPieChart(
+                        items: [
+                          for (final stat in summary.categoryBreakdown)
+                            CategoryBreakdownItem(
+                              category: stat.category,
+                              label: stat.label,
+                              amount: stat.totalAmount,
+                            ),
+                        ],
+                        currencyPrefix: summary.currencyPrefix,
+                      ),
+                    ],
+                    if (summary.dailyTrend.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _SpendingTrendCard(summary: summary, period: period),
+                    ],
                     const SizedBox(height: 20),
-                    _SpendingTrendCard(summary: summary, period: period),
+                    _HabitBreakdownCard(summary: summary, period: period, anchor: anchor),
                   ],
-                  if (summary.totalExpense > 0) ...[
-                    const SizedBox(height: 20),
-                    _SpendingBreakdownCard(summary: summary),
-                  ],
-                  const SizedBox(height: 20),
-                  _HabitBreakdownCard(summary: summary),
-                ],
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Jumps straight to the template picker under the Finance goal phrase
-  /// (skipping the goal-phrase-pick step) so adding a spending-limit habit —
-  /// daily/weekly/monthly — is reachable directly from this page instead of
-  /// only via the general Add Habit flow (#27). Logging progress against it
-  /// still only happens from Home, unchanged.
-  Future<void> _openAddSpendingLimitHabit(BuildContext context, WidgetRef ref) async {
-    final categories = await ref.read(categoriesProvider.future);
-    Category? financeCategory;
-    for (final c in categories) {
-      if (isFinanceCategory(c)) {
-        financeCategory = c;
+  /// Jumps straight to the Spending Money singleton form — daily/weekly/
+  /// monthly + goalValue, no template picker (kategori Save Money cuma
+  /// pernah punya 1 jenis habit sekarang). Logging today's progress against
+  /// it is now also available inline via [_TodayProgressCard] above.
+  Future<void> _openAddSpendingLimitHabit(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await openBudgetTrackerFlow(context);
+  }
+}
+
+/// Lets the Budget Tracker habit's progress for *today* be logged right from
+/// the Finance page — previously the only way to add today's spending/saving
+/// was to go back to Home and tap the card there. Mirrors Home's own
+/// tap-to-log flow (`_onTapCard` in home_screen.dart) exactly, just scoped to
+/// this one habit.
+class _TodayProgressCard extends ConsumerWidget {
+  const _TodayProgressCard({required this.habit});
+
+  final Habit habit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(habitsWithProgressForDateProvider(today()));
+    HabitWithProgress? item;
+    for (final i in items) {
+      if (i.habit.id == habit.id) {
+        item = i;
         break;
       }
     }
-    if (financeCategory == null || !context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => AddHabitFlowScreen(initialCategoryId: financeCategory!.id),
-      ),
+    // Not active today (e.g. outside its schedule/date range) — nothing to
+    // log for "today" specifically.
+    if (item == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final indonesian = ref.watch(appLanguageProvider) == AppLang.id;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          indonesian ? 'Progres Hari Ini' : "Today's Progress",
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        HabitProgressCard(
+          item: item,
+          accentColor: theme.colorScheme.primary,
+          isEditMode: false,
+          onTap: () => _logTodayProgress(context, ref, item!),
+        ),
+      ],
     );
+  }
+
+  Future<void> _logTodayProgress(
+    BuildContext context,
+    WidgetRef ref,
+    HabitWithProgress item,
+  ) async {
+    final repo = ref.read(habitLogRepositoryProvider);
+    try {
+      final result = await showQuickProgressSheet(context, item);
+      if (result == null) return;
+      await repo.applyPeriodAwareEdit(
+        habit: item.habit,
+        date: item.date,
+        previousPeriodTotal: item.progressValue,
+        newPeriodTotal: result.value,
+      );
+      if (result.breakdownItems.isNotEmpty) {
+        await ref.read(spendingBreakdownRepositoryProvider).addEntries(
+              habitId: item.habit.id,
+              date: item.date,
+              entries: result.breakdownItems,
+            );
+      }
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+      ref.invalidate(financeSummaryProvider);
+      ref.invalidate(financeSummaryForPeriodProvider);
+      ref.invalidate(habitsWithProgressForDateProvider(item.date));
+      unawaited(syncCommunityHabit(ref, item.habit.id, item.date));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.homeFailedToSaveProgress('$e'))),
+        );
+      }
+    }
   }
 }
 
 /// Prev/next navigator whose step size and label follow the selected
 /// [FinancePeriod] — a day, a week, or a calendar month at a time.
 class _PeriodNav extends ConsumerWidget {
-  const _PeriodNav({required this.period, required this.anchor, required this.onChangeAnchor});
+  const _PeriodNav({
+    required this.period,
+    required this.anchor,
+    required this.onChangeAnchor,
+  });
 
   final FinancePeriod period;
   final DateTime anchor;
@@ -161,7 +313,9 @@ class _PeriodNav extends ConsumerWidget {
       case FinancePeriod.weekly:
         final (start, end) = financePeriodRange(FinancePeriod.weekly, anchor);
         final sameMonth = start.month == end.month;
-        final startLabel = sameMonth ? '${start.day}' : '${start.day} ${monthFullName(start.month, lang)}';
+        final startLabel = sameMonth
+            ? '${start.day}'
+            : '${start.day} ${monthFullName(start.month, lang)}';
         return '$startLabel–${end.day} ${monthFullName(end.month, lang)} ${end.year}';
       case FinancePeriod.monthly:
         return '${monthFullName(anchor.month, lang)} ${anchor.year}';
@@ -186,7 +340,10 @@ class _PeriodNav extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
+        _NavCircleButton(
+          icon: Icons.chevron_left_rounded,
+          onTap: () => onChangeAnchor(_step(-1)),
+        ),
         Expanded(
           // The weekly label ("31 Agustus–6 September 2026") can run long
           // enough at titleLarge to get clipped by maxLines:1 ellipsis —
@@ -196,16 +353,40 @@ class _PeriodNav extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(
-                _label(lang),
-                style: theme.textTheme.titleLarge,
-                textAlign: TextAlign.center,
-                maxLines: 1,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _label(lang),
+                    style: theme.textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
+                  if (period == FinancePeriod.daily) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: anchor,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) onChangeAnchor(picked);
+                      },
+                      child: Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
         ),
-        _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),
+        _NavCircleButton(
+          icon: Icons.chevron_right_rounded,
+          onTap: () => onChangeAnchor(_step(1)),
+        ),
       ],
     );
   }
@@ -284,33 +465,49 @@ class _TotalsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(l10n.financeTotalSpending, style: theme.textTheme.bodyMedium),
-                    if (hasBudget) _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
+                    Expanded(
+                      child: Text(
+                        l10n.financeTotalSpending,
+                        style: theme.textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (hasBudget) ...[
+                      const SizedBox(width: 8),
+                      _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(formatRupiah(summary.totalExpense), style: theme.textTheme.headlineMedium),
+                Text(
+                  formatCurrency(summary.totalExpense, summary.currencyPrefix),
+                  style: theme.textTheme.headlineMedium,
+                ),
                 if (hasBudget) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
                     child: LinearProgressIndicator(
-                      value: (summary.totalExpense / summary.totalBudget).clamp(0, 1).toDouble(),
+                      value: (summary.totalExpense / summary.totalBudget)
+                          .clamp(0, 1)
+                          .toDouble(),
                       minHeight: 8,
                       backgroundColor: theme.brightness == Brightness.light
                           ? AppColors.lightSurfaceAlt
                           : AppColors.darkSurfaceAlt,
                       valueColor: AlwaysStoppedAnimation(
-                        isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
+                        isOverBudget
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.primary,
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    l10n.financeOfBudget(formatRupiah(summary.totalBudget)),
-                    style: theme.textTheme.bodySmall,
+                    l10n.financeOfBudget(formatCurrency(summary.totalBudget, summary.currencyPrefix)),
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
               ],
@@ -321,10 +518,16 @@ class _TotalsSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: _StatChip(
-            label: isOverBudget ? l10n.financeOverBudget : l10n.financeTotalSaved,
-            value: formatRupiah(saved.abs()),
-            color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
-            icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
+            label: isOverBudget
+                ? l10n.financeOverBudget
+                : l10n.financeTotalSaved,
+            value: formatCurrency(saved.abs(), summary.currencyPrefix),
+            color: isOverBudget
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
+            icon: isOverBudget
+                ? Icons.trending_up_rounded
+                : Icons.savings_rounded,
           ),
         ),
         // Saving/deposit info kept much smaller than spending above — this
@@ -335,13 +538,20 @@ class _TotalsSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(
               children: [
-                Icon(Icons.savings_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.savings_outlined,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     '${l10n.financeSaveMoneyGoal}: '
-                    '${formatRupiah(summary.totalSavingsDeposit)} / ${formatRupiah(summary.totalSavingsTarget)}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    '${formatCurrency(summary.totalSavingsDeposit, summary.currencyPrefix)} / '
+                    '${formatCurrency(summary.totalSavingsTarget, summary.currencyPrefix)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -368,20 +578,45 @@ class _BudgetPaceChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final pace = this.pace;
     if (pace == null) return const SizedBox.shrink();
-    final color = pace.onTrack ? const Color(0xFF3E9B5C) : const Color(0xFFD1544A);
+    final l10n = AppLocalizations.of(context)!;
+    final (color, icon, label) = switch (pace.status) {
+      BudgetPaceStatus.onTrack => (
+        const Color(0xFF3E9B5C),
+        // A downward trend arrow read as "getting worse" next to the "On
+        // Track" label even though it meant spending pace is healthy — a
+        // check mark reads as unambiguously positive instead.
+        Icons.check_circle_rounded,
+        l10n.financeOnTrack,
+      ),
+      BudgetPaceStatus.warning => (
+        const Color(0xFFD9A441),
+        Icons.trending_flat_rounded,
+        l10n.financeApproachingLimit,
+      ),
+      BudgetPaceStatus.overBudget => (
+        const Color(0xFFD1544A),
+        Icons.trending_up_rounded,
+        l10n.financeOverspending,
+      ),
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(pace.onTrack ? Icons.trending_down_rounded : Icons.trending_up_rounded, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
           Text(
-            pace.onTrack
-                ? AppLocalizations.of(context)!.financeOnTrack
-                : AppLocalizations.of(context)!.financeOverspending,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
           ),
         ],
       ),
@@ -405,24 +640,48 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 10),
-            Text(label, style: theme.textTheme.labelSmall),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0.05)],
         ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.18), shape: BoxShape.circle),
+            child: Icon(icon, size: 24, color: color),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -438,7 +697,8 @@ class _SpendingTrendCard extends StatefulWidget {
   State<_SpendingTrendCard> createState() => _SpendingTrendCardState();
 }
 
-class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTickerProviderStateMixin {
+class _SpendingTrendCardState extends State<_SpendingTrendCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _grow;
 
@@ -448,7 +708,10 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
     // Same treatment as HabitCurveChart: start after the page transition has
     // settled, and slow enough (1600ms) to actually read as motion instead
     // of finishing before the bars are even visible.
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
     _grow = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _controller.forward();
@@ -462,16 +725,35 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
   }
 
   String _trendTitle(AppLocalizations l10n) => switch (widget.period) {
-        FinancePeriod.daily => l10n.financeDailySpendingTrend,
-        FinancePeriod.weekly => l10n.financeWeeklySpendingTrend,
-        FinancePeriod.monthly => l10n.financeMonthlySpendingTrend,
-      };
+    FinancePeriod.daily => l10n.financeDailySpendingTrend,
+    FinancePeriod.weekly => l10n.financeWeeklySpendingTrend,
+    FinancePeriod.monthly => l10n.financeMonthlySpendingTrend,
+  };
+
+  /// Abbreviated Y-axis tick label so the axis column stays narrow even for
+  /// large rupiah amounts — e.g. 1.500.000 -> "1,5jt", 250.000 -> "250rb".
+  String _axisLabel(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}jt';
+    if (value >= 1000) return '${(value / 1000).round()}rb';
+    return '$value';
+  }
+
+  /// X-axis label for one trend point — a single day number for day-bucketed
+  /// points, or a short date range for week-bucketed ones (Monthly tab).
+  String _pointLabel(FinanceDayPoint point) {
+    if (!point.isMultiDayBucket) return '${point.date.day}';
+    return '${point.date.day}-${point.bucketEndInclusive.day}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final points = widget.summary.dailyTrend;
-    final maxValue = points.fold<int>(0, (m, p) => p.totalExpense > m ? p.totalExpense : m);
+    final maxValue = points.fold<int>(
+      0,
+      (m, p) => p.totalExpense > m ? p.totalExpense : m,
+    );
 
     return Card(
       child: Padding(
@@ -479,59 +761,119 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_trendTitle(AppLocalizations.of(context)!), style: theme.textTheme.titleMedium),
+            Text(
+              _trendTitle(l10n),
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 20),
             SizedBox(
-              height: 140,
+              height: 220,
               child: maxValue == 0
                   ? Center(
                       child: Text(
-                        AppLocalizations.of(context)!.financeNoDataYet,
+                        l10n.financeNoDataYet,
                         style: theme.textTheme.bodySmall,
                       ),
                     )
-                  : AnimatedBuilder(
-                      animation: _grow,
-                      builder: (context, _) => SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            for (final point in points)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      height: 100,
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: FractionallySizedBox(
-                                          heightFactor: ((point.totalExpense / maxValue).clamp(0.04, 1) * _grow.value)
-                                              .clamp(0.001, 1)
-                                              .toDouble(),
-                                          child: Container(
-                                            width: 20,
-                                            decoration: BoxDecoration(
-                                              color: theme.colorScheme.primary,
-                                              borderRadius: const BorderRadius.only(
-                                                topLeft: Radius.circular(4),
-                                                topRight: Radius.circular(4),
-                                              ),
-                                            ),
-                                          ),
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Y-axis: max/mid/0 ticks aligned to the 150px-tall
+                        // bar area below (+ its bottom date-label row).
+                        SizedBox(
+                          width: 40,
+                          height: 150,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(_axisLabel(maxValue), style: theme.textTheme.labelSmall),
+                              Text(_axisLabel(maxValue ~/ 2), style: theme.textTheme.labelSmall),
+                              Text('0', style: theme.textTheme.labelSmall),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AnimatedBuilder(
+                            animation: _grow,
+                            builder: (context, _) => LayoutBuilder(
+                              builder: (context, constraints) => SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                                  child: Stack(
+                                    children: [
+                                      // Gridlines at the 0/50/100% ticks so bar
+                                      // heights can be read against the Y-axis.
+                                      SizedBox(
+                                        height: 150,
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text('${point.date.day}', style: theme.textTheme.labelSmall),
-                                  ],
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          for (final point in points)
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 4,
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  SizedBox(
+                                                    height: 150,
+                                                    child: Align(
+                                                      alignment: Alignment.bottomCenter,
+                                                      child: FractionallySizedBox(
+                                                        heightFactor:
+                                                            ((point.totalExpense / maxValue)
+                                                                        .clamp(0.04, 1) *
+                                                                    _grow.value)
+                                                                .clamp(0.001, 1)
+                                                                .toDouble(),
+                                                        child: Container(
+                                                          width: 24,
+                                                          decoration: BoxDecoration(
+                                                            color: theme.colorScheme.primary,
+                                                            borderRadius:
+                                                                const BorderRadius.only(
+                                                                  topLeft: Radius.circular(4),
+                                                                  topRight: Radius.circular(
+                                                                    4,
+                                                                  ),
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    _pointLabel(point),
+                                                    style: theme.textTheme.labelSmall,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
-                          ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
             ),
           ],
@@ -541,195 +883,82 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
   }
 }
 
-/// Breakdown of total spending by spending habit (each `atMost` finance
-/// habit acts as its own spending category, e.g. "Food", "Transport") — more
-/// insightful than the previous single "Total Deposited" figure, since it
-/// shows WHERE the money actually went (#5, #24).
-class _SpendingBreakdownCard extends ConsumerWidget {
-  const _SpendingBreakdownCard({required this.summary});
-
-  final FinanceSummary summary;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context)!;
-    final lang = ref.watch(appLanguageProvider);
-    final spendingStats = summary.habitStats
-        .where((s) => s.habit.goalDirection == GoalDirection.atMost && s.totalValue > 0)
-        .toList()
-      ..sort((a, b) => b.totalValue.compareTo(a.totalValue));
-    if (spendingStats.isEmpty) return const SizedBox.shrink();
-    final total = spendingStats.fold<int>(0, (sum, s) => sum + s.totalValue);
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.financeSpendingByCategory, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final stat in spendingStats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            stat.habit.displayName(lang),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${formatRupiah(stat.totalValue)} (${(stat.totalValue / total * 100).round()}%)',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: stat.totalValue / total,
-                        minHeight: 6,
-                        backgroundColor: theme.brightness == Brightness.light
-                            ? AppColors.lightSurfaceAlt
-                            : AppColors.darkSurfaceAlt,
-                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
+/// Spending consolidated by category (§CategoryBreakdownList) across ALL
+/// Budget Tracker habits in this window — supersedes the old per-habit "By
+/// Habit" list, since with a single Budget Tracker habit "by habit" carried
+/// no information the totals card didn't already show.
+/// "Spending by Category" — consolidated across ALL Budget Tracker habits in
+/// the active Daily/Weekly/Monthly window. When the Monthly tab is showing
+/// the current, still-in-progress calendar month, this data IS the "Month to
+/// Date" figure (same category-consolidated totals, just scoped by the
+/// active period instead of a separate calendar-month query) — a small
+/// badge marks that explicitly instead of duplicating the same numbers in a
+/// second section, which is what the standalone "Month to Date" card used to
+/// do before it was merged in here. A finished past month gets a "Monthly
+/// Total" badge instead, since that data is final. Daily/Weekly tabs show no
+/// badge — MTD/Monthly-Total framing only applies to calendar-month scope.
 class _HabitBreakdownCard extends StatelessWidget {
-  const _HabitBreakdownCard({required this.summary});
+  const _HabitBreakdownCard({required this.summary, required this.period, required this.anchor});
 
   final FinanceSummary summary;
+  final FinancePeriod period;
+  final DateTime anchor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    if (summary.categoryBreakdown.isEmpty) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final isCurrentMonth = anchor.year == now.year && anchor.month == now.month;
+    final monthBadgeLabel =
+        period != FinancePeriod.monthly ? null : (isCurrentMonth ? l10n.financeMonthToDate : l10n.financeMonthlyTotal);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context)!.commonByHabit, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final stat in summary.habitStats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _HabitFinanceRow(stat: stat),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _HabitFinanceRow extends ConsumerWidget {
-  const _HabitFinanceRow({required this.stat});
-
-  final FinanceHabitStat stat;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final lang = ref.watch(appLanguageProvider);
-    final habit = stat.habit;
-    final isAtMost = habit.goalDirection == GoalDirection.atMost;
-    final overBudget = isAtMost && stat.totalValue > stat.totalTarget;
-    final ratio = isAtMost
-        ? (stat.totalTarget == 0 ? 0.0 : (stat.totalValue / stat.totalTarget).clamp(0, 1).toDouble())
-        : (stat.loggedPeriods == 0 ? 0.0 : stat.achievedPeriods / stat.loggedPeriods);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
-              child: Center(child: HabitIcon(icon: habit.icon, size: 13, color: Colors.white)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                habit.displayName(lang),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Text(
-              isAtMost
-                  ? '${formatRupiah(stat.totalValue)} / ${formatRupiah(stat.totalTarget)}'
-                  : formatRupiah(stat.totalValue),
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 8,
-            backgroundColor:
-                theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt,
-            valueColor: AlwaysStoppedAnimation(overBudget ? theme.colorScheme.error : theme.colorScheme.primary),
-          ),
-        ),
-        if (stat.breakdown.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.only(left: 42),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                for (final entry in stat.breakdown)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            entry.category == SpendingBreakdownCategory.custom && entry.label != null
-                                ? entry.label!
-                                : entry.category.label(lang),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(formatRupiah(entry.totalAmount), style: theme.textTheme.labelSmall),
-                      ],
+                Text(
+                  l10n.financeSpendingByCategory,
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (monthBadgeLabel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      monthBadgeLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
               ],
             ),
-          ),
-        ],
-      ],
+            const SizedBox(height: 16),
+            CategoryBreakdownList(
+              items: [
+                for (final stat in summary.categoryBreakdown)
+                  CategoryBreakdownItem(category: stat.category, label: stat.label, amount: stat.totalAmount),
+              ],
+              currencyPrefix: summary.currencyPrefix,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+

@@ -2,19 +2,24 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart' show StateProvider;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'domain/date_utils.dart';
 import 'domain/language.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'presentation/screens/onboarding/onboarding_flow.dart';
 import 'presentation/screens/onboarding/returning_welcome_screen.dart';
+import 'presentation/screens/splash/motion_splash_screen.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/widgets/app_logo.dart';
 import 'presentation/widgets/pro_upgrade_celebration.dart';
 import 'providers/core_providers.dart';
 import 'providers/settings_providers.dart';
+import 'providers/ui_state_providers.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart' show dotenv;
@@ -22,6 +27,14 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Locked to portrait on both phone and tablet — the whole UI (fixed
+  // bottom nav bar / rail breakpoint, card grids, charts) is only laid out
+  // and tested for a portrait aspect ratio; landscape isn't a supported
+  // layout so it's disabled outright rather than rendering broken.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   final prefs = await SharedPreferences.getInstance();
   await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -66,10 +79,105 @@ class HabitTrackerApp extends ConsumerWidget {
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 0.85,
         maxScaleFactor: 1.3,
-        child: ProUpgradeCelebration(child: child!),
+        child: _TodayResync(child: ProUpgradeCelebration(child: child!)),
       ),
-      home: const AppBootstrap(),
+      home: const _StartupGate(),
     );
+  }
+}
+
+/// Re-syncs the "current day" StateProviders (Home/Dashboard/Finance date
+/// & month anchors, all seeded once from `today()` at provider-creation
+/// time) whenever the app resumes from the background and the wall-clock
+/// day has actually moved on.
+///
+/// Without this, an app process that stays alive across midnight — which
+/// happens far more readily on OEMs with aggressive background-retention
+/// (MIUI/Xiaomi in particular keeps Activities alive much longer than
+/// stock Android) — keeps showing whatever day it was on when backgrounded.
+/// That's how a habit added right after midnight could look like it "isn't
+/// on today" (Home is still silently parked on yesterday) until the user
+/// manually swipes/navigates, which is the only thing that forces those
+/// providers to recompute against the real current date.
+///
+/// Only providers still sitting on the *stale* today/month get nudged
+/// forward — a date the user deliberately navigated away from (browsing a
+/// past day) is left alone.
+class _TodayResync extends ConsumerStatefulWidget {
+  const _TodayResync({required this.child});
+
+  final Widget child;
+
+  @override
+  ConsumerState<_TodayResync> createState() => _TodayResyncState();
+}
+
+class _TodayResyncState extends ConsumerState<_TodayResync> with WidgetsBindingObserver {
+  DateTime _lastKnownToday = today();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final freshToday = today();
+    if (isSameDay(freshToday, _lastKnownToday)) return;
+    final staleToday = _lastKnownToday;
+    _lastKnownToday = freshToday;
+
+    void resyncDate(StateProvider<DateTime> provider) {
+      if (isSameDay(ref.read(provider), staleToday)) {
+        ref.read(provider.notifier).state = freshToday;
+      }
+    }
+
+    void resyncMonth(StateProvider<DateTime> provider) {
+      final v = ref.read(provider);
+      if (v.year == staleToday.year && v.month == staleToday.month) {
+        ref.read(provider.notifier).state = DateTime(freshToday.year, freshToday.month);
+      }
+    }
+
+    resyncDate(selectedHomeDateProvider);
+    resyncDate(selectedDashboardDateProvider);
+    resyncDate(selectedFinanceAnchorDateProvider);
+    resyncMonth(selectedDashboardMonthProvider);
+    resyncMonth(selectedFinanceMonthProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+/// Video intro (`MotionSplashScreen`) sekali di awal, sebelum `AppBootstrap`
+/// mulai — begitu video selesai (atau gagal/dilewati lewat fallback timer di
+/// dalamnya), baru masuk ke alur init/splash yang sudah ada.
+class _StartupGate extends StatefulWidget {
+  const _StartupGate();
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  bool _motionDone = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_motionDone) {
+      return MotionSplashScreen(onFinished: () => setState(() => _motionDone = true));
+    }
+    return const AppBootstrap();
   }
 }
 
@@ -89,17 +197,10 @@ class AppBootstrap extends ConsumerStatefulWidget {
 /// instantly the first time each step appears instead of popping in a beat
 /// late while the PNG decodes.
 const _onboardingBackgroundAssets = [
-  'assets/background/form_page/composed.png',
-  'assets/background/questionare_1/11.png',
-  'assets/background/questionare_1/12.png',
-  'assets/background/questionare_1/13.png',
-  'assets/background/questionare_1/14.png',
-  'assets/background/questionare_2/7.png',
-  'assets/background/questionare_2/8.png',
-  'assets/background/questionare_2/9.png',
-  'assets/background/questionare_3/2.png',
-  'assets/background/questionare_3/3.png',
-  'assets/background/questionare_3/4.png',
+  'assets/background/form_page.png',
+  'assets/background/questionare_1.png',
+  'assets/background/questionare_2.png',
+  'assets/background/questionare_3.png',
 ];
 
 class _AppBootstrapState extends ConsumerState<AppBootstrap> {
@@ -269,8 +370,8 @@ class _SplashScreenState extends State<_SplashScreen> with TickerProviderStateMi
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ScaleTransition(scale: _logoScale, child: const AppLogo(size: 72)),
-              const SizedBox(height: 24),
+              ScaleTransition(scale: _logoScale, child: const AppLogo(size: 108)),
+              const SizedBox(height: 6),
               SizedBox(
                 width: 120,
                 child: ClipRRect(

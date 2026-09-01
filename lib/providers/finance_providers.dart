@@ -11,7 +11,13 @@ part 'finance_providers.g.dart';
 Future<FinanceSummary> financeSummary(Ref ref, DateTime monthAnchor) {
   final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
   final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
-  return ref.watch(financeRepositoryProvider).computeSummary(firstDay, lastDay);
+  // `watch` (bukan `read`) supaya provider ini otomatis rebuild begitu Home
+  // menandai habit sebagai "sedang dihapus" — Finance langsung ikut
+  // melupakannya, tidak perlu menunggu delete fisik ~5 detik kemudian.
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  return ref
+      .watch(financeRepositoryProvider)
+      .computeSummary(firstDay, lastDay, excludeHabitIds: excludeHabitIds);
 }
 
 /// Start/end (inclusive) for a [FinancePeriod] anchored at [anchor] — Monday
@@ -44,5 +50,13 @@ Future<FinanceSummary> financeSummaryForPeriod(
   DateTime anchor,
 ) {
   final (start, end) = financePeriodRange(period, anchor);
-  return ref.watch(financeRepositoryProvider).computeSummary(start, end);
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  return ref.watch(financeRepositoryProvider).computeSummary(
+        start,
+        end,
+        excludeHabitIds: excludeHabitIds,
+        // Monthly tab buckets the trend chart into ~4-5 weekly bars instead
+        // of ~30 daily ones — Daily/Weekly stay per-day (small ranges).
+        trendBucket: period == FinancePeriod.monthly ? FinanceTrendBucket.week : FinanceTrendBucket.day,
+      );
 }

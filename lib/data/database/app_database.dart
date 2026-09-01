@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,6 +121,42 @@ class AppDatabase extends _$AppDatabase {
             // Rp30.000 "Kebutuhan Harian" + Rp20.000 kustom "Bensin". Tabel
             // baru, tidak ada data lama untuk dimigrasikan.
             await m.createTable(habitSpendingBreakdowns);
+          }
+          if (from < 11) {
+            // v11: goalValueWeekend — override goalValue khusus Sabtu-Minggu
+            // untuk habit daily (mis. batas pengeluaran lebih longgar di
+            // weekend). Nullable, default null = sama setiap hari (perilaku
+            // lama tidak berubah untuk habit yang sudah ada).
+            await m.addColumn(habits, habits.goalValueWeekend);
+          }
+          if (from < 12) {
+            // v12: Budget Tracker rename (dulu "Spending Money"). Kolom
+            // currency baru untuk form Budget Tracker (label/prefix saja,
+            // nullable → null diperlakukan sebagai IDR di kode). Habit lama
+            // yang templateKey-nya masih key lama 'limit_daily_spending'
+            // di-update ke key baru 'budget_tracker' supaya deteksi habit
+            // singleton Budget Tracker tetap jalan tanpa perlu app
+            // menoleransi dua key sekaligus.
+            await m.addColumn(habits, habits.currency);
+            await customStatement(
+              "UPDATE habits SET template_key = 'budget_tracker' WHERE template_key = 'limit_daily_spending'",
+            );
+          }
+          if (from < 13) {
+            // v13: v12 only renamed template_key, not the habit row's own
+            // displayed name/name_id — devices that already ran v12 are
+            // stuck showing "Spending Money" forever otherwise. Matched
+            // against the old default text so a hypothetically renamed
+            // habit (locked from editing in the UI, but not enforced at the
+            // DB level) isn't silently overwritten. Covers both: a device
+            // landing on v13 directly (template_key already 'budget_tracker'
+            // from the v12 step just above) and one that ran v12 earlier in
+            // a prior session (template_key already 'budget_tracker' then
+            // too — the rename is idempotent either way).
+            await customStatement(
+              "UPDATE habits SET name = 'Budget Tracker', name_id = 'Pelacak Anggaran' "
+              "WHERE template_key = 'budget_tracker' AND name = 'Spending Money'",
+            );
           }
         },
       );

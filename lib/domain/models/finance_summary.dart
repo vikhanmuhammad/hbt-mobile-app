@@ -1,18 +1,32 @@
 import 'enums.dart';
 import 'habit.dart';
 
+/// Granularitas titik pada `FinanceSummary.dailyTrend` — dipilih oleh
+/// caller (`FinanceRepository.computeSummary`) berdasarkan tab Finance yang
+/// aktif: Daily/Weekly pakai [day] (satu bar per hari), Monthly pakai
+/// [week] (satu bar per minggu kalender) supaya tidak menampilkan ~30 bar
+/// harian yang padat dan sulit dibaca.
+enum FinanceTrendBucket { day, week }
+
+/// Status traffic light 3 warna dari [BudgetPace] — turunan dari selisih
+/// [BudgetPace.actualRatio] terhadap [BudgetPace.expectedRatio], lihat
+/// [FinanceSummary.paceAt].
+enum BudgetPaceStatus { onTrack, warning, overBudget }
+
 /// Result of comparing "how far through the period we are" against "how
 /// much of the budget is already spent" — see [FinanceSummary.paceAt].
 class BudgetPace {
   const BudgetPace({
-    required this.onTrack,
+    required this.status,
     required this.expectedRatio,
     required this.actualRatio,
   });
 
-  final bool onTrack;
+  final BudgetPaceStatus status;
   final double expectedRatio;
   final double actualRatio;
+
+  bool get onTrack => status == BudgetPaceStatus.onTrack;
 }
 
 /// Total pada satu kategori rincian pengeluaran (lihat
@@ -72,12 +86,25 @@ class FinanceHabitStat {
   double get successRate => loggedPeriods == 0 ? 0 : achievedPeriods / loggedPeriods;
 }
 
-/// Total pengeluaran (habit `atMost`) pada satu tanggal — dasar tren harian.
+/// Total pengeluaran (habit `atMost`) pada satu titik tren — [date] adalah
+/// awal bucket-nya. Untuk tab Daily/Weekly, satu bucket = satu hari
+/// ([bucketEndInclusive] == [date]). Untuk tab Monthly, satu bucket = satu
+/// minggu kalender ([bucketEndInclusive] = hari terakhir minggu itu yang
+/// masih dalam window) — dipakai UI untuk label sumbu-X ("1-7 Jan" vs "1
+/// Jan").
 class FinanceDayPoint {
-  const FinanceDayPoint({required this.date, required this.totalExpense});
+  const FinanceDayPoint({
+    required this.date,
+    required this.totalExpense,
+    DateTime? bucketEndInclusive,
+  }) : bucketEndInclusive = bucketEndInclusive ?? date;
 
   final DateTime date;
+  final DateTime bucketEndInclusive;
   final int totalExpense;
+
+  bool get isMultiDayBucket =>
+      bucketEndInclusive.difference(date).inDays > 0;
 }
 
 /// Rangkuman keuangan untuk satu periode (biasanya 1 bulan kalender),
@@ -94,6 +121,8 @@ class FinanceSummary {
     required this.totalSavingsTarget,
     required this.habitStats,
     required this.dailyTrend,
+    this.categoryBreakdown = const [],
+    this.currencyPrefix = 'Rp ',
   });
 
   final DateTime periodStart;
@@ -117,6 +146,17 @@ class FinanceSummary {
 
   final List<FinanceHabitStat> habitStats;
   final List<FinanceDayPoint> dailyTrend;
+
+  /// Rincian kategori pengeluaran diagregasi lintas SEMUA habit `atMost`
+  /// rupiah dalam window ini (bukan per-habit seperti [FinanceHabitStat.breakdown])
+  /// — dasar section "Spending by Category" dan "Month to Date".
+  final List<FinanceSpendingCategoryStat> categoryBreakdown;
+
+  /// Prefix mata uang (mis. "Rp ", "USD ") dari habit Budget Tracker yang
+  /// datanya diagregasi di sini — label saja, bukan format angka per-currency
+  /// (lihat `Habit.currencyPrefix`). Default "Rp " kalau tidak ada habit
+  /// finance yang tercakup window ini.
+  final String currencyPrefix;
 
   /// Selisih budget - pengeluaran. Positif = hemat, negatif = kelebihan budget.
   int get totalSaved => totalBudget - totalExpense;
@@ -142,8 +182,18 @@ class FinanceSummary {
     final expectedRatio = (elapsedDays / totalDays).clamp(0.0, 1.0);
     final actualRatio = (totalExpense / totalBudget).clamp(0.0, 10.0);
 
+    // Traffic light 3 warna: hijau kalau masih dalam buffer 5 poin persen di
+    // atas pace (ambang lama, dipertahankan); kuning kalau lewat itu tapi
+    // belum lewat 15 poin; merah kalau sudah lewat 15 poin di atas pace.
+    final over = actualRatio - expectedRatio;
+    final status = over <= 0.05
+        ? BudgetPaceStatus.onTrack
+        : over <= 0.15
+            ? BudgetPaceStatus.warning
+            : BudgetPaceStatus.overBudget;
+
     return BudgetPace(
-      onTrack: actualRatio <= expectedRatio + 0.05,
+      status: status,
       expectedRatio: expectedRatio,
       actualRatio: actualRatio,
     );

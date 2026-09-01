@@ -7,6 +7,7 @@ import 'package:flutter_undraw/flutter_undraw.dart';
 import '../../../domain/date_utils.dart';
 import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
+import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/onboarding_response.dart';
@@ -209,6 +210,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                           set.remove(template);
                         }
                       }),
+                      onCategoriesChanged: (ids) =>
+                          setState(() => _selectedCategoryIds.addAll(ids)),
+                      onRemoveHabit: _removeHabit,
                       onBack: () => _goTo(7),
                       onNext: () => _goTo(9),
                     ),
@@ -316,11 +320,11 @@ class _StepScaffold extends StatelessWidget {
   /// info step; the questionnaire steps leave their illustration as-is.
   final bool showBackgroundGradient;
 
-  /// Canvas-space (of the shared 3375x6000 design canvas) vertical shift
-  /// applied on top of the bottom-anchor below — positive pushes the
-  /// illustration further down, negative pulls it up. Needed because each
-  /// illustration set leaves a different amount of transparent margin below
-  /// its own content, so a uniform bottom-anchor alone lands each one at a
+  /// Canvas-space (of [backgroundCanvasSize]) vertical shift applied on top
+  /// of the bottom-anchor below — positive pushes the illustration further
+  /// down, negative pulls it up. Needed because each illustration set
+  /// leaves a different amount of transparent margin below its own
+  /// content, so a uniform bottom-anchor alone lands each one at a
   /// visually different height; this equalizes them against one reference
   /// set's margin (see `_LifestyleQuestionStep._illustrationSets`).
   final double backgroundVerticalOffset;
@@ -347,58 +351,72 @@ class _StepScaffold extends StatelessWidget {
           // content below is padded to dodge the keyboard.
           Positioned.fill(
             child: IgnorePointer(
-              child: Opacity(
-                opacity: 0.55,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final scale = constraints.maxWidth / backgroundCanvasSize.width;
-                    final renderHeight = backgroundCanvasSize.height * scale;
-                    // <= 0: bottom-anchored, so only the (transparent) top
-                    // of the canvas gets cropped away, never the
-                    // illustration itself near the bottom.
-                    final offsetY = constraints.maxHeight -
-                        renderHeight +
-                        backgroundVerticalOffset * scale;
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        for (final asset in backgroundLayers!)
-                          Positioned(
-                            left: 0,
-                            top: offsetY,
-                            width: backgroundCanvasSize.width * scale,
-                            height: backgroundCanvasSize.height * scale,
-                            child: Image.asset(asset, fit: BoxFit.fill),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final scale = constraints.maxWidth / backgroundCanvasSize.width;
+                  final renderHeight = backgroundCanvasSize.height * scale;
+                  // Bottom-anchored, but not flush against the very bottom
+                  // of the box — that box also contains the Back/Next
+                  // button row (part of the same Stack, drawn on top), so
+                  // anchoring to its literal bottom buried most of the
+                  // illustration behind/under the buttons. Reserving space
+                  // roughly matching that row's height keeps the
+                  // illustration visibly clear above it.
+                  const bottomReserve = 110.0;
+                  final offsetY = constraints.maxHeight -
+                      bottomReserve -
+                      renderHeight +
+                      backgroundVerticalOffset * scale;
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Opacity(
+                        opacity: 0.55,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            for (final asset in backgroundLayers!)
+                              Positioned(
+                                left: 0,
+                                top: offsetY,
+                                width: constraints.maxWidth,
+                                height: renderHeight,
+                                child: Image.asset(asset, fit: BoxFit.fill),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (showBackgroundGradient)
+                        // Fades the illustration into the page background
+                        // near ITS OWN bottom edge — color follows the
+                        // theme automatically (white in light mode, dark
+                        // surface in dark mode). Stops are derived from
+                        // `offsetY`/`renderHeight` (the illustration's own
+                        // span), not a fixed fraction of the whole box, so
+                        // a short illustration doesn't get proportionally
+                        // over-faded the way a fixed box-relative stop did.
+                        Positioned.fill(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                stops: [
+                                  ((offsetY + renderHeight * 0.5) / constraints.maxHeight)
+                                      .clamp(0.0, 1.0),
+                                  1.0,
+                                ],
+                                colors: [
+                                  Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
+                                  Theme.of(context).scaffoldBackgroundColor,
+                                ],
+                              ),
+                            ),
                           ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        if (showBackgroundGradient)
-          // Fades the illustration into the page background near the
-          // bottom of the screen — color follows the theme automatically
-          // (white in light mode, dark surface in dark mode) since it
-          // targets `scaffoldBackgroundColor`, not a fixed color. Kept
-          // subtle: starts low (only the bottom ~28%) and never reaches
-          // full opacity, so it blends the edge rather than washing out
-          // most of the illustration.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.72, 1.0],
-                    colors: [
-                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
-                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                        ),
                     ],
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),
@@ -680,7 +698,20 @@ class _PhoneFrame extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              Positioned.fill(child: child),
+              // These mock screens are fixed-size decorative illustrations
+              // (not real, interactive content), so they shouldn't grow with
+              // the system accessibility text-scale — several of their
+              // internal Rows aren't Expanded/Flexible-wrapped and would
+              // overflow this fixed 300x460 frame at large text scales.
+              // Clamping to 1.0x here (same technique the bottom nav bar
+              // uses) keeps every mock laid out exactly as designed
+              // regardless of the user's system font-size setting.
+              Positioned.fill(
+                child: MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: 1.0,
+                  child: child,
+                ),
+              ),
               Positioned(
                 top: 8,
                 left: 0,
@@ -1913,18 +1944,20 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
     final indonesian = ref.watch(introLanguageProvider) == OnboardingLang.id;
     return _StepScaffold(
-      // `composed.png` is a single pre-baked flattening of the 3 source
-      // sub-illustrations (16 blob, 18 hand+phone, 17 checkmark+finger) —
-      // those aren't exported at a shared canvas size the way the
-      // questionnaire sets are, so composing them once at build time
-      // (matching `example_of_implementation.png` exactly) is far more
-      // reliable than positioning 3 separately-sized layers against each
-      // other at runtime.
-      backgroundLayers: const ['assets/background/form_page/composed.png'],
-      // composed.png was cropped tight to its own content (see the file's
-      // regeneration script), so it no longer matches the shared
-      // 3375x6000 canvas the questionnaire sets use.
-      backgroundCanvasSize: const Size(3329, 4277),
+      // The source asset is already cropped tight/edge-to-edge by design
+      // (hands and blob reach the canvas edges directly) — full-width fit
+      // with no extra scale-down/shift reproduces that as-is.
+      backgroundLayers: const ['assets/background/form_page.png'],
+      backgroundCanvasSize: const Size(2531, 3375),
+      // This illustration's content spans almost the entire canvas
+      // top-to-bottom (checkmark badge near the top, hand+phone down to
+      // the very bottom edge) — unlike the questionnaire illustrations,
+      // so a plain bottom-anchor put the checkmark up behind the Name/Age
+      // fields. Pushed down until the checkmark clears the form fields
+      // below Gender, even though that means the lower hand/sleeve
+      // extends past the visible area (matches the source art's own
+      // framing, which already cuts sleeves off at the frame edge).
+      backgroundVerticalOffset: 1000,
       showBackgroundGradient: true,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
@@ -2038,37 +2071,30 @@ class _LifestyleQuestionStep extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
-  /// One layered illustration set per question (point 5) — cycled by
+  /// One pre-flattened illustration per question (point 5) — cycled by
   /// `stepIndex` rather than hand-picked per question key, so it stays in
-  /// sync automatically if the question list is reordered. Each inner list
-  /// is back-to-front (blob background first, foreground details last).
-  static const _illustrationSets = [
-    [
-      'assets/background/questionare_1/14.png',
-      'assets/background/questionare_1/11.png',
-      'assets/background/questionare_1/13.png',
-      'assets/background/questionare_1/12.png',
-    ],
-    [
-      'assets/background/questionare_2/9.png',
-      'assets/background/questionare_2/8.png',
-      'assets/background/questionare_2/7.png',
-    ],
-    [
-      'assets/background/questionare_3/4.png',
-      'assets/background/questionare_3/3.png',
-      'assets/background/questionare_3/2.png',
-    ],
+  /// sync automatically if the question list is reordered.
+  static const _illustrationAssets = [
+    'assets/background/questionare_1.png',
+    'assets/background/questionare_2.png',
+    'assets/background/questionare_3.png',
+  ];
+
+  /// Each file's own design-canvas size — they aren't a shared size.
+  static const _illustrationCanvasSizes = [
+    Size(2928, 2928),
+    Size(2508, 2508),
+    Size(2916, 2916),
   ];
 
   /// Per-set canvas-space correction so every set's illustration content
   /// (not just its canvas) lands at the same height on screen — each
-  /// source canvas leaves a different amount of transparent margin below
-  /// its own content (measured directly from the assets: set 1 leaves 1737
-  /// canvas px, set 2 leaves 1122px, set 3 (the reference, positioned
-  /// correctly by default) leaves 1334px), so a uniform bottom-anchor alone
-  /// makes set 1 sit too high and set 2 sit too low/clipped.
-  static const _illustrationVerticalOffsets = [403.0, -212.0, 0.0];
+  /// source image leaves a different amount of transparent margin below
+  /// its own content (measured directly from the assets: set 1 leaves 364
+  /// canvas px, set 2 leaves 308px — both close enough to leave alone —
+  /// set 3 leaves 485px), so a uniform bottom-anchor alone makes set 3 sit
+  /// visibly higher than the other two.
+  static const _illustrationVerticalOffsets = [0.0, 0.0, 123.0];
 
   @override
   Widget build(BuildContext context) {
@@ -2079,10 +2105,11 @@ class _LifestyleQuestionStep extends StatelessWidget {
         final indonesian =
             ref.watch(introLanguageProvider) == OnboardingLang.id;
         final options = question.optionsFor(indonesian);
+        final illustrationIndex = (stepIndex - 1) % _illustrationAssets.length;
         return _StepScaffold(
-          backgroundLayers: _illustrationSets[(stepIndex - 1) % _illustrationSets.length],
-          backgroundVerticalOffset:
-              _illustrationVerticalOffsets[(stepIndex - 1) % _illustrationVerticalOffsets.length],
+          backgroundLayers: [_illustrationAssets[illustrationIndex]],
+          backgroundCanvasSize: _illustrationCanvasSizes[illustrationIndex],
+          backgroundVerticalOffset: _illustrationVerticalOffsets[illustrationIndex],
           topBar: Align(
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: onSkip, child: Text(lang.skip)),
@@ -2148,9 +2175,13 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
+      // Semi-transparent (rather than the default opaque cardColor) so the
+      // questionnaire's background illustration stays visible through the
+      // option cards instead of being fully covered.
       color: selected
-          ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14)
-          : null,
+          ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14)!
+              .withValues(alpha: 0.72)
+          : theme.cardColor.withValues(alpha: 0.62),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: selected
@@ -2356,46 +2387,48 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                   return DashedBorder(
                     borderRadius: 20,
                     onTap: () async {
-                      final beforeIds = categories.map((c) => c.id).toSet();
-                      await openCreateCategoryFlow(context);
-                      final afterList =
-                          ref.read(categoriesProvider).value ??
-                          const <Category>[];
-                      final newIds = afterList
-                          .map((c) => c.id)
-                          .toSet()
-                          .difference(beforeIds);
-                      if (newIds.isNotEmpty) onCategoriesChanged(newIds);
+                      final newId = await openCreateCategoryFlow(context);
+                      if (newId != null) onCategoriesChanged({newId});
                     },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 16,
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: theme.brightness == Brightness.light
-                                  ? AppColors.lightSurfaceAlt
-                                  : AppColors.darkSurfaceAlt,
-                              shape: BoxShape.circle,
+                    // Grid tile height is pinned by `childAspectRatio` above
+                    // — clamp text-scale so the icon + label reliably fit
+                    // the tile's fixed height at any system font-size
+                    // setting (same technique as the intro mock frames);
+                    // `FittedBox` isn't used here since it would force the
+                    // label onto a single unconstrained line instead of
+                    // wrapping within the tile's width.
+                    child: MediaQuery.withClampedTextScaling(
+                      maxScaleFactor: 1.0,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 20,
+                          horizontal: 16,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: theme.brightness == Brightness.light
+                                    ? AppColors.lightSurfaceAlt
+                                    : AppColors.darkSurfaceAlt,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.add_rounded,
+                                color: theme.textTheme.bodySmall?.color,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.add_rounded,
-                              color: theme.textTheme.bodySmall?.color,
+                            const SizedBox(height: 10),
+                            Text(
+                              lang.createNewGoal,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleMedium,
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            lang.createNewGoal,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -2407,7 +2440,20 @@ class _GoalPhrasePickStep extends ConsumerWidget {
                   category: c,
                   color: color,
                   selected: isSelected,
-                  onTap: () => onToggle(c.id),
+                  // Save Money singleton: user Pro yang tap kategori ini
+                  // langsung dibawa ke form spending-money (skip checklist
+                  // template inline di step berikutnya sama sekali) — bukan
+                  // ditambahkan ke `selected` seperti kategori lain. User
+                  // belum-Pro tetap ditambahkan ke `selected` seperti biasa
+                  // supaya lock-preview/upgrade prompt existing di step
+                  // berikutnya tetap muncul (perilaku itu tidak berubah).
+                  onTap: () async {
+                    if (isFinanceCategory(c) && ref.read(isProProvider)) {
+                      await openBudgetTrackerFlow(context);
+                      return;
+                    }
+                    onToggle(c.id);
+                  },
                 );
               },
             ),
@@ -2461,7 +2507,14 @@ class _CategoryPickTile extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
+        // Grid tile height is pinned by `childAspectRatio` in
+        // `_GoalPhrasePickStep` — clamp text-scale so the icon + 2-line
+        // title + 2-line subtitle reliably fit the tile's fixed height at
+        // any system font-size setting (the `maxLines`+`ellipsis` below only
+        // guards horizontal overflow, not the tile's fixed vertical space).
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.0,
+          child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2496,6 +2549,7 @@ class _CategoryPickTile extends ConsumerWidget {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -2513,6 +2567,8 @@ class _RecommendationStep extends ConsumerStatefulWidget {
     required this.onToggleTemplate,
     required this.onHabitCreated,
     required this.onHabitRemoved,
+    required this.onCategoriesChanged,
+    required this.onRemoveHabit,
     required this.onBack,
     required this.onNext,
   });
@@ -2523,6 +2579,8 @@ class _RecommendationStep extends ConsumerStatefulWidget {
   final void Function(int categoryId, HabitTemplate template) onToggleTemplate;
   final void Function(HabitTemplate template, int habitId) onHabitCreated;
   final void Function(HabitTemplate template) onHabitRemoved;
+  final ValueChanged<Set<int>> onCategoriesChanged;
+  final Future<void> Function(int habitId) onRemoveHabit;
   final VoidCallback onBack;
   final VoidCallback onNext;
 
@@ -2586,6 +2644,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     final templatesAsync = ref.watch(habitTemplatesProvider);
     final lang = OnboardingStrings(ref.watch(introLanguageProvider));
     final appLang = ref.watch(appLanguageProvider);
+    // Custom habits (from the "Explore other categories" shortcut, or added
+    // to a category from Home while onboarding is still open) never match a
+    // static template, so they'd otherwise never show up in the checklist
+    // below at all — only later on the Summary page. Watched reactively so
+    // a habit created just now (via the DB write already awaited by the
+    // sub-flow that created it) appears here immediately.
+    final allHabits = ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
 
     return _StepScaffold(
       child: categoriesAsync.when(
@@ -2718,7 +2783,15 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       final templates = match.isEmpty
                           ? <HabitTemplate>[]
                           : match.first.habits;
-                      if (templates.isEmpty) {
+                      // Custom habits already saved to this category (e.g.
+                      // via "Explore other categories" below, or from Home
+                      // while onboarding is still open) — these don't match
+                      // any static template, so without this they'd silently
+                      // never show up here even though they already exist.
+                      final customHabits = allHabits
+                          .where((h) => h.categoryId == category.id && h.isCustom)
+                          .toList();
+                      if (templates.isEmpty && customHabits.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: Text(
@@ -2740,6 +2813,55 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                           !ref.watch(isProProvider);
                       return Column(
                         children: [
+                          for (final h in customHabits)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 14,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 20,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                      const SizedBox(width: 14),
+                                      HabitIcon(
+                                        icon: h.icon,
+                                        size: 20,
+                                        color: theme.textTheme.bodySmall?.color,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              h.displayName(appLang),
+                                              style: theme.textTheme.titleMedium,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              h.goalLabel(appLang),
+                                              style: theme.textTheme.bodyMedium,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: AppLocalizations.of(context)!.onboardingCancelHabit,
+                                        icon: const Icon(Icons.close_rounded, size: 18),
+                                        onPressed: () => widget.onRemoveHabit(h.id),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           for (final t in templates)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 10),
@@ -2854,11 +2976,25 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                   borderRadius: 14,
                   onTap: _saving
                       ? null
-                      : () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AddHabitFlowScreen(),
-                          ),
-                        ),
+                      : () async {
+                          final beforeIds = categories.map((c) => c.id).toSet();
+                          final saved = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) => const AddHabitFlowScreen(),
+                            ),
+                          );
+                          if (saved == true) {
+                            final freshCategories =
+                                await ref.refresh(categoriesProvider.future);
+                            final newIds = freshCategories
+                                .map((c) => c.id)
+                                .toSet()
+                                .difference(beforeIds);
+                            if (newIds.isNotEmpty) {
+                              widget.onCategoriesChanged(newIds);
+                            }
+                          }
+                        },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -2940,6 +3076,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
             icon: template.icon,
             goalPeriod: template.goalPeriod,
             goalValue: template.goalValue,
+            goalValueWeekend: template.goalValueWeekend,
             goalUnit: template.goalUnit,
             goalDirection: template.goalDirection,
             taskDays: const ['all'],

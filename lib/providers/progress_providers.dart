@@ -60,8 +60,9 @@ List<HabitWithProgress> habitsWithProgressForDate(Ref ref, DateTime date) {
     };
     return HabitWithProgress(
       habit: h,
+      date: date,
       progressValue: progressValue,
-      isDone: h.isAchieved(progressValue),
+      isDone: h.isAchieved(progressValue, date: date),
     );
   }).toList();
 }

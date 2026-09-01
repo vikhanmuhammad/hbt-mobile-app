@@ -68,7 +68,7 @@ final class FinanceSummaryProvider
   }
 }
 
-String _$financeSummaryHash() => r'b5bc7b8d172c9646c228bb0a194c8de86eae9f8f';
+String _$financeSummaryHash() => r'b16cf195ddc7ef85c6bdc24dd965b524bb7ee1f1';
 
 /// Rangkuman keuangan untuk bulan kalender yang memuat [monthAnchor].
 
@@ -160,7 +160,7 @@ final class FinanceSummaryForPeriodProvider
 }
 
 String _$financeSummaryForPeriodHash() =>
-    r'4c469a3296420d8e00d22e8889bea2f7ec8955a5';
+    r'fc21dde0cd79eb9514e8996301a2e5569b64df91';
 
 /// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
 /// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/

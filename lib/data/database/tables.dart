@@ -68,6 +68,9 @@ class Habits extends Table {
   TextColumn get icon => text().nullable()(); // Font Awesome icon key
   TextColumn get goalPeriod => text()();
   IntColumn get goalValue => integer().withDefault(const Constant(1))();
+  /// Override goalValue khusus Sabtu-Minggu untuk habit `daily` — null berarti
+  /// nilai sama setiap hari (goalValue dipakai apa adanya, perilaku lama).
+  IntColumn get goalValueWeekend => integer().nullable()();
   TextColumn get goalUnit => text().withDefault(const Constant('x'))();
   // 'atLeast' (standar, progress >= goalValue) atau 'atMost' (progress <=
   // goalValue, mis. batas pengeluaran harian).
@@ -106,6 +109,12 @@ class Habits extends Table {
   /// Key stabil ke entri habit di `habit_templates.json` (mis.
   /// 'drink_water'). Null untuk habit custom buatan user.
   TextColumn get templateKey => text().nullable()();
+
+  /// Kode mata uang (IDR/USD/SGD/MYR/EUR) untuk habit Budget Tracker —
+  /// label/prefix tampilan saja, tidak mengubah cara angka diformat. Null
+  /// untuk habit non-finance, dan default ke 'IDR' di kode saat null untuk
+  /// habit finance lama yang dibuat sebelum kolom ini ada.
+  TextColumn get currency => text().nullable()();
 }
 
 @TableIndex(name: 'idx_habit_logs_date', columns: {#date})
@@ -138,9 +147,13 @@ class HabitSpendingBreakdowns extends Table {
   IntColumn get habitId =>
       integer().references(Habits, #id, onDelete: KeyAction.cascade)();
   DateTimeColumn get date => dateTime()();
-  // dailyNeeds / urgent / health / custom — lihat SpendingBreakdownCategory.
+  // dailyNeeds / dailyWants / unexpectedNeeds / fixedSpending — lihat
+  // SpendingBreakdownCategory. Baris lama bisa juga berisi nilai legacy
+  // (urgent/health/custom) dari sebelum kategori diubah; nilai legacy
+  // sengaja tidak dimigrasikan dan disaring (tidak ditampilkan) di UI baru.
   TextColumn get categoryKey => text()();
-  /// Teks bebas, hanya diisi kalau categoryKey == 'custom'.
+  /// Teks bebas sub-kategori/detail, opsional untuk kategori manapun (mis.
+  /// "Bensin" di bawah kategori Fixed Spending).
   TextColumn get label => text().nullable()();
   IntColumn get amount => integer()();
   DateTimeColumn get createdAt =>

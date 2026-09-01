@@ -29,6 +29,7 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       icon: row.icon,
       goalPeriod: GoalPeriod.fromValue(row.goalPeriod),
       goalValue: row.goalValue,
+      goalValueWeekend: row.goalValueWeekend,
       goalUnit: row.goalUnit,
       goalDirection: GoalDirection.fromValue(row.goalDirection),
       taskDays: TaskDays.decode(row.taskDays),
@@ -44,6 +45,7 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       nameId: row.nameId,
       isCustom: row.isCustom,
       templateKey: row.templateKey,
+      currency: row.currency,
     );
 
 domain.HabitLog mapHabitLog(db.HabitLog row) => domain.HabitLog(
@@ -82,14 +84,22 @@ domain.HabitGroupLink mapHabitGroupLink(db.HabitGroupLink row) =>
       lastSyncedAt: row.lastSyncedAt,
     );
 
-domain.SpendingBreakdownEntry mapSpendingBreakdownEntry(
+/// Returns null when `row.categoryKey` is a legacy value from before the
+/// Budget Tracker category rework (`urgent`/`health`/`custom`) — those rows
+/// are left unmigrated in the DB and intentionally hidden from the new UI
+/// rather than remapped, per product decision. Callers must filter out
+/// nulls (e.g. `.map(mapSpendingBreakdownEntry).whereType<...>()`).
+domain.SpendingBreakdownEntry? mapSpendingBreakdownEntry(
   db.HabitSpendingBreakdown row,
-) =>
-    domain.SpendingBreakdownEntry(
-      id: row.id,
-      habitId: row.habitId,
-      date: row.date,
-      category: SpendingBreakdownCategory.fromValue(row.categoryKey),
-      label: row.label,
-      amount: row.amount,
-    );
+) {
+  final category = SpendingBreakdownCategory.tryFromValue(row.categoryKey);
+  if (category == null) return null;
+  return domain.SpendingBreakdownEntry(
+    id: row.id,
+    habitId: row.habitId,
+    date: row.date,
+    category: category,
+    label: row.label,
+    amount: row.amount,
+  );
+}

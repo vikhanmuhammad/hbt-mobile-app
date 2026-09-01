@@ -2,14 +2,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
-import '../../domain/format_utils.dart';
 import '../../domain/language.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit_with_progress.dart';
 import '../../domain/models/spending_breakdown.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../providers/core_providers.dart';
 import '../../providers/settings_providers.dart';
+import 'category_breakdown_list.dart';
+import 'currency_amount_field.dart';
 import 'segmented_pill_toggle.dart';
 
 /// Result of the quick progress sheet: the new period-total value, plus any
@@ -47,6 +50,14 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   late final _controller = TextEditingController(text: '$_value');
   final List<SpendingBreakdownDraft> _breakdownItems = [];
 
+  /// Rincian yang sudah tersimpan untuk habit+tanggal ini dari sesi
+  /// sebelumnya — dimuat di [initState] supaya tetap kelihatan saat sheet
+  /// dibuka lagi, bukan seolah hilang padahal totalnya tetap terhitung.
+  /// Read-only di sini (bukan bagian dari [_breakdownItems]/[_breakdownTotal]
+  /// yang baru ditambahkan sesi ini) — total yang disimpan tetap dihitung
+  /// sebagai delta di atas `widget.item.progressValue` seperti sebelumnya.
+  List<SpendingBreakdownEntry> _existingBreakdownEntries = [];
+
   /// Which of the two mutually exclusive ways to log this save the user
   /// picked — only relevant when [_supportsBreakdown]. `false` = type the
   /// total directly (the stepper/text field, existing behavior). `true` =
@@ -66,9 +77,21 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   bool get _supportsBreakdown =>
       widget.item.habit.isRupiah && widget.item.habit.goalDirection == GoalDirection.atMost;
 
+  /// Same predicate as [_supportsBreakdown] — every habit that supports the
+  /// breakdown feature IS the Budget Tracker habit (the app's one rupiah +
+  /// atMost habit), so this is where Budget-Tracker-only UI (no steppers,
+  /// no Mark Achieved, thousand-separator input) gets gated.
+  bool get _isBudgetTracker => _supportsBreakdown;
+
   int get _breakdownTotal => _breakdownItems.fold<int>(0, (sum, i) => sum + i.amount);
 
-  bool get _isBreakdownEntry => _supportsBreakdown && _useBreakdownMode;
+  /// True once there's any breakdown data at all — added this session or
+  /// already persisted for the day — used to lock the entry mode to
+  /// breakdown-only (req: disable "Enter Total" once breakdown data exists,
+  /// to avoid the two ever disagreeing).
+  bool get _hasAnyBreakdownData => _breakdownItems.isNotEmpty || _existingBreakdownEntries.isNotEmpty;
+
+  bool get _isBreakdownEntry => _supportsBreakdown && (_useBreakdownMode || _hasAnyBreakdownData);
 
   /// In breakdown mode, at least one item must be added — an empty
   /// breakdown has nothing to add to today's total, so Save stays disabled
@@ -76,7 +99,7 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   bool get _canSave => !_isBreakdownEntry || _breakdownItems.isNotEmpty;
 
   int get _step {
-    final goal = widget.item.habit.goalValue;
+    final goal = widget.item.habit.goalValueFor(widget.item.date);
     if (widget.item.habit.isRupiah) {
       if (goal >= 100000) return 5000;
       if (goal >= 10000) return 1000;
@@ -90,6 +113,50 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   bool get _isTimeUnit => const {'minute', 'hour'}.contains(widget.item.habit.goalUnit);
 
   int get _secondsPerUnit => widget.item.habit.goalUnit == 'hour' ? 3600 : 60;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_supportsBreakdown) _loadExistingBreakdownEntries();
+  }
+
+  Future<void> _loadExistingBreakdownEntries() async {
+    final entries = await ref
+        .read(spendingBreakdownRepositoryProvider)
+        .getEntriesForHabitAndDate(widget.item.habit.id, widget.item.date);
+    if (mounted) setState(() => _existingBreakdownEntries = entries);
+  }
+
+  /// Opens the add/edit sheet pre-filled with [entry] and, on confirm,
+  /// writes the change straight to the DB (unlike [_breakdownItems], which
+  /// are only persisted when the whole quick-progress sheet is saved) then
+  /// reloads so the list reflects it.
+  Future<void> _editExistingEntry(SpendingBreakdownEntry entry) async {
+    final draft = await showModalBottomSheet<SpendingBreakdownDraft>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _AddBreakdownItemSheet(
+        currencyPrefix: widget.item.habit.currencyPrefix,
+        initial: SpendingBreakdownDraft(category: entry.category, label: entry.label, amount: entry.amount),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    await ref.read(spendingBreakdownRepositoryProvider).updateEntry(
+          id: entry.id,
+          category: draft.category,
+          label: draft.label,
+          amount: draft.amount,
+        );
+    await _loadExistingBreakdownEntries();
+  }
+
+  Future<void> _deleteExistingEntry(SpendingBreakdownEntry entry) async {
+    await ref.read(spendingBreakdownRepositoryProvider).deleteEntry(entry.id);
+    await _loadExistingBreakdownEntries();
+  }
 
   @override
   void dispose() {
@@ -162,7 +229,10 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
         children: [
           Text(habit.displayName(lang), style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          Text(l10n.quickProgressTarget(habit.goalValueLabel), style: theme.textTheme.bodySmall),
+          Text(
+            l10n.quickProgressTarget(habit.goalValueLabelForDate(widget.item.date)),
+            style: theme.textTheme.bodySmall,
+          ),
           if (_isTimeUnit) ...[
             const SizedBox(height: 20),
             _TimerCard(
@@ -189,71 +259,93 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
           ],
           if (_supportsBreakdown) ...[
             const SizedBox(height: 16),
-            _EntryModeToggle(
-              useBreakdown: _useBreakdownMode,
-              onChanged: (v) => setState(() => _useBreakdownMode = v),
-            ),
+            if (_hasAnyBreakdownData)
+              Text(
+                l10n.spendingBreakdownDirectModeLockedHint,
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
+              )
+            else
+              _EntryModeToggle(
+                useBreakdown: _useBreakdownMode,
+                onChanged: (v) => setState(() => _useBreakdownMode = v),
+              ),
           ],
           const SizedBox(height: 20),
           if (!_isBreakdownEntry)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _StepButton(
-                  icon: Icons.remove_rounded,
-                  onTap: _value > 0 ? () => _setValue(_value - _step) : null,
-                ),
-                const SizedBox(width: 24),
+                if (!_isBudgetTracker)
+                  _StepButton(
+                    icon: Icons.remove_rounded,
+                    onTap: _value > 0 ? () => _setValue(_value - _step) : null,
+                  ),
+                if (!_isBudgetTracker) const SizedBox(width: 24),
                 Column(
                   children: [
-                    SizedBox(
-                      width: habit.isRupiah ? 140 : 90,
-                      child: TextField(
+                    if (_isBudgetTracker)
+                      CurrencyAmountField(
                         controller: _controller,
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        style: theme.textTheme.headlineMedium,
-                        decoration: InputDecoration(
-                          isDense: true,
-                          filled: false,
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
-                          prefixText: habit.isRupiah ? 'Rp ' : null,
+                        currencyPrefix: habit.currencyPrefix,
+                        width: 220,
+                        onChanged: (v) => setState(() => _value = v.clamp(0, 1 << 30)),
+                      )
+                    else
+                      SizedBox(
+                        width: 90,
+                        child: TextField(
+                          controller: _controller,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          style: theme.textTheme.headlineMedium,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onChanged: (text) {
+                            final parsed = int.tryParse(text);
+                            if (parsed != null) setState(() => _value = parsed.clamp(0, 1 << 30));
+                          },
                         ),
-                        onChanged: (text) {
-                          final parsed = int.tryParse(text);
-                          if (parsed != null) setState(() => _value = parsed.clamp(0, 1 << 30));
-                        },
                       ),
-                    ),
-                    if (habit.isRupiah)
-                      Text(formatRupiah(_value), style: theme.textTheme.bodySmall)
-                    else if (unit.isNotEmpty)
+                    if (!_isBudgetTracker && unit.isNotEmpty)
                       Text(unit, style: theme.textTheme.bodySmall),
                   ],
                 ),
-                const SizedBox(width: 24),
-                _StepButton(
-                  icon: Icons.add_rounded,
-                  onTap: () => _setValue(_value + _step),
-                ),
+                if (!_isBudgetTracker) const SizedBox(width: 24),
+                if (!_isBudgetTracker)
+                  _StepButton(
+                    icon: Icons.add_rounded,
+                    onTap: () => _setValue(_value + _step),
+                  ),
               ],
             )
           else
-            _BreakdownEditor(
-              total: _breakdownTotal,
-              items: _breakdownItems,
-              lang: lang,
-              onAdd: (draft) => setState(() => _breakdownItems.add(draft)),
-              onRemove: (index) => setState(() => _breakdownItems.removeAt(index)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: SingleChildScrollView(
+                child: _BreakdownEditor(
+                  total: _breakdownTotal,
+                  items: _breakdownItems,
+                  existingEntries: _existingBreakdownEntries,
+                  lang: lang,
+                  currencyPrefix: habit.currencyPrefix,
+                  onAdd: (draft) => setState(() => _breakdownItems.add(draft)),
+                  onRemove: (index) => setState(() => _breakdownItems.removeAt(index)),
+                  onEditExisting: _editExistingEntry,
+                  onDeleteExisting: _deleteExistingEntry,
+                ),
+              ),
             ),
           const SizedBox(height: 24),
           Row(
             children: [
-              if (!_isBreakdownEntry) ...[
+              if (!_isBreakdownEntry && !_isBudgetTracker) ...[
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _setValue(habit.goalValue),
+                    onPressed: () => _setValue(habit.goalValueFor(widget.item.date)),
                     child: Text(l10n.quickProgressMarkAchieved),
                   ),
                 ),
@@ -373,28 +465,47 @@ class _EntryModeToggle extends StatelessWidget {
 }
 
 /// Builds the amount being saved up from individually categorized items —
-/// the total shown here is always the *sum* of [items], never a separately
-/// typed number, so it can never disagree with what the breakdown actually
-/// adds up to (#no-redundant-total).
+/// the total shown here is always the *sum* of [items] + already-persisted
+/// [existingEntries], never a separately typed number, so it can never
+/// disagree with what the breakdown actually adds up to
+/// (#no-redundant-total). Already-persisted entries are editable/deletable
+/// in place (writes straight to the DB via [onEditExisting]/
+/// [onDeleteExisting]); this-session drafts are only removable from memory
+/// via [onRemove] until the whole sheet is saved.
 class _BreakdownEditor extends StatelessWidget {
   const _BreakdownEditor({
     required this.total,
     required this.items,
+    required this.existingEntries,
     required this.lang,
+    required this.currencyPrefix,
     required this.onAdd,
     required this.onRemove,
+    required this.onEditExisting,
+    required this.onDeleteExisting,
   });
 
   final int total;
   final List<SpendingBreakdownDraft> items;
+  final List<SpendingBreakdownEntry> existingEntries;
   final AppLang lang;
+  final String currencyPrefix;
   final ValueChanged<SpendingBreakdownDraft> onAdd;
   final ValueChanged<int> onRemove;
+  final ValueChanged<SpendingBreakdownEntry> onEditExisting;
+  final ValueChanged<SpendingBreakdownEntry> onDeleteExisting;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
+
+    final combinedItems = <CategoryBreakdownItem>[
+      for (final entry in existingEntries)
+        CategoryBreakdownItem(category: entry.category, label: entry.label, amount: entry.amount, id: entry),
+      for (var i = 0; i < items.length; i++)
+        CategoryBreakdownItem(category: items[i].category, label: items[i].label, amount: items[i].amount, id: i),
+    ];
 
     return Container(
       width: double.infinity,
@@ -406,29 +517,43 @@ class _BreakdownEditor extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (var i = 0; i < items.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _BreakdownItemRow(
-                draft: items[i],
-                lang: lang,
-                onRemove: () => onRemove(i),
-              ),
-            ),
-          if (items.isNotEmpty) ...[
-            const Divider(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.spendingBreakdownTotalLabel,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  formatRupiah(total),
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-                ),
-              ],
+          if (combinedItems.isNotEmpty) ...[
+            CategoryBreakdownList(
+              items: combinedItems,
+              editable: true,
+              currencyPrefix: currencyPrefix,
+              onEdit: (item) async {
+                final id = item.id;
+                if (id is SpendingBreakdownEntry) {
+                  onEditExisting(id);
+                  return;
+                }
+                if (id is int) {
+                  final updated = await showModalBottomSheet<SpendingBreakdownDraft>(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (context) => _AddBreakdownItemSheet(
+                      currencyPrefix: currencyPrefix,
+                      initial: items[id],
+                    ),
+                  );
+                  if (updated != null) {
+                    onRemove(id);
+                    onAdd(updated);
+                  }
+                }
+              },
+              onDelete: (item) {
+                final id = item.id;
+                if (id is SpendingBreakdownEntry) {
+                  onDeleteExisting(id);
+                } else if (id is int) {
+                  onRemove(id);
+                }
+              },
             ),
             const SizedBox(height: 14),
           ],
@@ -440,7 +565,7 @@ class _BreakdownEditor extends StatelessWidget {
                 shape: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
-                builder: (context) => const _AddBreakdownItemSheet(),
+                builder: (context) => _AddBreakdownItemSheet(currencyPrefix: currencyPrefix),
               );
               if (draft != null) onAdd(draft);
             },
@@ -453,61 +578,31 @@ class _BreakdownEditor extends StatelessWidget {
   }
 }
 
-class _BreakdownItemRow extends StatelessWidget {
-  const _BreakdownItemRow({required this.draft, required this.lang, required this.onRemove});
-
-  final SpendingBreakdownDraft draft;
-  final AppLang lang;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final categoryLabel = draft.category.label(lang);
-    final displayLabel = draft.category == SpendingBreakdownCategory.custom &&
-            draft.label != null &&
-            draft.label!.isNotEmpty
-        ? draft.label!
-        : categoryLabel;
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            displayLabel,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium,
-          ),
-        ),
-        Text(formatRupiah(draft.amount), style: theme.textTheme.bodyMedium),
-        IconButton(
-          onPressed: onRemove,
-          icon: const Icon(Icons.close_rounded, size: 18),
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-        ),
-      ],
-    );
-  }
-}
-
-/// Small form to add one breakdown item: pick a category chip, enter an
-/// amount, and (only for `custom`) a free-text label.
+/// Form to add (or edit, when [initial] is set) one breakdown item: pick a
+/// category chip, enter an amount (no +/- stepper, live thousand-separator
+/// formatting), and an optional free-text sub-category detail — shown after
+/// any category is picked, not just one special "custom" bucket.
 class _AddBreakdownItemSheet extends ConsumerStatefulWidget {
-  const _AddBreakdownItemSheet();
+  const _AddBreakdownItemSheet({required this.currencyPrefix, this.initial});
+
+  final String currencyPrefix;
+
+  /// When set, pre-fills the form for editing an existing item instead of
+  /// adding a new one (caption/button text stays the same either way; only
+  /// the initial field values differ).
+  final SpendingBreakdownDraft? initial;
 
   @override
   ConsumerState<_AddBreakdownItemSheet> createState() => _AddBreakdownItemSheetState();
 }
 
 class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> {
-  static const _step = 1000;
-
-  SpendingBreakdownCategory _category = SpendingBreakdownCategory.dailyNeeds;
-  int _amount = 0;
-  late final _amountController = TextEditingController(text: '$_amount');
-  final _labelController = TextEditingController();
+  late SpendingBreakdownCategory _category = widget.initial?.category ?? SpendingBreakdownCategory.dailyNeeds;
+  late int _amount = widget.initial?.amount ?? 0;
+  late final _amountController = TextEditingController(
+    text: _amount == 0 ? '' : NumberFormat.decimalPattern('id_ID').format(_amount),
+  );
+  late final _labelController = TextEditingController(text: widget.initial?.label ?? '');
 
   @override
   void dispose() {
@@ -516,23 +611,12 @@ class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> 
     super.dispose();
   }
 
-  /// Mirrors `_QuickProgressSheetState._setValue` — used by the +/- stepper
-  /// so the field text and [_amount] stay in sync; manual typing is handled
-  /// separately via `TextField.onChanged` so the cursor doesn't jump.
-  void _setAmount(int newAmount) {
-    final clamped = newAmount.clamp(0, 1 << 30);
-    setState(() => _amount = clamped);
-    _amountController.text = '$clamped';
-    _amountController.selection = TextSelection.collapsed(offset: _amountController.text.length);
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final lang = ref.watch(appLanguageProvider);
-    final isCustom = _category == SpendingBreakdownCategory.custom;
-    final canSave = _amount > 0 && (!isCustom || _labelController.text.trim().isNotEmpty);
+    final canSave = _amount > 0;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
@@ -540,7 +624,10 @@ class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> 
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.spendingBreakdownAddItem, style: theme.textTheme.titleLarge),
+          Text(
+            widget.initial != null ? l10n.spendingBreakdownEditItem : l10n.spendingBreakdownAddItem,
+            style: theme.textTheme.titleLarge,
+          ),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -559,49 +646,20 @@ class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> 
             Text(_category.hint(lang)!, style: theme.textTheme.bodySmall),
           ],
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StepButton(
-                icon: Icons.remove_rounded,
-                onTap: _amount > 0 ? () => _setAmount(_amount - _step) : null,
-              ),
-              const SizedBox(width: 24),
-              SizedBox(
-                width: 140,
-                child: TextField(
-                  controller: _amountController,
-                  textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  style: theme.textTheme.headlineMedium,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    filled: false,
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    prefixText: 'Rp ',
-                  ),
-                  onChanged: (text) {
-                    final parsed = int.tryParse(text);
-                    if (parsed != null) setState(() => _amount = parsed.clamp(0, 1 << 30));
-                  },
-                ),
-              ),
-              const SizedBox(width: 24),
-              _StepButton(
-                icon: Icons.add_rounded,
-                onTap: () => _setAmount(_amount + _step),
-              ),
-            ],
-          ),
-          if (isCustom) ...[
-            const SizedBox(height: 12),
-            TextField(
-              controller: _labelController,
-              decoration: InputDecoration(labelText: l10n.spendingBreakdownCustomLabelHint),
-              onChanged: (_) => setState(() {}),
+          Center(
+            child: CurrencyAmountField(
+              controller: _amountController,
+              currencyPrefix: widget.currencyPrefix,
+              width: 220,
+              onChanged: (v) => setState(() => _amount = v),
             ),
-          ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _labelController,
+            decoration: InputDecoration(labelText: l10n.spendingBreakdownSubcategoryHint),
+            onChanged: (_) => setState(() {}),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
@@ -610,7 +668,7 @@ class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> 
                   ? () => Navigator.of(context).pop(
                         SpendingBreakdownDraft(
                           category: _category,
-                          label: isCustom ? _labelController.text.trim() : null,
+                          label: _labelController.text.trim().isEmpty ? null : _labelController.text.trim(),
                           amount: _amount,
                         ),
                       )

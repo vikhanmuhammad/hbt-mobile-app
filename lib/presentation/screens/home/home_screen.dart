@@ -81,6 +81,21 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: () => _shiftMonth(ref, month, 1),
                   icon: const Icon(Icons.chevron_right_rounded),
                 ),
+                IconButton(
+                  tooltip: l10n.homeJumpToDate,
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      ref.read(selectedHomeDateProvider.notifier).state = picked;
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_month_rounded),
+                ),
                 if (isEditMode)
                   TextButton(
                     onPressed: () => ref.read(homeEditModeProvider.notifier).state = false,
@@ -308,8 +323,108 @@ class _HabitList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Kategori Save Money (singleton, lihat add_habit_flow_screen.dart) tidak
+    // ikut list/reorder utama — ditampilkan di section sendiri di atas,
+    // supaya jelas beda alurnya dari habit lain. Update progress-nya tetap
+    // lewat card ini juga (tap sama seperti habit biasa), cuma tempatnya beda.
+    final financeItems = <HabitWithProgress>[];
+    final restItems = <HabitWithProgress>[];
+    for (final item in items) {
+      final category = categoryById[item.habit.categoryId];
+      if (category != null && isFinanceCategory(category)) {
+        financeItems.add(item);
+      } else {
+        restItems.add(item);
+      }
+    }
+    if (financeItems.isEmpty) {
+      return _buildList(context, ref, items);
+    }
+    final theme = Theme.of(context);
+    final horizontalPadding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 12, isTablet ? 32 : 16, 0);
+    // A single scrollable (CustomScrollView) instead of a fixed header +
+    // Expanded(list) Column — the Budget Tracker section used to sit outside
+    // the scroll area entirely, always pinned at the top regardless of how
+    // far the habit list below it was scrolled. Putting it in a leading
+    // sliver lets it scroll away with everything else.
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: horizontalPadding,
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HomeSectionLabel(AppLocalizations.of(context)!.homeSpendingMoney),
+                const SizedBox(height: 8),
+                for (final item in financeItems)
+                  Padding(
+                    key: ValueKey(item.habit.id),
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildFinanceCard(context, ref, item),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        // Garis pemisah + jarak lebih lebar dari list habit biasa di bawahnya
+        // — tanpa ini section Spending Money kelihatan menyatu dengan card
+        // habit lain, padahal alurnya sengaja dipisah (singleton, bukan
+        // bagian dari reorder list biasa).
+        if (restItems.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 16),
+                  child: Divider(height: 1, color: theme.dividerColor),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: _buildList(context, ref, restItems, shrinkWrap: true),
+        ),
+      ],
+    );
+  }
+
+  /// Card kategori Save Money di section sendiri — sama seperti card biasa
+  /// (tap untuk update progress tetap dari Home), tapi tidak ikut
+  /// ReorderableListView Edit Mode (cuma 1 item, tidak ada urutan yang perlu
+  /// diatur); edit/hapus tetap tersedia lewat card ini saat Edit Mode aktif.
+  Widget _buildFinanceCard(BuildContext context, WidgetRef ref, HabitWithProgress item) {
+    if (!isEditMode) return _buildCard(context, ref, item, 0);
+    return HabitProgressCard(
+      item: item,
+      accentColor: _accentFor(item.habit.categoryId),
+      isEditMode: true,
+      onTap: null,
+      onEdit: () async {
+        final saved = await openEditHabitFlow(
+          context,
+          item.habit,
+          lockGoalFields: linkedHabitIds.contains(item.habit.id),
+        );
+        if (saved) {
+          ref.read(homeEditModeProvider.notifier).state = false;
+        }
+      },
+      onDelete: () => _confirmDeactivate(context, ref, item),
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    WidgetRef ref,
+    List<HabitWithProgress> items, {
+    bool shrinkWrap = false,
+  }) {
     final padding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 0, isTablet ? 32 : 16, 110);
     final crossAxisCount = isWide ? 2 : 1;
+    final outerPhysics = shrinkWrap ? const NeverScrollableScrollPhysics() : null;
 
     // Separate "My Habits" (local-only) from "Community" (published/linked
     // to a group) — only worth the extra headers when there's actually a
@@ -327,12 +442,14 @@ class _HabitList extends ConsumerWidget {
           ref,
           items,
           padding: padding,
-          shrinkWrap: false,
+          shrinkWrap: shrinkWrap,
           onReorder: (oldIndex, newIndex) => _onReorderSection(ref, items, oldIndex, newIndex),
         );
       }
       return ListView(
         padding: padding,
+        shrinkWrap: shrinkWrap,
+        physics: outerPhysics,
         children: [
           _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
           const SizedBox(height: 8),
@@ -363,6 +480,8 @@ class _HabitList extends ConsumerWidget {
       if (crossAxisCount == 1) {
           return ListView.separated(
             padding: padding,
+            shrinkWrap: shrinkWrap,
+            physics: outerPhysics,
             itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
@@ -370,6 +489,8 @@ class _HabitList extends ConsumerWidget {
         }
         return GridView.builder(
           padding: padding,
+          shrinkWrap: shrinkWrap,
+          physics: outerPhysics,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 10,
@@ -384,6 +505,8 @@ class _HabitList extends ConsumerWidget {
       if (crossAxisCount == 1) {
         return ListView(
           padding: padding,
+          shrinkWrap: shrinkWrap,
+          physics: outerPhysics,
           children: [
             _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
             const SizedBox(height: 8),
@@ -422,6 +545,8 @@ class _HabitList extends ConsumerWidget {
 
       return ListView(
         padding: padding,
+        shrinkWrap: shrinkWrap,
+        physics: outerPhysics,
         children: [
           _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
           const SizedBox(height: 8),

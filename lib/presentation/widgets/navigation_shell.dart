@@ -128,25 +128,102 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
       // edge-to-edge by default, without this the top content (e.g. the
       // "Today" header) would be covered by the status bar.
       body: SafeArea(bottom: false, child: body),
-      // NavigationDestination.label is a plain String (no way to give it its
-      // own FittedBox), so the longer labels ("Dashboard", "Community")
-      // sharing narrow per-item width wrap into an ugly mid-word 2nd line
-      // once the system font/display size is scaled up. Capping the scale
-      // locally, just for this bar, keeps every label on one line while the
-      // rest of the app still scales up to the full app-wide maximum.
-      bottomNavigationBar: MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.1,
-        child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: _onDestinationSelected,
-          destinations: [
-            for (final d in destinations)
-              NavigationDestination(icon: Icon(d.icon), label: d.label),
-          ],
-        ),
+      bottomNavigationBar: _BottomNavBar(
+        destinations: destinations,
+        selectedIndex: _index,
+        onDestinationSelected: _onDestinationSelected,
       ),
       floatingActionButton: _index == 0 ? const _HomeFabRow() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+}
+
+/// Bottom nav bar for narrow layouts (< 900dp) — a custom `Row` of
+/// `Expanded` items instead of the built-in `NavigationBar`, because
+/// `NavigationDestination.label` is a plain `String` with no way to give it
+/// its own `FittedBox`. That used to be worked around by clamping the
+/// bar's text-scale to 1.0x, but that only helps against accessibility
+/// font-size settings — it does nothing for a physically narrow device
+/// where labels like "Community"/"Pengaturan" are too long for their slot
+/// even at 1.0x. Each label here is individually wrapped in
+/// `FittedBox(fit: scaleDown)` (same technique already used by the wide
+/// `NavigationRail` below), so it shrinks to fit whatever space its own
+/// `Expanded` item actually has — safe from overflow at any combination of
+/// screen width and text scale, without needing to clamp anything.
+class _BottomNavBar extends StatelessWidget {
+  const _BottomNavBar({
+    required this.destinations,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
+  });
+
+  final List<({IconData icon, String label})> destinations;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final navTheme = theme.navigationBarTheme;
+    final selectedColor = navTheme.iconTheme?.resolve({WidgetState.selected})?.color ??
+        theme.colorScheme.onSecondaryContainer;
+    final unselectedColor = navTheme.iconTheme?.resolve({})?.color ??
+        theme.colorScheme.onSurfaceVariant;
+    final indicatorColor = navTheme.indicatorColor ?? theme.colorScheme.secondaryContainer;
+
+    return SafeArea(
+      top: false,
+      child: Material(
+        color: navTheme.backgroundColor ?? theme.colorScheme.surfaceContainer,
+        elevation: navTheme.elevation ?? 3,
+        child: SizedBox(
+          height: navTheme.height ?? 80,
+          child: Row(
+            children: [
+              for (var i = 0; i < destinations.length; i++)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => onDestinationSelected(i),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: i == selectedIndex ? indicatorColor : null,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              destinations[i].icon,
+                              color: i == selectedIndex ? selectedColor : unselectedColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Flexible(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                destinations[i].label,
+                                maxLines: 1,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: i == selectedIndex ? selectedColor : unselectedColor,
+                                  fontWeight: i == selectedIndex ? FontWeight.w700 : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

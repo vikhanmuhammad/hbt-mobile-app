@@ -122,6 +122,12 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get commonUndo;
 
+  /// No description provided for @commonEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commonEdit;
+
   /// Label for the app language switcher on the Settings screen.
   ///
   /// In en, this message translates to:
@@ -326,6 +332,12 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get homeToday;
 
+  /// No description provided for @homeJumpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to date'**
+  String get homeJumpToDate;
+
   /// No description provided for @homeMyHabits.
   ///
   /// In en, this message translates to:
@@ -337,6 +349,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Community'**
   String get homeCommunity;
+
+  /// No description provided for @homeSpendingMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Tracker'**
+  String get homeSpendingMoney;
 
   /// No description provided for @homeDeleteHabitTitle.
   ///
@@ -494,6 +512,12 @@ abstract class AppLocalizations {
   /// **'On Track'**
   String get financeOnTrack;
 
+  /// No description provided for @financeApproachingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Approaching Limit'**
+  String get financeApproachingLimit;
+
   /// No description provided for @financeOverspending.
   ///
   /// In en, this message translates to:
@@ -529,6 +553,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add Spending Limit'**
   String get financeAddSpendingLimit;
+
+  /// No description provided for @financeEditSpendingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Spending Limit'**
+  String get financeEditSpendingLimit;
 
   /// No description provided for @commonProgress.
   ///
@@ -710,6 +740,18 @@ abstract class AppLocalizations {
   /// **'You already have a habit with this name.'**
   String get addHabitDuplicateName;
 
+  /// No description provided for @addHabitSpendingMoneyExistsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Tracker Already Added'**
+  String get addHabitSpendingMoneyExistsTitle;
+
+  /// No description provided for @addHabitSpendingMoneyExistsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only track one Budget Tracker habit. Edit the existing one instead of adding a new one.'**
+  String get addHabitSpendingMoneyExistsMessage;
+
   /// No description provided for @addHabitAdd.
   ///
   /// In en, this message translates to:
@@ -770,17 +812,11 @@ abstract class AppLocalizations {
   /// **'Habit Name'**
   String get addHabitFieldHabitName;
 
-  /// No description provided for @addHabitHintNameEn.
+  /// No description provided for @addHabitHintName.
   ///
   /// In en, this message translates to:
-  /// **'Name (English)'**
-  String get addHabitHintNameEn;
-
-  /// No description provided for @addHabitHintNameId.
-  ///
-  /// In en, this message translates to:
-  /// **'Nama (Indonesia)'**
-  String get addHabitHintNameId;
+  /// **'Habit name'**
+  String get addHabitHintName;
 
   /// No description provided for @addHabitLockedNameNotice.
   ///
@@ -817,6 +853,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Goal Value'**
   String get addHabitFieldGoalValue;
+
+  /// No description provided for @addHabitFieldGoalValueWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays (Mon-Fri)'**
+  String get addHabitFieldGoalValueWeekday;
+
+  /// No description provided for @addHabitFieldGoalValueWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend (Sat-Sun)'**
+  String get addHabitFieldGoalValueWeekend;
+
+  /// No description provided for @addHabitCustomWeekendGoalToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Different goal for weekends'**
+  String get addHabitCustomWeekendGoalToggle;
 
   /// No description provided for @addHabitFieldUnit.
   ///
@@ -905,7 +959,7 @@ abstract class AppLocalizations {
   /// No description provided for @addHabitNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Habit name (English & Indonesia) is required'**
+  /// **'Habit name is required'**
   String get addHabitNameRequired;
 
   /// No description provided for @addHabitPickGoalPhraseFirst.
@@ -938,17 +992,11 @@ abstract class AppLocalizations {
   /// **'Goal Phrase Name'**
   String get addHabitFieldGoalPhraseName;
 
-  /// No description provided for @addHabitHintCatNameEn.
+  /// No description provided for @addHabitHintCatName.
   ///
   /// In en, this message translates to:
-  /// **'Name (English), e.g. Hobby'**
-  String get addHabitHintCatNameEn;
-
-  /// No description provided for @addHabitHintCatNameId.
-  ///
-  /// In en, this message translates to:
-  /// **'Nama (Indonesia), mis. Hobi'**
-  String get addHabitHintCatNameId;
+  /// **'Goal phrase name, e.g. Hobby'**
+  String get addHabitHintCatName;
 
   /// No description provided for @addHabitFieldColor.
   ///
@@ -965,7 +1013,7 @@ abstract class AppLocalizations {
   /// No description provided for @addHabitCatNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Goal phrase name (English & Indonesia) is required'**
+  /// **'Goal phrase name is required'**
   String get addHabitCatNameRequired;
 
   /// No description provided for @addHabitFailedToCreateCategory.
@@ -2030,11 +2078,23 @@ abstract class AppLocalizations {
   /// **'Break down by category'**
   String get quickProgressEntryModeBreakdown;
 
+  /// No description provided for @spendingBreakdownAlreadyLogged.
+  ///
+  /// In en, this message translates to:
+  /// **'Already logged today ({total})'**
+  String spendingBreakdownAlreadyLogged(String total);
+
   /// No description provided for @spendingBreakdownAddItem.
   ///
   /// In en, this message translates to:
   /// **'Add breakdown item'**
   String get spendingBreakdownAddItem;
+
+  /// No description provided for @spendingBreakdownEditItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit breakdown item'**
+  String get spendingBreakdownEditItem;
 
   /// No description provided for @spendingBreakdownCustomLabelHint.
   ///
@@ -2042,11 +2102,107 @@ abstract class AppLocalizations {
   /// **'Description'**
   String get spendingBreakdownCustomLabelHint;
 
+  /// No description provided for @spendingBreakdownSubcategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-category detail (optional)'**
+  String get spendingBreakdownSubcategoryHint;
+
   /// No description provided for @spendingBreakdownTotalLabel.
   ///
   /// In en, this message translates to:
   /// **'Total'**
   String get spendingBreakdownTotalLabel;
+
+  /// No description provided for @spendingBreakdownGrandTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get spendingBreakdownGrandTotalLabel;
+
+  /// No description provided for @spendingBreakdownNoDetailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No detail'**
+  String get spendingBreakdownNoDetailLabel;
+
+  /// No description provided for @spendingBreakdownDirectModeLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter total is disabled because you already have breakdown data — edit or delete items above instead.'**
+  String get spendingBreakdownDirectModeLockedHint;
+
+  /// No description provided for @budgetTrackerSaveBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Budget'**
+  String get budgetTrackerSaveBudget;
+
+  /// No description provided for @budgetTrackerTitleEditBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Budget'**
+  String get budgetTrackerTitleEditBudget;
+
+  /// No description provided for @budgetTrackerTitleBudgetForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Form'**
+  String get budgetTrackerTitleBudgetForm;
+
+  /// No description provided for @budgetTrackerDifferentWeekendGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Different Goal for Weekends'**
+  String get budgetTrackerDifferentWeekendGoal;
+
+  /// No description provided for @budgetTrackerCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get budgetTrackerCurrency;
+
+  /// No description provided for @budgetTrackerGoalPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Period'**
+  String get budgetTrackerGoalPeriod;
+
+  /// No description provided for @budgetTrackerBudgetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get budgetTrackerBudgetLabel;
+
+  /// No description provided for @budgetTrackerWeekdayBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday Budget'**
+  String get budgetTrackerWeekdayBudget;
+
+  /// No description provided for @budgetTrackerWeekendBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend Budget'**
+  String get budgetTrackerWeekendBudget;
+
+  /// No description provided for @financeMonthToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Month to Date'**
+  String get financeMonthToDate;
+
+  /// No description provided for @financeMonthlyTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Total'**
+  String get financeMonthlyTotal;
+
+  /// No description provided for @financeSpendingDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending Distribution'**
+  String get financeSpendingDistribution;
 
   /// No description provided for @commonSave.
   ///

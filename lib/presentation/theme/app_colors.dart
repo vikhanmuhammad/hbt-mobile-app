@@ -14,7 +14,7 @@ class AppColors {
 
   // Warna dasar preset default prototipe: [bg, teal(unused), gold/primary].
   static const Color teal = Color(0xFF3E7C6A); // tersedia, jarang dipakai
-  static const Color gold = Color(0xFFD9A441); // warna interaktif utama
+  static const Color gold = Color(0xFFC1650F); // warna interaktif utama (oranye pekat agak gelap)
 
   // Light theme — persis nilai `colors` di prototipe saat isDark=false.
   // Shifted slightly cooler/grayer than the original warm off-white

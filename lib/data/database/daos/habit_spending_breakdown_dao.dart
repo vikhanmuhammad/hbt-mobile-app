@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../../domain/models/enums.dart';
 import '../../../domain/models/spending_breakdown.dart';
 import '../app_database.dart';
 import '../tables.dart';
@@ -49,7 +50,42 @@ class HabitSpendingBreakdownDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Rincian yang sudah tersimpan untuk [habitId] pada [date] — dipakai
+  /// quick-progress-sheet supaya rincian yang sudah diinput sebelumnya tetap
+  /// kelihatan saat sheet dibuka lagi hari yang sama, bukan seolah hilang
+  /// (#breakdown-not-shown-on-reopen).
+  Future<List<HabitSpendingBreakdown>> getEntriesForHabitAndDate(
+    int habitId,
+    DateTime date,
+  ) {
+    final day = DateTime(date.year, date.month, date.day);
+    return (select(habitSpendingBreakdowns)
+          ..where((t) => t.habitId.equals(habitId) & t.date.equals(day)))
+        .get();
+  }
+
   Future<void> deleteEntriesForHabit(int habitId) async {
     await (delete(habitSpendingBreakdowns)..where((t) => t.habitId.equals(habitId))).go();
+  }
+
+  /// Edits one previously-saved entry in place — lets a user fix a mistaken
+  /// amount/category/sub-category without deleting and re-adding it.
+  Future<void> updateEntry({
+    required int id,
+    required SpendingBreakdownCategory category,
+    String? label,
+    required int amount,
+  }) async {
+    await (update(habitSpendingBreakdowns)..where((t) => t.id.equals(id))).write(
+      HabitSpendingBreakdownsCompanion(
+        categoryKey: Value(category.name),
+        label: Value(label),
+        amount: Value(amount),
+      ),
+    );
+  }
+
+  Future<void> deleteEntry(int id) async {
+    await (delete(habitSpendingBreakdowns)..where((t) => t.id.equals(id))).go();
   }
 }

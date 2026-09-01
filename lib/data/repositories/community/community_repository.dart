@@ -360,7 +360,12 @@ class CommunityRepository {
         .collection('messages')
         .orderBy('sentAt', descending: true)
         .limit(limit)
-        .snapshots()
+        // Without this, the local-cache snapshot fired right after
+        // `sendMessage()`'s `.add()` (hasPendingWrites: true) never gets
+        // superseded by a fresh emission once the server confirms the
+        // write — the bubble would show "sending" forever until some
+        // unrelated data change happened to re-trigger the stream.
+        .snapshots(includeMetadataChanges: true)
         .map((snap) => snap.docs.map(_chatMessageFromDoc).toList());
   }
 
@@ -449,6 +454,7 @@ class CommunityRepository {
       senderName: data['senderName'] as String? ?? '',
       text: data['text'] as String? ?? '',
       sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      pending: doc.metadata.hasPendingWrites,
     );
   }
 

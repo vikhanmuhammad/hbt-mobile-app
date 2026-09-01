@@ -54,7 +54,7 @@ class HabitLogRepository {
       habitId: habit.id,
       date: date,
       progressValue: clamped,
-      isDone: habit.isAchieved(clamped),
+      isDone: habit.isAchieved(clamped, date: date),
     );
   }
 
@@ -67,7 +67,7 @@ class HabitLogRepository {
     await setProgress(
       habit: habit,
       date: date,
-      progressValue: currentlyDone ? 0 : habit.goalValue,
+      progressValue: currentlyDone ? 0 : habit.goalValueFor(date),
     );
   }
 

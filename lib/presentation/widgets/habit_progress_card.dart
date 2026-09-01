@@ -38,16 +38,18 @@ class HabitProgressCard extends ConsumerWidget {
   /// (#25), especially for rupiah amounts where a raw fraction reads oddly.
   String _progressLabel(AppLocalizations l10n) {
     final h = item.habit;
-    final progress = h.isRupiah ? formatRupiah(item.progressValue) : '${item.progressValue}';
+    final goalValue = h.goalValueFor(item.date);
+    final progress = h.isRupiah ? formatCurrency(item.progressValue, h.currencyPrefix) : '${item.progressValue}';
     final goal = h.isRupiah
-        ? formatRupiah(h.goalValue)
-        : (h.goalUnit == 'x' ? '${h.goalValue}x' : '${h.goalValue} ${h.goalUnit}');
+        ? formatCurrency(goalValue, h.currencyPrefix)
+        : (h.goalUnit == 'x' ? '${goalValue}x' : '$goalValue ${h.goalUnit}');
     return '${l10n.commonProgress} $progress • ${l10n.commonGoal} $goal';
   }
 
   double get _ratio {
-    if (item.habit.goalValue <= 0) return 0;
-    return (item.progressValue / item.habit.goalValue).clamp(0, 1).toDouble();
+    final goalValue = item.habit.goalValueFor(item.date);
+    if (goalValue <= 0) return 0;
+    return (item.progressValue / goalValue).clamp(0, 1).toDouble();
   }
 
   @override

@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonUndo => 'Undo';
 
   @override
+  String get commonEdit => 'Edit';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override
@@ -134,10 +137,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeToday => 'Today';
 
   @override
+  String get homeJumpToDate => 'Jump to date';
+
+  @override
   String get homeMyHabits => 'My Habits';
 
   @override
   String get homeCommunity => 'Community';
+
+  @override
+  String get homeSpendingMoney => 'Budget Tracker';
 
   @override
   String get homeDeleteHabitTitle => 'Delete this habit?';
@@ -234,6 +243,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get financeOnTrack => 'On Track';
 
   @override
+  String get financeApproachingLimit => 'Approaching Limit';
+
+  @override
   String get financeOverspending => 'Overspending';
 
   @override
@@ -250,6 +262,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get financeAddSpendingLimit => 'Add Spending Limit';
+
+  @override
+  String get financeEditSpendingLimit => 'Edit Spending Limit';
 
   @override
   String get commonProgress => 'Progress';
@@ -364,6 +379,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'You already have a habit with this name.';
 
   @override
+  String get addHabitSpendingMoneyExistsTitle => 'Budget Tracker Already Added';
+
+  @override
+  String get addHabitSpendingMoneyExistsMessage =>
+      'You can only track one Budget Tracker habit. Edit the existing one instead of adding a new one.';
+
+  @override
   String get addHabitAdd => 'Add';
 
   @override
@@ -396,10 +418,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitFieldHabitName => 'Habit Name';
 
   @override
-  String get addHabitHintNameEn => 'Name (English)';
-
-  @override
-  String get addHabitHintNameId => 'Nama (Indonesia)';
+  String get addHabitHintName => 'Habit name';
 
   @override
   String get addHabitLockedNameNotice =>
@@ -419,6 +438,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addHabitFieldGoalValue => 'Goal Value';
+
+  @override
+  String get addHabitFieldGoalValueWeekday => 'Weekdays (Mon-Fri)';
+
+  @override
+  String get addHabitFieldGoalValueWeekend => 'Weekend (Sat-Sun)';
+
+  @override
+  String get addHabitCustomWeekendGoalToggle => 'Different goal for weekends';
 
   @override
   String get addHabitFieldUnit => 'Unit';
@@ -463,8 +491,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitSaveHabit => 'Save Habit';
 
   @override
-  String get addHabitNameRequired =>
-      'Habit name (English & Indonesia) is required';
+  String get addHabitNameRequired => 'Habit name is required';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pick a goal phrase first';
@@ -484,10 +511,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitFieldGoalPhraseName => 'Goal Phrase Name';
 
   @override
-  String get addHabitHintCatNameEn => 'Name (English), e.g. Hobby';
-
-  @override
-  String get addHabitHintCatNameId => 'Nama (Indonesia), mis. Hobi';
+  String get addHabitHintCatName => 'Goal phrase name, e.g. Hobby';
 
   @override
   String get addHabitFieldColor => 'Color';
@@ -496,8 +520,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitCreateGoal => 'Create Goal';
 
   @override
-  String get addHabitCatNameRequired =>
-      'Goal phrase name (English & Indonesia) is required';
+  String get addHabitCatNameRequired => 'Goal phrase name is required';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -1138,13 +1161,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickProgressEntryModeBreakdown => 'Break down by category';
 
   @override
+  String spendingBreakdownAlreadyLogged(String total) {
+    return 'Already logged today ($total)';
+  }
+
+  @override
   String get spendingBreakdownAddItem => 'Add breakdown item';
+
+  @override
+  String get spendingBreakdownEditItem => 'Edit breakdown item';
 
   @override
   String get spendingBreakdownCustomLabelHint => 'Description';
 
   @override
+  String get spendingBreakdownSubcategoryHint =>
+      'Sub-category detail (optional)';
+
+  @override
   String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownGrandTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownNoDetailLabel => 'No detail';
+
+  @override
+  String get spendingBreakdownDirectModeLockedHint =>
+      'Enter total is disabled because you already have breakdown data — edit or delete items above instead.';
+
+  @override
+  String get budgetTrackerSaveBudget => 'Save Budget';
+
+  @override
+  String get budgetTrackerTitleEditBudget => 'Edit Budget';
+
+  @override
+  String get budgetTrackerTitleBudgetForm => 'Budget Form';
+
+  @override
+  String get budgetTrackerDifferentWeekendGoal => 'Different Goal for Weekends';
+
+  @override
+  String get budgetTrackerCurrency => 'Currency';
+
+  @override
+  String get budgetTrackerGoalPeriod => 'Goal Period';
+
+  @override
+  String get budgetTrackerBudgetLabel => 'Budget';
+
+  @override
+  String get budgetTrackerWeekdayBudget => 'Weekday Budget';
+
+  @override
+  String get budgetTrackerWeekendBudget => 'Weekend Budget';
+
+  @override
+  String get financeMonthToDate => 'Month to Date';
+
+  @override
+  String get financeMonthlyTotal => 'Monthly Total';
+
+  @override
+  String get financeSpendingDistribution => 'Spending Distribution';
 
   @override
   String get commonSave => 'Save';

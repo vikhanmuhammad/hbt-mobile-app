@@ -10,6 +10,7 @@ class HabitTemplate {
     this.icon,
     required this.goalPeriod,
     required this.goalValue,
+    this.goalValueWeekend,
     this.goalUnit = 'x',
     this.goalDirection = GoalDirection.atLeast,
     required this.timeRange,
@@ -26,6 +27,7 @@ class HabitTemplate {
   final String? icon;
   final GoalPeriod goalPeriod;
   final int goalValue;
+  final int? goalValueWeekend;
   final String goalUnit;
   final GoalDirection goalDirection;
   final TimeRange timeRange;
@@ -41,6 +43,7 @@ class HabitTemplate {
       icon: json['icon'] as String?,
       goalPeriod: GoalPeriod.fromValue(json['goalPeriod'] as String),
       goalValue: json['goalValue'] as int,
+      goalValueWeekend: json['goalValueWeekend'] as int?,
       goalUnit: json['unit'] as String? ?? json['goalUnit'] as String? ?? 'x',
       goalDirection: GoalDirection.fromValue(json['goalDirection'] as String? ?? 'atLeast'),
       timeRange: TimeRange.fromValue(json['timeRange'] as String),
@@ -73,13 +76,14 @@ class HabitTemplate {
           icon == other.icon &&
           goalPeriod == other.goalPeriod &&
           goalValue == other.goalValue &&
+          goalValueWeekend == other.goalValueWeekend &&
           goalUnit == other.goalUnit &&
           goalDirection == other.goalDirection &&
           timeRange == other.timeRange;
 
   @override
-  int get hashCode =>
-      Object.hash(key, name, icon, goalPeriod, goalValue, goalUnit, goalDirection, timeRange);
+  int get hashCode => Object.hash(
+      key, name, icon, goalPeriod, goalValue, goalValueWeekend, goalUnit, goalDirection, timeRange);
 }
 
 /// Grouping kategori mentah dari `habit_templates.json` — cuma dipakai untuk

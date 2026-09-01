@@ -48,6 +48,7 @@ class HabitRepository {
     String? icon,
     required GoalPeriod goalPeriod,
     required int goalValue,
+    int? goalValueWeekend,
     String goalUnit = 'x',
     GoalDirection goalDirection = GoalDirection.atLeast,
     required List<String> taskDays,
@@ -60,6 +61,7 @@ class HabitRepository {
     int sortOrder = 0,
     bool isCustom = true,
     String? templateKey,
+    String? currency,
   }) {
     return _db.habitDao.insertHabit(_companionFor(HabitDraft(
       categoryId: categoryId,
@@ -69,6 +71,7 @@ class HabitRepository {
       icon: icon,
       goalPeriod: goalPeriod,
       goalValue: goalValue,
+      goalValueWeekend: goalValueWeekend,
       goalUnit: goalUnit,
       goalDirection: goalDirection,
       taskDays: taskDays,
@@ -81,6 +84,7 @@ class HabitRepository {
       sortOrder: sortOrder,
       isCustom: isCustom,
       templateKey: templateKey,
+      currency: currency,
     )));
   }
 
@@ -98,6 +102,7 @@ class HabitRepository {
         icon: Value(d.icon),
         goalPeriod: d.goalPeriod.name,
         goalValue: Value(d.goalValue),
+        goalValueWeekend: Value(d.goalValueWeekend),
         goalUnit: Value(d.goalUnit),
         goalDirection: Value(d.goalDirection.name),
         taskDays: TaskDays.encode(d.taskDays),
@@ -110,6 +115,7 @@ class HabitRepository {
         sortOrder: Value(d.sortOrder),
         isCustom: Value(d.isCustom),
         templateKey: Value(d.templateKey),
+        currency: Value(d.currency),
       );
 
   Future<void> updateHabit(Habit habit) async {
@@ -123,6 +129,7 @@ class HabitRepository {
         icon: Value(habit.icon),
         goalPeriod: Value(habit.goalPeriod.name),
         goalValue: Value(habit.goalValue),
+        goalValueWeekend: Value(habit.goalValueWeekend),
         goalUnit: Value(habit.goalUnit),
         goalDirection: Value(habit.goalDirection.name),
         taskDays: Value(TaskDays.encode(habit.taskDays)),
@@ -137,6 +144,7 @@ class HabitRepository {
         createdAt: Value(habit.createdAt),
         isCustom: Value(habit.isCustom),
         templateKey: Value(habit.templateKey),
+        currency: Value(habit.currency),
       ),
     );
   }

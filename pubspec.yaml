@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.1+13
+version: 1.1.2+14
 
 environment:
   sdk: ^3.12.2
@@ -71,6 +71,8 @@ dependencies:
   share_plus: ^11.0.0
   image_picker: ^1.1.2
   image: ^4.3.0
+  video_player: ^2.10.0
+  fl_chart: ^1.1.1
 
 dependency_overrides:
   # device_calendar 4.x's own pubspec pins timezone ^0.9.0, which conflicts
@@ -117,17 +119,13 @@ flutter:
     - packages/flutter_undraw/assets/undraw/time_management.svg
     - packages/flutter_undraw/assets/undraw/feeling_proud.svg
     - assets/icon/icon_new.png
-    - assets/background/form_page/composed.png
-    - assets/background/questionare_1/11.png
-    - assets/background/questionare_1/12.png
-    - assets/background/questionare_1/13.png
-    - assets/background/questionare_1/14.png
-    - assets/background/questionare_2/7.png
-    - assets/background/questionare_2/8.png
-    - assets/background/questionare_2/9.png
-    - assets/background/questionare_3/2.png
-    - assets/background/questionare_3/3.png
-    - assets/background/questionare_3/4.png
+    - assets/icon/icon_glyph.png
+    - assets/background/form_page.png
+    - assets/background/questionare_1.png
+    - assets/background/questionare_2.png
+    - assets/background/questionare_3.png
+    - assets/motion_splash/v_motion_daily_habit.mov
+    - assets/motion_splash/h_motion_daily_habit.mov
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

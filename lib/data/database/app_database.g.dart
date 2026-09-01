@@ -649,6 +649,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _goalValueWeekendMeta = const VerificationMeta(
+    'goalValueWeekend',
+  );
+  @override
+  late final GeneratedColumn<int> goalValueWeekend = GeneratedColumn<int>(
+    'goal_value_weekend',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _goalUnitMeta = const VerificationMeta(
     'goalUnit',
   );
@@ -829,6 +840,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -838,6 +860,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     icon,
     goalPeriod,
     goalValue,
+    goalValueWeekend,
     goalUnit,
     goalDirection,
     taskDays,
@@ -853,6 +876,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     nameId,
     isCustom,
     templateKey,
+    currency,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -912,6 +936,15 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
       context.handle(
         _goalValueMeta,
         goalValue.isAcceptableOrUnknown(data['goal_value']!, _goalValueMeta),
+      );
+    }
+    if (data.containsKey('goal_value_weekend')) {
+      context.handle(
+        _goalValueWeekendMeta,
+        goalValueWeekend.isAcceptableOrUnknown(
+          data['goal_value_weekend']!,
+          _goalValueWeekendMeta,
+        ),
       );
     }
     if (data.containsKey('goal_unit')) {
@@ -1023,6 +1056,12 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         ),
       );
     }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
     return context;
   }
 
@@ -1060,6 +1099,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.int,
         data['${effectivePrefix}goal_value'],
       )!,
+      goalValueWeekend: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goal_value_weekend'],
+      ),
       goalUnit: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}goal_unit'],
@@ -1120,6 +1163,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.string,
         data['${effectivePrefix}template_key'],
       ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      ),
     );
   }
 
@@ -1137,6 +1184,10 @@ class Habit extends DataClass implements Insertable<Habit> {
   final String? icon;
   final String goalPeriod;
   final int goalValue;
+
+  /// Override goalValue khusus Sabtu-Minggu untuk habit `daily` — null berarti
+  /// nilai sama setiap hari (goalValue dipakai apa adanya, perilaku lama).
+  final int? goalValueWeekend;
   final String goalUnit;
   final String goalDirection;
   final String taskDays;
@@ -1169,6 +1220,12 @@ class Habit extends DataClass implements Insertable<Habit> {
   /// Key stabil ke entri habit di `habit_templates.json` (mis.
   /// 'drink_water'). Null untuk habit custom buatan user.
   final String? templateKey;
+
+  /// Kode mata uang (IDR/USD/SGD/MYR/EUR) untuk habit Budget Tracker —
+  /// label/prefix tampilan saja, tidak mengubah cara angka diformat. Null
+  /// untuk habit non-finance, dan default ke 'IDR' di kode saat null untuk
+  /// habit finance lama yang dibuat sebelum kolom ini ada.
+  final String? currency;
   const Habit({
     required this.id,
     required this.categoryId,
@@ -1177,6 +1234,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     this.icon,
     required this.goalPeriod,
     required this.goalValue,
+    this.goalValueWeekend,
     required this.goalUnit,
     required this.goalDirection,
     required this.taskDays,
@@ -1192,6 +1250,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     this.nameId,
     required this.isCustom,
     this.templateKey,
+    this.currency,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1207,6 +1266,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     }
     map['goal_period'] = Variable<String>(goalPeriod);
     map['goal_value'] = Variable<int>(goalValue);
+    if (!nullToAbsent || goalValueWeekend != null) {
+      map['goal_value_weekend'] = Variable<int>(goalValueWeekend);
+    }
     map['goal_unit'] = Variable<String>(goalUnit);
     map['goal_direction'] = Variable<String>(goalDirection);
     map['task_days'] = Variable<String>(taskDays);
@@ -1232,6 +1294,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     if (!nullToAbsent || templateKey != null) {
       map['template_key'] = Variable<String>(templateKey);
     }
+    if (!nullToAbsent || currency != null) {
+      map['currency'] = Variable<String>(currency);
+    }
     return map;
   }
 
@@ -1246,6 +1311,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       goalPeriod: Value(goalPeriod),
       goalValue: Value(goalValue),
+      goalValueWeekend: goalValueWeekend == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalValueWeekend),
       goalUnit: Value(goalUnit),
       goalDirection: Value(goalDirection),
       taskDays: Value(taskDays),
@@ -1271,6 +1339,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       templateKey: templateKey == null && nullToAbsent
           ? const Value.absent()
           : Value(templateKey),
+      currency: currency == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currency),
     );
   }
 
@@ -1287,6 +1358,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       icon: serializer.fromJson<String?>(json['icon']),
       goalPeriod: serializer.fromJson<String>(json['goalPeriod']),
       goalValue: serializer.fromJson<int>(json['goalValue']),
+      goalValueWeekend: serializer.fromJson<int?>(json['goalValueWeekend']),
       goalUnit: serializer.fromJson<String>(json['goalUnit']),
       goalDirection: serializer.fromJson<String>(json['goalDirection']),
       taskDays: serializer.fromJson<String>(json['taskDays']),
@@ -1304,6 +1376,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       nameId: serializer.fromJson<String?>(json['nameId']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
       templateKey: serializer.fromJson<String?>(json['templateKey']),
+      currency: serializer.fromJson<String?>(json['currency']),
     );
   }
   @override
@@ -1317,6 +1390,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       'icon': serializer.toJson<String?>(icon),
       'goalPeriod': serializer.toJson<String>(goalPeriod),
       'goalValue': serializer.toJson<int>(goalValue),
+      'goalValueWeekend': serializer.toJson<int?>(goalValueWeekend),
       'goalUnit': serializer.toJson<String>(goalUnit),
       'goalDirection': serializer.toJson<String>(goalDirection),
       'taskDays': serializer.toJson<String>(taskDays),
@@ -1334,6 +1408,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       'nameId': serializer.toJson<String?>(nameId),
       'isCustom': serializer.toJson<bool>(isCustom),
       'templateKey': serializer.toJson<String?>(templateKey),
+      'currency': serializer.toJson<String?>(currency),
     };
   }
 
@@ -1345,6 +1420,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     Value<String?> icon = const Value.absent(),
     String? goalPeriod,
     int? goalValue,
+    Value<int?> goalValueWeekend = const Value.absent(),
     String? goalUnit,
     String? goalDirection,
     String? taskDays,
@@ -1360,6 +1436,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     Value<String?> nameId = const Value.absent(),
     bool? isCustom,
     Value<String?> templateKey = const Value.absent(),
+    Value<String?> currency = const Value.absent(),
   }) => Habit(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -1368,6 +1445,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     icon: icon.present ? icon.value : this.icon,
     goalPeriod: goalPeriod ?? this.goalPeriod,
     goalValue: goalValue ?? this.goalValue,
+    goalValueWeekend: goalValueWeekend.present
+        ? goalValueWeekend.value
+        : this.goalValueWeekend,
     goalUnit: goalUnit ?? this.goalUnit,
     goalDirection: goalDirection ?? this.goalDirection,
     taskDays: taskDays ?? this.taskDays,
@@ -1385,6 +1465,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     nameId: nameId.present ? nameId.value : this.nameId,
     isCustom: isCustom ?? this.isCustom,
     templateKey: templateKey.present ? templateKey.value : this.templateKey,
+    currency: currency.present ? currency.value : this.currency,
   );
   Habit copyWithCompanion(HabitsCompanion data) {
     return Habit(
@@ -1401,6 +1482,9 @@ class Habit extends DataClass implements Insertable<Habit> {
           ? data.goalPeriod.value
           : this.goalPeriod,
       goalValue: data.goalValue.present ? data.goalValue.value : this.goalValue,
+      goalValueWeekend: data.goalValueWeekend.present
+          ? data.goalValueWeekend.value
+          : this.goalValueWeekend,
       goalUnit: data.goalUnit.present ? data.goalUnit.value : this.goalUnit,
       goalDirection: data.goalDirection.present
           ? data.goalDirection.value
@@ -1426,6 +1510,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       templateKey: data.templateKey.present
           ? data.templateKey.value
           : this.templateKey,
+      currency: data.currency.present ? data.currency.value : this.currency,
     );
   }
 
@@ -1439,6 +1524,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('icon: $icon, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalValueWeekend: $goalValueWeekend, ')
           ..write('goalUnit: $goalUnit, ')
           ..write('goalDirection: $goalDirection, ')
           ..write('taskDays: $taskDays, ')
@@ -1453,7 +1539,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('createdAt: $createdAt, ')
           ..write('nameId: $nameId, ')
           ..write('isCustom: $isCustom, ')
-          ..write('templateKey: $templateKey')
+          ..write('templateKey: $templateKey, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -1467,6 +1554,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     icon,
     goalPeriod,
     goalValue,
+    goalValueWeekend,
     goalUnit,
     goalDirection,
     taskDays,
@@ -1482,6 +1570,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     nameId,
     isCustom,
     templateKey,
+    currency,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1494,6 +1583,7 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.icon == this.icon &&
           other.goalPeriod == this.goalPeriod &&
           other.goalValue == this.goalValue &&
+          other.goalValueWeekend == this.goalValueWeekend &&
           other.goalUnit == this.goalUnit &&
           other.goalDirection == this.goalDirection &&
           other.taskDays == this.taskDays &&
@@ -1508,7 +1598,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.createdAt == this.createdAt &&
           other.nameId == this.nameId &&
           other.isCustom == this.isCustom &&
-          other.templateKey == this.templateKey);
+          other.templateKey == this.templateKey &&
+          other.currency == this.currency);
 }
 
 class HabitsCompanion extends UpdateCompanion<Habit> {
@@ -1519,6 +1610,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String?> icon;
   final Value<String> goalPeriod;
   final Value<int> goalValue;
+  final Value<int?> goalValueWeekend;
   final Value<String> goalUnit;
   final Value<String> goalDirection;
   final Value<String> taskDays;
@@ -1534,6 +1626,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String?> nameId;
   final Value<bool> isCustom;
   final Value<String?> templateKey;
+  final Value<String?> currency;
   const HabitsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -1542,6 +1635,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.icon = const Value.absent(),
     this.goalPeriod = const Value.absent(),
     this.goalValue = const Value.absent(),
+    this.goalValueWeekend = const Value.absent(),
     this.goalUnit = const Value.absent(),
     this.goalDirection = const Value.absent(),
     this.taskDays = const Value.absent(),
@@ -1557,6 +1651,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.nameId = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.templateKey = const Value.absent(),
+    this.currency = const Value.absent(),
   });
   HabitsCompanion.insert({
     this.id = const Value.absent(),
@@ -1566,6 +1661,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.icon = const Value.absent(),
     required String goalPeriod,
     this.goalValue = const Value.absent(),
+    this.goalValueWeekend = const Value.absent(),
     this.goalUnit = const Value.absent(),
     this.goalDirection = const Value.absent(),
     required String taskDays,
@@ -1581,6 +1677,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.nameId = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.templateKey = const Value.absent(),
+    this.currency = const Value.absent(),
   }) : categoryId = Value(categoryId),
        name = Value(name),
        goalPeriod = Value(goalPeriod),
@@ -1594,6 +1691,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? icon,
     Expression<String>? goalPeriod,
     Expression<int>? goalValue,
+    Expression<int>? goalValueWeekend,
     Expression<String>? goalUnit,
     Expression<String>? goalDirection,
     Expression<String>? taskDays,
@@ -1609,6 +1707,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? nameId,
     Expression<bool>? isCustom,
     Expression<String>? templateKey,
+    Expression<String>? currency,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1618,6 +1717,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (icon != null) 'icon': icon,
       if (goalPeriod != null) 'goal_period': goalPeriod,
       if (goalValue != null) 'goal_value': goalValue,
+      if (goalValueWeekend != null) 'goal_value_weekend': goalValueWeekend,
       if (goalUnit != null) 'goal_unit': goalUnit,
       if (goalDirection != null) 'goal_direction': goalDirection,
       if (taskDays != null) 'task_days': taskDays,
@@ -1634,6 +1734,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (nameId != null) 'name_id': nameId,
       if (isCustom != null) 'is_custom': isCustom,
       if (templateKey != null) 'template_key': templateKey,
+      if (currency != null) 'currency': currency,
     });
   }
 
@@ -1645,6 +1746,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String?>? icon,
     Value<String>? goalPeriod,
     Value<int>? goalValue,
+    Value<int?>? goalValueWeekend,
     Value<String>? goalUnit,
     Value<String>? goalDirection,
     Value<String>? taskDays,
@@ -1660,6 +1762,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String?>? nameId,
     Value<bool>? isCustom,
     Value<String?>? templateKey,
+    Value<String?>? currency,
   }) {
     return HabitsCompanion(
       id: id ?? this.id,
@@ -1669,6 +1772,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       icon: icon ?? this.icon,
       goalPeriod: goalPeriod ?? this.goalPeriod,
       goalValue: goalValue ?? this.goalValue,
+      goalValueWeekend: goalValueWeekend ?? this.goalValueWeekend,
       goalUnit: goalUnit ?? this.goalUnit,
       goalDirection: goalDirection ?? this.goalDirection,
       taskDays: taskDays ?? this.taskDays,
@@ -1685,6 +1789,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       nameId: nameId ?? this.nameId,
       isCustom: isCustom ?? this.isCustom,
       templateKey: templateKey ?? this.templateKey,
+      currency: currency ?? this.currency,
     );
   }
 
@@ -1711,6 +1816,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     }
     if (goalValue.present) {
       map['goal_value'] = Variable<int>(goalValue.value);
+    }
+    if (goalValueWeekend.present) {
+      map['goal_value_weekend'] = Variable<int>(goalValueWeekend.value);
     }
     if (goalUnit.present) {
       map['goal_unit'] = Variable<String>(goalUnit.value);
@@ -1759,6 +1867,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (templateKey.present) {
       map['template_key'] = Variable<String>(templateKey.value);
     }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
     return map;
   }
 
@@ -1772,6 +1883,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('icon: $icon, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalValueWeekend: $goalValueWeekend, ')
           ..write('goalUnit: $goalUnit, ')
           ..write('goalDirection: $goalDirection, ')
           ..write('taskDays: $taskDays, ')
@@ -1786,7 +1898,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('createdAt: $createdAt, ')
           ..write('nameId: $nameId, ')
           ..write('isCustom: $isCustom, ')
-          ..write('templateKey: $templateKey')
+          ..write('templateKey: $templateKey, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -3539,7 +3652,8 @@ class HabitSpendingBreakdown extends DataClass
   final DateTime date;
   final String categoryKey;
 
-  /// Teks bebas, hanya diisi kalau categoryKey == 'custom'.
+  /// Teks bebas sub-kategori/detail, opsional untuk kategori manapun (mis.
+  /// "Bensin" di bawah kategori Fixed Spending).
   final String? label;
   final int amount;
   final DateTime createdAt;
@@ -4250,6 +4364,7 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String?> icon,
       required String goalPeriod,
       Value<int> goalValue,
+      Value<int?> goalValueWeekend,
       Value<String> goalUnit,
       Value<String> goalDirection,
       required String taskDays,
@@ -4265,6 +4380,7 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String?> nameId,
       Value<bool> isCustom,
       Value<String?> templateKey,
+      Value<String?> currency,
     });
 typedef $$HabitsTableUpdateCompanionBuilder =
     HabitsCompanion Function({
@@ -4275,6 +4391,7 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String?> icon,
       Value<String> goalPeriod,
       Value<int> goalValue,
+      Value<int?> goalValueWeekend,
       Value<String> goalUnit,
       Value<String> goalDirection,
       Value<String> taskDays,
@@ -4290,6 +4407,7 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String?> nameId,
       Value<bool> isCustom,
       Value<String?> templateKey,
+      Value<String?> currency,
     });
 
 final class $$HabitsTableReferences
@@ -4421,6 +4539,11 @@ class $$HabitsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get goalUnit => $composableBuilder(
     column: $table.goalUnit,
     builder: (column) => ColumnFilters(column),
@@ -4493,6 +4616,11 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<String> get templateKey => $composableBuilder(
     column: $table.templateKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4635,6 +4763,11 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get goalUnit => $composableBuilder(
     column: $table.goalUnit,
     builder: (column) => ColumnOrderings(column),
@@ -4710,6 +4843,11 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4765,6 +4903,11 @@ class $$HabitsTableAnnotationComposer
   GeneratedColumn<int> get goalValue =>
       $composableBuilder(column: $table.goalValue, builder: (column) => column);
 
+  GeneratedColumn<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get goalUnit =>
       $composableBuilder(column: $table.goalUnit, builder: (column) => column);
 
@@ -4819,6 +4962,9 @@ class $$HabitsTableAnnotationComposer
     column: $table.templateKey,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4961,6 +5107,7 @@ class $$HabitsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 Value<String> goalPeriod = const Value.absent(),
                 Value<int> goalValue = const Value.absent(),
+                Value<int?> goalValueWeekend = const Value.absent(),
                 Value<String> goalUnit = const Value.absent(),
                 Value<String> goalDirection = const Value.absent(),
                 Value<String> taskDays = const Value.absent(),
@@ -4976,6 +5123,7 @@ class $$HabitsTableTableManager
                 Value<String?> nameId = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<String?> templateKey = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
               }) => HabitsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -4984,6 +5132,7 @@ class $$HabitsTableTableManager
                 icon: icon,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalValueWeekend: goalValueWeekend,
                 goalUnit: goalUnit,
                 goalDirection: goalDirection,
                 taskDays: taskDays,
@@ -4999,6 +5148,7 @@ class $$HabitsTableTableManager
                 nameId: nameId,
                 isCustom: isCustom,
                 templateKey: templateKey,
+                currency: currency,
               ),
           createCompanionCallback:
               ({
@@ -5009,6 +5159,7 @@ class $$HabitsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 required String goalPeriod,
                 Value<int> goalValue = const Value.absent(),
+                Value<int?> goalValueWeekend = const Value.absent(),
                 Value<String> goalUnit = const Value.absent(),
                 Value<String> goalDirection = const Value.absent(),
                 required String taskDays,
@@ -5024,6 +5175,7 @@ class $$HabitsTableTableManager
                 Value<String?> nameId = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<String?> templateKey = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
               }) => HabitsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -5032,6 +5184,7 @@ class $$HabitsTableTableManager
                 icon: icon,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalValueWeekend: goalValueWeekend,
                 goalUnit: goalUnit,
                 goalDirection: goalDirection,
                 taskDays: taskDays,
@@ -5047,6 +5200,7 @@ class $$HabitsTableTableManager
                 nameId: nameId,
                 isCustom: isCustom,
                 templateKey: templateKey,
+                currency: currency,
               ),
           withReferenceMapper: (p0) => p0
               .map(

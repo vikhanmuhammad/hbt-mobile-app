@@ -14,6 +14,7 @@ class HabitDraft {
     this.icon,
     required this.goalPeriod,
     required this.goalValue,
+    this.goalValueWeekend,
     this.goalUnit = 'x',
     this.goalDirection = GoalDirection.atLeast,
     required this.taskDays,
@@ -26,6 +27,7 @@ class HabitDraft {
     this.sortOrder = 0,
     this.isCustom = true,
     this.templateKey,
+    this.currency,
   });
 
   final int categoryId;
@@ -35,6 +37,7 @@ class HabitDraft {
   final String? icon;
   final GoalPeriod goalPeriod;
   final int goalValue;
+  final int? goalValueWeekend;
   final String goalUnit;
   final GoalDirection goalDirection;
   final List<String> taskDays;
@@ -47,4 +50,8 @@ class HabitDraft {
   final int sortOrder;
   final bool isCustom;
   final String? templateKey;
+
+  /// Kode mata uang (IDR/USD/SGD/MYR/EUR) untuk habit Budget Tracker —
+  /// label/prefix saja. Null untuk habit non-finance.
+  final String? currency;
 }

@@ -21,6 +21,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get commonUndo => 'Urungkan';
 
   @override
+  String get commonEdit => 'Ubah';
+
+  @override
   String get settingsLanguage => 'Bahasa';
 
   @override
@@ -135,10 +138,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeToday => 'Hari Ini';
 
   @override
+  String get homeJumpToDate => 'Lompat ke tanggal';
+
+  @override
   String get homeMyHabits => 'Habit Saya';
 
   @override
   String get homeCommunity => 'Komunitas';
+
+  @override
+  String get homeSpendingMoney => 'Pelacak Anggaran';
 
   @override
   String get homeDeleteHabitTitle => 'Hapus habit ini?';
@@ -235,6 +244,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeOnTrack => 'Sesuai Rencana';
 
   @override
+  String get financeApproachingLimit => 'Mendekati Batas';
+
+  @override
   String get financeOverspending => 'Boros';
 
   @override
@@ -251,6 +263,9 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get financeAddSpendingLimit => 'Tambah Batas Pengeluaran';
+
+  @override
+  String get financeEditSpendingLimit => 'Ubah Batas Pengeluaran';
 
   @override
   String get commonProgress => 'Progres';
@@ -366,6 +381,14 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitDuplicateName => 'Anda sudah punya habit dengan nama ini.';
 
   @override
+  String get addHabitSpendingMoneyExistsTitle =>
+      'Pelacak Anggaran Sudah Ditambahkan';
+
+  @override
+  String get addHabitSpendingMoneyExistsMessage =>
+      'Anda hanya bisa melacak satu habit Pelacak Anggaran. Edit yang sudah ada, bukan menambah baru.';
+
+  @override
   String get addHabitAdd => 'Tambah';
 
   @override
@@ -398,10 +421,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitFieldHabitName => 'Nama Habit';
 
   @override
-  String get addHabitHintNameEn => 'Name (English)';
-
-  @override
-  String get addHabitHintNameId => 'Nama (Indonesia)';
+  String get addHabitHintName => 'Nama habit';
 
   @override
   String get addHabitLockedNameNotice =>
@@ -421,6 +441,15 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get addHabitFieldGoalValue => 'Nilai Target';
+
+  @override
+  String get addHabitFieldGoalValueWeekday => 'Hari Kerja (Sen-Jum)';
+
+  @override
+  String get addHabitFieldGoalValueWeekend => 'Akhir Pekan (Sab-Min)';
+
+  @override
+  String get addHabitCustomWeekendGoalToggle => 'Target beda untuk akhir pekan';
 
   @override
   String get addHabitFieldUnit => 'Satuan';
@@ -465,8 +494,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitSaveHabit => 'Simpan Habit';
 
   @override
-  String get addHabitNameRequired =>
-      'Nama habit (Inggris & Indonesia) wajib diisi';
+  String get addHabitNameRequired => 'Nama habit wajib diisi';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pilih goal phrase dulu';
@@ -486,10 +514,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitFieldGoalPhraseName => 'Nama Goal Phrase';
 
   @override
-  String get addHabitHintCatNameEn => 'Name (English), mis. Hobby';
-
-  @override
-  String get addHabitHintCatNameId => 'Nama (Indonesia), mis. Hobi';
+  String get addHabitHintCatName => 'Nama goal phrase, mis. Hobi';
 
   @override
   String get addHabitFieldColor => 'Warna';
@@ -498,8 +523,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitCreateGoal => 'Buat Goal';
 
   @override
-  String get addHabitCatNameRequired =>
-      'Nama goal phrase (Inggris & Indonesia) wajib diisi';
+  String get addHabitCatNameRequired => 'Nama goal phrase wajib diisi';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -1141,13 +1165,72 @@ class AppLocalizationsId extends AppLocalizations {
   String get quickProgressEntryModeBreakdown => 'Rincian per kategori';
 
   @override
+  String spendingBreakdownAlreadyLogged(String total) {
+    return 'Sudah dicatat hari ini ($total)';
+  }
+
+  @override
   String get spendingBreakdownAddItem => 'Tambah rincian';
+
+  @override
+  String get spendingBreakdownEditItem => 'Edit rincian';
 
   @override
   String get spendingBreakdownCustomLabelHint => 'Keterangan';
 
   @override
+  String get spendingBreakdownSubcategoryHint =>
+      'Detail sub-kategori (opsional)';
+
+  @override
   String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownGrandTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownNoDetailLabel => 'Tanpa detail';
+
+  @override
+  String get spendingBreakdownDirectModeLockedHint =>
+      'Enter Total dinonaktifkan karena Anda sudah punya data rincian kategori — edit atau hapus item di atas sebagai gantinya.';
+
+  @override
+  String get budgetTrackerSaveBudget => 'Simpan Anggaran';
+
+  @override
+  String get budgetTrackerTitleEditBudget => 'Edit Anggaran';
+
+  @override
+  String get budgetTrackerTitleBudgetForm => 'Formulir Anggaran';
+
+  @override
+  String get budgetTrackerDifferentWeekendGoal =>
+      'Anggaran Berbeda untuk Akhir Pekan';
+
+  @override
+  String get budgetTrackerCurrency => 'Mata Uang';
+
+  @override
+  String get budgetTrackerGoalPeriod => 'Periode Target';
+
+  @override
+  String get budgetTrackerBudgetLabel => 'Anggaran';
+
+  @override
+  String get budgetTrackerWeekdayBudget => 'Anggaran Hari Kerja';
+
+  @override
+  String get budgetTrackerWeekendBudget => 'Anggaran Akhir Pekan';
+
+  @override
+  String get financeMonthToDate => 'Sejauh Bulan Ini';
+
+  @override
+  String get financeMonthlyTotal => 'Total Bulanan';
+
+  @override
+  String get financeSpendingDistribution => 'Distribusi Pengeluaran';
 
   @override
   String get commonSave => 'Simpan';
