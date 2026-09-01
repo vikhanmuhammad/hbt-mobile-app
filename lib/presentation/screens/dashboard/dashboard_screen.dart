@@ -22,6 +22,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/daily_progress_ring.dart';
+import '../../widgets/dashed_line.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/monthly_calendar_grid.dart';
 
@@ -943,10 +944,10 @@ class _MonthlyTrend extends ConsumerWidget {
                           height: 140,
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
-                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
-                              Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                            children: const [
+                              DashedLine(),
+                              DashedLine(),
+                              DashedLine(),
                             ],
                           ),
                         ),

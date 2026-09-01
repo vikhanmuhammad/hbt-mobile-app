@@ -451,17 +451,6 @@ class _HabitList extends ConsumerWidget {
         shrinkWrap: shrinkWrap,
         physics: outerPhysics,
         children: [
-          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
-          const SizedBox(height: 8),
-          _buildReorderableSection(
-            context,
-            ref,
-            localItems,
-            padding: EdgeInsets.zero,
-            shrinkWrap: true,
-            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, localItems, oldIndex, newIndex),
-          ),
-          const SizedBox(height: 20),
           _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
           const SizedBox(height: 8),
           _buildReorderableSection(
@@ -471,6 +460,17 @@ class _HabitList extends ConsumerWidget {
             padding: EdgeInsets.zero,
             shrinkWrap: true,
             onReorder: (oldIndex, newIndex) => _onReorderSection(ref, communityItems, oldIndex, newIndex),
+          ),
+          const SizedBox(height: 20),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+          const SizedBox(height: 8),
+          _buildReorderableSection(
+            context,
+            ref,
+            localItems,
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, localItems, oldIndex, newIndex),
           ),
         ],
       );
@@ -508,20 +508,20 @@ class _HabitList extends ConsumerWidget {
           shrinkWrap: shrinkWrap,
           physics: outerPhysics,
           children: [
-            _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
-            const SizedBox(height: 8),
-            for (var i = 0; i < localItems.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _buildCard(context, ref, localItems[i], i),
-              ),
-            const SizedBox(height: 20),
             _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
             const SizedBox(height: 8),
             for (var i = 0; i < communityItems.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _buildCard(context, ref, communityItems[i], localItems.length + i),
+                child: _buildCard(context, ref, communityItems[i], i),
+              ),
+            const SizedBox(height: 20),
+            _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+            const SizedBox(height: 8),
+            for (var i = 0; i < localItems.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildCard(context, ref, localItems[i], communityItems.length + i),
               ),
           ],
         );
@@ -548,13 +548,13 @@ class _HabitList extends ConsumerWidget {
         shrinkWrap: shrinkWrap,
         physics: outerPhysics,
         children: [
-          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
-          const SizedBox(height: 8),
-          sectionGrid(localItems, 0),
-          const SizedBox(height: 20),
           _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
           const SizedBox(height: 8),
-          sectionGrid(communityItems, localItems.length),
+          sectionGrid(communityItems, 0),
+          const SizedBox(height: 20),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+          const SizedBox(height: 8),
+          sectionGrid(localItems, communityItems.length),
         ],
       );
   }

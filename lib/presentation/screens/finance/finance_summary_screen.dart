@@ -25,6 +25,7 @@ import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/category_breakdown_list.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/finance_preview_mock.dart';
+import '../../widgets/dashed_line.dart';
 import '../../widgets/habit_progress_card.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/quick_progress_sheet.dart';
@@ -802,7 +803,21 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                                 scrollDirection: Axis.horizontal,
                                 child: ConstrainedBox(
                                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                                  child: Stack(
+                                  // This lives inside a horizontally-scrolling
+                                  // child, so the incoming width constraint
+                                  // is unbounded (maxWidth: infinity) — the
+                                  // gridlines' `DashedLine` wants to stretch
+                                  // to fill that width, but resolving
+                                  // `width: double.infinity` against a truly
+                                  // infinite constraint crashes layout
+                                  // ("BoxConstraints forces an infinite
+                                  // width"), which silently blanked out this
+                                  // whole chart. `IntrinsicWidth` resolves a
+                                  // concrete width first (from the bars
+                                  // Row's own intrinsic content width) and
+                                  // hands that bounded width down instead.
+                                  child: IntrinsicWidth(
+                                    child: Stack(
                                     children: [
                                       // Gridlines at the 0/50/100% ticks so bar
                                       // heights can be read against the Y-axis.
@@ -810,10 +825,10 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                                         height: 150,
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
-                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
-                                            Divider(height: 1, thickness: 1, color: theme.dividerColor),
+                                          children: const [
+                                            DashedLine(),
+                                            DashedLine(),
+                                            DashedLine(),
                                           ],
                                         ),
                                       ),
@@ -867,6 +882,7 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                                         ],
                                       ),
                                     ],
+                                    ),
                                   ),
                                 ),
                               ),

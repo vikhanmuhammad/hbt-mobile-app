@@ -151,7 +151,8 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                       nameController: _nameController,
                       ageController: _ageController,
                       photoPath: _photoPath,
-                      onPhotoPicked: (path) => setState(() => _photoPath = path),
+                      onPhotoPicked: (path) =>
+                          setState(() => _photoPath = path),
                       onNext: () => _goTo(3),
                     ),
                     for (var i = 0; i < lifestyleQuestions.length; i++)
@@ -301,6 +302,7 @@ class _StepScaffold extends StatelessWidget {
     this.backgroundCanvasSize = const Size(3375, 6000),
     this.backgroundVerticalOffset = 0,
     this.showBackgroundGradient = false,
+    this.backgroundScale = 1.0,
   });
 
   final Widget child;
@@ -339,6 +341,13 @@ class _StepScaffold extends StatelessWidget {
   /// symmetrically center-cropped.
   final List<String>? backgroundLayers;
 
+  /// Shrinks the illustration relative to the full screen width it would
+  /// otherwise fill (1.0 = edge-to-edge) while keeping it bottom-anchored
+  /// (and now horizontally centered, since it no longer spans full width) —
+  /// used on the personal-info and questionnaire steps so less of it sits
+  /// directly behind the question/form content above it.
+  final double backgroundScale;
+
   @override
   Widget build(BuildContext context) {
     final maxWidth = MediaQuery.sizeOf(context).width >= 600 ? 880.0 : 640.0;
@@ -353,8 +362,13 @@ class _StepScaffold extends StatelessWidget {
             child: IgnorePointer(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final scale = constraints.maxWidth / backgroundCanvasSize.width;
+                  final scale =
+                      constraints.maxWidth /
+                      backgroundCanvasSize.width *
+                      backgroundScale;
+                  final renderWidth = backgroundCanvasSize.width * scale;
                   final renderHeight = backgroundCanvasSize.height * scale;
+                  final offsetX = (constraints.maxWidth - renderWidth) / 2;
                   // Bottom-anchored, but not flush against the very bottom
                   // of the box — that box also contains the Back/Next
                   // button row (part of the same Stack, drawn on top), so
@@ -363,7 +377,8 @@ class _StepScaffold extends StatelessWidget {
                   // roughly matching that row's height keeps the
                   // illustration visibly clear above it.
                   const bottomReserve = 110.0;
-                  final offsetY = constraints.maxHeight -
+                  final offsetY =
+                      constraints.maxHeight -
                       bottomReserve -
                       renderHeight +
                       backgroundVerticalOffset * scale;
@@ -377,9 +392,9 @@ class _StepScaffold extends StatelessWidget {
                           children: [
                             for (final asset in backgroundLayers!)
                               Positioned(
-                                left: 0,
+                                left: offsetX,
                                 top: offsetY,
-                                width: constraints.maxWidth,
+                                width: renderWidth,
                                 height: renderHeight,
                                 child: Image.asset(asset, fit: BoxFit.fill),
                               ),
@@ -402,12 +417,14 @@ class _StepScaffold extends StatelessWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 stops: [
-                                  ((offsetY + renderHeight * 0.5) / constraints.maxHeight)
+                                  ((offsetY + renderHeight * 0.5) /
+                                          constraints.maxHeight)
                                       .clamp(0.0, 1.0),
                                   1.0,
                                 ],
                                 colors: [
-                                  Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0),
+                                  Theme.of(context).scaffoldBackgroundColor
+                                      .withValues(alpha: 0),
                                   Theme.of(context).scaffoldBackgroundColor,
                                 ],
                               ),
@@ -424,7 +441,9 @@ class _StepScaffold extends StatelessWidget {
           // Stands in for the disabled `resizeToAvoidBottomInset` — shrinks
           // just the foreground (not the background illustration above) so
           // focused fields and the bottom button still clear the keyboard.
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth),
@@ -482,7 +501,8 @@ class _LanguagePickStep extends ConsumerWidget {
             label: 'English',
             selected: selected == OnboardingLang.en,
             onTap: () {
-              ref.read(introLanguageProvider.notifier).state = OnboardingLang.en;
+              ref.read(introLanguageProvider.notifier).state =
+                  OnboardingLang.en;
               ref.read(appLanguageProvider.notifier).setLanguage(AppLang.en);
             },
           ),
@@ -491,7 +511,8 @@ class _LanguagePickStep extends ConsumerWidget {
             label: 'Bahasa Indonesia',
             selected: selected == OnboardingLang.id,
             onTap: () {
-              ref.read(introLanguageProvider.notifier).state = OnboardingLang.id;
+              ref.read(introLanguageProvider.notifier).state =
+                  OnboardingLang.id;
               ref.read(appLanguageProvider.notifier).setLanguage(AppLang.id);
             },
           ),
@@ -791,7 +812,9 @@ class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
             decoration: BoxDecoration(
               color: theme.cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.10),
@@ -805,7 +828,9 @@ class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
               children: [
                 Text(
                   'Drink Water',
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text('Target: $_goal ml', style: theme.textTheme.labelSmall),
@@ -821,7 +846,9 @@ class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
                       curve: Curves.easeOut,
                       builder: (context, value, _) => Text(
                         '${value.round()}',
-                        style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 18),
@@ -831,9 +858,16 @@ class _HabitDetailScreenMockState extends State<_HabitDetailScreenMock> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _MockPillButton(label: 'Mark Achieved', filled: false)),
+                    Expanded(
+                      child: _MockPillButton(
+                        label: 'Mark Achieved',
+                        filled: false,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: _MockPillButton(label: 'Save', filled: true)),
+                    Expanded(
+                      child: _MockPillButton(label: 'Save', filled: true),
+                    ),
                   ],
                 ),
               ],
@@ -1008,7 +1042,13 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
   static const _daysInMonth = 31;
   // day -> success ratio, only for the most recent days (the rest render as
   // plain numbers, matching the real grid's `hasData` check).
-  final Map<int, double> _ratios = {27: 0.2, 28: 0.15, 29: 0.4, 30: 0.25, 31: 0.1};
+  final Map<int, double> _ratios = {
+    27: 0.2,
+    28: 0.15,
+    29: 0.4,
+    30: 0.25,
+    31: 0.1,
+  };
   static const _selectedDay = 26;
   double _selectedRatio = 0.83;
 
@@ -1044,7 +1084,9 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                       _MockNavCircle(icon: Icons.chevron_left_rounded),
                       Text(
                         'August 2026',
-                        style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       _MockNavCircle(icon: Icons.chevron_right_rounded),
                     ],
@@ -1057,7 +1099,9 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                           child: Center(
                             child: Text(
                               h,
-                              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
@@ -1067,11 +1111,12 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 2,
-                      crossAxisSpacing: 2,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 2,
+                          crossAxisSpacing: 2,
+                        ),
                     itemCount: _leadingBlanks + _daysInMonth,
                     itemBuilder: (context, i) {
                       if (i < _leadingBlanks) return const SizedBox.shrink();
@@ -1082,9 +1127,16 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: selected ? theme.colorScheme.primary.withValues(alpha: 0.12) : null,
+                          color: selected
+                              ? theme.colorScheme.primary.withValues(
+                                  alpha: 0.12,
+                                )
+                              : null,
                           border: selected
-                              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+                              ? Border.all(
+                                  color: theme.colorScheme.primary,
+                                  width: 1.5,
+                                )
                               : null,
                         ),
                         child: ratio != null
@@ -1092,19 +1144,27 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                                 tween: Tween(begin: 0, end: ratio),
                                 duration: const Duration(milliseconds: 450),
                                 curve: Curves.easeOutCubic,
-                                builder: (context, value, _) => DailyProgressRing(
-                                  done: (value * 100).round(),
-                                  total: 100,
-                                  size: 22,
-                                  strokeWidth: 2,
-                                  centerLabel: '$day',
-                                  centerLabelStyle: theme.textTheme.bodySmall
-                                      ?.copyWith(fontWeight: FontWeight.w800, fontSize: 9),
-                                ),
+                                builder: (context, value, _) =>
+                                    DailyProgressRing(
+                                      done: (value * 100).round(),
+                                      total: 100,
+                                      size: 22,
+                                      strokeWidth: 2,
+                                      centerLabel: '$day',
+                                      centerLabelStyle: theme
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 9,
+                                          ),
+                                    ),
                               )
                             : Text(
                                 '$day',
-                                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                       );
                     },
@@ -1138,9 +1198,15 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('1 days tracked', style: theme.textTheme.titleSmall),
+                        Text(
+                          '1 days tracked',
+                          style: theme.textTheme.titleSmall,
+                        ),
                         const SizedBox(height: 2),
-                        Text('Overall average success rate', style: theme.textTheme.labelSmall),
+                        Text(
+                          'Overall average success rate',
+                          style: theme.textTheme.labelSmall,
+                        ),
                       ],
                     ),
                   ),
@@ -1168,12 +1234,16 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                         strokeWidth: 5,
                         color: Colors.green,
                         centerLabel: '83%',
-                        centerLabelStyle: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
+                        centerLabelStyle: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Be Healthy',
-                        style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -1193,9 +1263,15 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                   const SizedBox(height: 10),
                   const _MockProgressRow(label: 'Walk', ratio: 1),
                   const SizedBox(height: 10),
-                  const _MockProgressRow(label: 'Drink less caffeine', ratio: 1),
+                  const _MockProgressRow(
+                    label: 'Drink less caffeine',
+                    ratio: 1,
+                  ),
                   const SizedBox(height: 10),
-                  const _MockProgressRow(label: 'Eat vegetables & fruit', ratio: 0.67),
+                  const _MockProgressRow(
+                    label: 'Eat vegetables & fruit',
+                    ratio: 0.67,
+                  ),
                   const SizedBox(height: 10),
                   const _MockProgressRow(label: 'Stand up & move', ratio: 0.5),
                 ],
@@ -1220,7 +1296,12 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                         Expanded(
                           child: Column(
                             children: [
-                              Text('83%', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+                              Text(
+                                '83%',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               const SizedBox(height: 4),
                               Expanded(
                                 child: Align(
@@ -1228,7 +1309,9 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                                   child: FractionallySizedBox(
                                     heightFactor: 0.83,
                                     child: ConstrainedBox(
-                                      constraints: const BoxConstraints(maxWidth: 30),
+                                      constraints: const BoxConstraints(
+                                        maxWidth: 30,
+                                      ),
                                       child: Container(
                                         decoration: BoxDecoration(
                                           color: theme.colorScheme.primary,
@@ -1245,7 +1328,12 @@ class _CalendarScreenMockState extends State<_CalendarScreenMock> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Text('Aug', style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600)),
+                              Text(
+                                'Aug',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -1274,7 +1362,10 @@ class _MockNavCircle extends StatelessWidget {
     return Container(
       width: 26,
       height: 26,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: Theme.of(context).cardColor),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Theme.of(context).cardColor,
+      ),
       child: Icon(icon, size: 16),
     );
   }
@@ -1302,10 +1393,15 @@ class _MockProgressRow extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            Text('${(ratio * 100).round()}%', style: theme.textTheme.labelSmall),
+            Text(
+              '${(ratio * 100).round()}%',
+              style: theme.textTheme.labelSmall,
+            ),
           ],
         ),
         const SizedBox(height: 5),
@@ -1420,7 +1516,11 @@ class _MockLeaderboardTile extends StatelessWidget {
   final int streak;
 
   // Gold / silver / bronze — matches `_rankColors` in group_detail_screen.dart.
-  static const _rankColors = {1: Color(0xFFD4AF37), 2: Color(0xFFA8A9AD), 3: Color(0xFFCD7F32)};
+  static const _rankColors = {
+    1: Color(0xFFD4AF37),
+    2: Color(0xFFA8A9AD),
+    3: Color(0xFFCD7F32),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -1429,17 +1529,25 @@ class _MockLeaderboardTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.08) : theme.cardColor,
+        color: isMe
+            ? theme.colorScheme.primary.withValues(alpha: 0.08)
+            : theme.cardColor,
         borderRadius: BorderRadius.circular(14),
-        border: isMe ? Border.all(color: theme.colorScheme.primary, width: 1.5) : null,
+        border: isMe
+            ? Border.all(color: theme.colorScheme.primary, width: 1.5)
+            : null,
       ),
       child: Row(
         children: [
           CircleAvatar(
             radius: 14,
-            backgroundColor: rankColor ?? theme.colorScheme.surfaceContainerHighest,
+            backgroundColor:
+                rankColor ?? theme.colorScheme.surfaceContainerHighest,
             foregroundColor: rankColor != null ? Colors.white : null,
-            child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11)),
+            child: Text(
+              '$rank',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1449,7 +1557,9 @@ class _MockLeaderboardTile extends StatelessWidget {
               children: [
                 Text(
                   isMe ? '$name (You)' : name,
-                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 Text('$streak day streak', style: theme.textTheme.labelSmall),
               ],
@@ -1464,8 +1574,10 @@ class _MockLeaderboardTile extends StatelessWidget {
                 curve: Curves.easeOut,
                 builder: (context, v, _) => Text(
                   '${v.round()}',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800, color: theme.colorScheme.primary),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
               Text('books', style: theme.textTheme.labelSmall),
@@ -1516,29 +1628,43 @@ class _HomeListScreenMockState extends State<_HomeListScreenMock> {
                 Expanded(
                   child: Center(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.15,
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         'August 2026',
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Text(
                     'Today',
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w700),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1547,7 +1673,9 @@ class _HomeListScreenMockState extends State<_HomeListScreenMock> {
             _MockHabitRow(
               icon: 'person-running',
               name: 'Yoga',
-              progressLabel: _yogaDone ? 'Progress 1x • Goal 1x' : 'Progress 0x • Goal 1x',
+              progressLabel: _yogaDone
+                  ? 'Progress 1x • Goal 1x'
+                  : 'Progress 0x • Goal 1x',
               progress: _yogaDone ? 1 : 0,
               color: theme.colorScheme.primary,
               done: _yogaDone,
@@ -1599,8 +1727,9 @@ class _FinanceScreenMock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final altSurface =
-        theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt;
+    final altSurface = theme.brightness == Brightness.light
+        ? AppColors.lightSurfaceAlt
+        : AppColors.darkSurfaceAlt;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1617,15 +1746,26 @@ class _FinanceScreenMock extends StatelessWidget {
                       // `SegmentedPillToggle` with "Daily" selected.
                       Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: altSurface, borderRadius: BorderRadius.circular(999)),
+                        decoration: BoxDecoration(
+                          color: altSurface,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
                         child: Row(
                           children: [
-                            for (final label in const ['Daily', 'Weekly', 'Monthly'])
+                            for (final label in const [
+                              'Daily',
+                              'Weekly',
+                              'Monthly',
+                            ])
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: label == 'Daily' ? theme.colorScheme.primary : Colors.transparent,
+                                    color: label == 'Daily'
+                                        ? theme.colorScheme.primary
+                                        : Colors.transparent,
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -1634,7 +1774,9 @@ class _FinanceScreenMock extends StatelessWidget {
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 11,
-                                      color: label == 'Daily' ? Colors.white : theme.textTheme.bodySmall?.color,
+                                      color: label == 'Daily'
+                                          ? Colors.white
+                                          : theme.textTheme.bodySmall?.color,
                                     ),
                                   ),
                                 ),
@@ -1646,12 +1788,18 @@ class _FinanceScreenMock extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const _MockNavCircle(icon: Icons.chevron_left_rounded),
+                          const _MockNavCircle(
+                            icon: Icons.chevron_left_rounded,
+                          ),
                           Text(
                             '26 August 2026',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          const _MockNavCircle(icon: Icons.chevron_right_rounded),
+                          const _MockNavCircle(
+                            icon: Icons.chevron_right_rounded,
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -1663,27 +1811,41 @@ class _FinanceScreenMock extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('Total Spending', style: theme.textTheme.bodySmall),
+                                  Text(
+                                    'Total Spending',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: _onTrackGreen.withValues(alpha: 0.14),
+                                      color: _onTrackGreen.withValues(
+                                        alpha: 0.14,
+                                      ),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.trending_down_rounded, size: 12, color: _onTrackGreen),
+                                        const Icon(
+                                          Icons.trending_down_rounded,
+                                          size: 12,
+                                          color: _onTrackGreen,
+                                        ),
                                         const SizedBox(width: 3),
                                         Text(
                                           'On Track',
-                                          style: theme.textTheme.labelSmall?.copyWith(
-                                            color: _onTrackGreen,
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 10,
-                                          ),
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                                color: _onTrackGreen,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 10,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -1693,7 +1855,9 @@ class _FinanceScreenMock extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 'Rp 18.000',
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                               const SizedBox(height: 10),
                               ClipRRect(
@@ -1702,11 +1866,16 @@ class _FinanceScreenMock extends StatelessWidget {
                                   value: 0.18,
                                   minHeight: 7,
                                   backgroundColor: altSurface,
-                                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    theme.colorScheme.primary,
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 5),
-                              Text('of Rp 100.000 budget', style: theme.textTheme.labelSmall),
+                              Text(
+                                'of Rp 100.000 budget',
+                                style: theme.textTheme.labelSmall,
+                              ),
                             ],
                           ),
                         ),
@@ -1718,16 +1887,25 @@ class _FinanceScreenMock extends StatelessWidget {
                           padding: const EdgeInsets.all(14),
                           child: Row(
                             children: [
-                              Icon(Icons.savings_rounded, size: 18, color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.savings_rounded,
+                                size: 18,
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 10),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text('Total Saved', style: theme.textTheme.labelSmall),
+                                  Text(
+                                    'Total Saved',
+                                    style: theme.textTheme.labelSmall,
+                                  ),
                                   Text(
                                     'Rp 82.000',
-                                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1743,7 +1921,10 @@ class _FinanceScreenMock extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Daily Spending Trend', style: theme.textTheme.titleSmall),
+                              Text(
+                                'Daily Spending Trend',
+                                style: theme.textTheme.titleSmall,
+                              ),
                               const SizedBox(height: 14),
                               SizedBox(
                                 height: 70,
@@ -1759,13 +1940,22 @@ class _FinanceScreenMock extends StatelessWidget {
                                               child: FractionallySizedBox(
                                                 heightFactor: 0.18,
                                                 child: ConstrainedBox(
-                                                  constraints: const BoxConstraints(maxWidth: 20),
+                                                  constraints:
+                                                      const BoxConstraints(
+                                                        maxWidth: 20,
+                                                      ),
                                                   child: Container(
                                                     decoration: BoxDecoration(
-                                                      color: theme.colorScheme.primary,
-                                                      borderRadius: const BorderRadius.vertical(
-                                                        top: Radius.circular(4),
-                                                      ),
+                                                      color: theme
+                                                          .colorScheme
+                                                          .primary,
+                                                      borderRadius:
+                                                          const BorderRadius.vertical(
+                                                            top:
+                                                                Radius.circular(
+                                                                  4,
+                                                                ),
+                                                          ),
                                                     ),
                                                   ),
                                                 ),
@@ -1773,7 +1963,10 @@ class _FinanceScreenMock extends StatelessWidget {
                                             ),
                                           ),
                                           const SizedBox(height: 6),
-                                          Text('26', style: theme.textTheme.labelSmall),
+                                          Text(
+                                            '26',
+                                            style: theme.textTheme.labelSmall,
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -1792,16 +1985,25 @@ class _FinanceScreenMock extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Spending by Category', style: theme.textTheme.titleSmall),
+                              Text(
+                                'Spending by Category',
+                                style: theme.textTheme.titleSmall,
+                              ),
                               const SizedBox(height: 14),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Track expenses',
-                                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
-                                  Text('Rp 9.000 (50%)', style: theme.textTheme.bodySmall),
+                                  Text(
+                                    'Rp 9.000 (50%)',
+                                    style: theme.textTheme.bodySmall,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 6),
@@ -1811,7 +2013,9 @@ class _FinanceScreenMock extends StatelessWidget {
                                   value: 0.5,
                                   minHeight: 6,
                                   backgroundColor: altSurface,
-                                  valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                                  valueColor: AlwaysStoppedAnimation(
+                                    theme.colorScheme.primary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1826,18 +2030,29 @@ class _FinanceScreenMock extends StatelessWidget {
                 bottom: 14,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary,
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.add_rounded, size: 14, color: Colors.white),
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Add Spending Limit',
@@ -1855,12 +2070,19 @@ class _FinanceScreenMock extends StatelessWidget {
                 top: 8,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.gold,
                     borderRadius: BorderRadius.circular(999),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 6, offset: const Offset(0, 2)),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
                   child: Row(
@@ -1891,11 +2113,17 @@ class _FinanceScreenMock extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.lock_rounded, size: 15, color: theme.colorScheme.primary),
+            Icon(
+              Icons.lock_rounded,
+              size: 15,
+              color: theme.colorScheme.primary,
+            ),
             const SizedBox(width: 6),
             Text(
               AppLocalizations.of(context)!.onboardingFinanceProFeature,
-              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -1957,8 +2185,17 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
       // below Gender, even though that means the lower hand/sleeve
       // extends past the visible area (matches the source art's own
       // framing, which already cuts sleeves off at the frame edge).
-      backgroundVerticalOffset: 1000,
+      //
+      // `backgroundVerticalOffset` is applied AFTER `backgroundScale`
+      // (offsetY += backgroundVerticalOffset * scale in _StepScaffold), so
+      // shrinking the scale to 0.82 also shrank how far this push actually
+      // moves it — bumped up well past the old 1000 to compensate and push
+      // it down further still.
+      backgroundVerticalOffset: 1250,
       showBackgroundGradient: true,
+      // Shrunk slightly (still bottom-anchored/centered) so less of it sits
+      // directly behind the Name/Gender/Age form fields above it.
+      backgroundScale: 0.82,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
         children: [
@@ -2109,7 +2346,11 @@ class _LifestyleQuestionStep extends StatelessWidget {
         return _StepScaffold(
           backgroundLayers: [_illustrationAssets[illustrationIndex]],
           backgroundCanvasSize: _illustrationCanvasSizes[illustrationIndex],
-          backgroundVerticalOffset: _illustrationVerticalOffsets[illustrationIndex],
+          backgroundVerticalOffset:
+              _illustrationVerticalOffsets[illustrationIndex],
+          // Shrunk slightly (still bottom-anchored/centered) so less of it
+          // sits directly behind the question text/option list above it.
+          backgroundScale: 0.82,
           topBar: Align(
             alignment: Alignment.centerRight,
             child: TextButton(onPressed: onSkip, child: Text(lang.skip)),
@@ -2175,13 +2416,9 @@ class _OptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
-      // Semi-transparent (rather than the default opaque cardColor) so the
-      // questionnaire's background illustration stays visible through the
-      // option cards instead of being fully covered.
       color: selected
-          ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14)!
-              .withValues(alpha: 0.72)
-          : theme.cardColor.withValues(alpha: 0.62),
+          ? Color.lerp(theme.cardColor, theme.colorScheme.primary, 0.14)
+          : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: selected
@@ -2515,40 +2752,43 @@ class _CategoryPickTile extends ConsumerWidget {
         child: MediaQuery.withClampedTextScaling(
           maxScaleFactor: 1.0,
           child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Center(
-                  child: HabitIcon(
-                    icon: category.icon,
-                    size: 24,
-                    color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: HabitIcon(
+                      icon: category.icon,
+                      size: 24,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                category.displayName(appLang),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                goalPhraseDescriptionFor(category),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
+                const SizedBox(height: 10),
+                Text(
+                  category.displayName(appLang),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  goalPhraseDescriptionFor(category),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2650,7 +2890,8 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     // below at all — only later on the Summary page. Watched reactively so
     // a habit created just now (via the DB write already awaited by the
     // sub-flow that created it) appears here immediately.
-    final allHabits = ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
+    final allHabits =
+        ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
 
     return _StepScaffold(
       child: categoriesAsync.when(
@@ -2699,8 +2940,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.gold,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(999),
+                          ),
                         ),
                         icon: const Icon(
                           Icons.workspace_premium_rounded,
@@ -2789,7 +3035,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                       // any static template, so without this they'd silently
                       // never show up here even though they already exist.
                       final customHabits = allHabits
-                          .where((h) => h.categoryId == category.id && h.isCustom)
+                          .where(
+                            (h) => h.categoryId == category.id && h.isCustom,
+                          )
                           .toList();
                       if (templates.isEmpty && customHabits.isEmpty) {
                         return Padding(
@@ -2838,11 +3086,13 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
                                               h.displayName(appLang),
-                                              style: theme.textTheme.titleMedium,
+                                              style:
+                                                  theme.textTheme.titleMedium,
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
@@ -2853,9 +3103,15 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                                         ),
                                       ),
                                       IconButton(
-                                        tooltip: AppLocalizations.of(context)!.onboardingCancelHabit,
-                                        icon: const Icon(Icons.close_rounded, size: 18),
-                                        onPressed: () => widget.onRemoveHabit(h.id),
+                                        tooltip: AppLocalizations.of(
+                                          context,
+                                        )!.onboardingCancelHabit,
+                                        icon: const Icon(
+                                          Icons.close_rounded,
+                                          size: 18,
+                                        ),
+                                        onPressed: () =>
+                                            widget.onRemoveHabit(h.id),
                                       ),
                                     ],
                                   ),
@@ -2984,8 +3240,9 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
                             ),
                           );
                           if (saved == true) {
-                            final freshCategories =
-                                await ref.refresh(categoriesProvider.future);
+                            final freshCategories = await ref.refresh(
+                              categoriesProvider.future,
+                            );
                             final newIds = freshCategories
                                 .map((c) => c.id)
                                 .toSet()
@@ -3088,7 +3345,10 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           final created = await repo.getById(id);
           if (created != null) {
             try {
-              await notif.rescheduleForHabit(created, lang: ref.read(appLanguageProvider));
+              await notif.rescheduleForHabit(
+                created,
+                lang: ref.read(appLanguageProvider),
+              );
             } catch (_) {
               // Notification scheduling failed (e.g. platform not
               // supported) — don't fail the habit save because of this.
@@ -3101,7 +3361,11 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context)!.addHabitFailedToSave('$e'))),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.addHabitFailedToSave('$e'),
+            ),
+          ),
         );
       }
     } finally {
@@ -3156,7 +3420,9 @@ class _FinanceLockedPreview extends StatelessWidget {
                   const SizedBox(height: 12),
                   ElevatedButton(
                     onPressed: onUpgrade,
-                    child: Text(AppLocalizations.of(context)!.proFeatureUpgradeButton),
+                    child: Text(
+                      AppLocalizations.of(context)!.proFeatureUpgradeButton,
+                    ),
                   ),
                 ],
               ),
@@ -3261,7 +3527,9 @@ class _SummaryStep extends ConsumerWidget {
                             ),
                           ),
                           IconButton(
-                            tooltip: AppLocalizations.of(context)!.onboardingCancelHabit,
+                            tooltip: AppLocalizations.of(
+                              context,
+                            )!.onboardingCancelHabit,
                             icon: const Icon(Icons.close_rounded, size: 18),
                             onPressed: () => onRemoveHabit(habit.id),
                           ),

@@ -58,6 +58,16 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   /// sebagai delta di atas `widget.item.progressValue` seperti sebelumnya.
   List<SpendingBreakdownEntry> _existingBreakdownEntries = [];
 
+  /// The draft auto-created (once per sheet session) when the user switches
+  /// from "Enter total" to "Break down by category" while today's progress
+  /// already has an un-categorized direct-entry amount — without this, that
+  /// amount would keep counting toward the saved total (via
+  /// `widget.item.progressValue`) while being invisible in the breakdown
+  /// list/category totals, silently under-representing spending by category.
+  /// Tracked by reference so it can be excluded from the total-being-saved
+  /// again if the user deletes it from the list (see [_migratedAmountStillIncluded]).
+  SpendingBreakdownDraft? _migratedItem;
+
   /// Which of the two mutually exclusive ways to log this save the user
   /// picked — only relevant when [_supportsBreakdown]. `false` = type the
   /// total directly (the stepper/text field, existing behavior). `true` =
@@ -84,6 +94,35 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   bool get _isBudgetTracker => _supportsBreakdown;
 
   int get _breakdownTotal => _breakdownItems.fold<int>(0, (sum, i) => sum + i.amount);
+
+  /// [_migratedItem]'s amount if it's still in [_breakdownItems] (the user
+  /// hasn't deleted it since), else 0 — see [_migrateDirectAmountIfNeeded].
+  int get _migratedAmountStillIncluded {
+    final migrated = _migratedItem;
+    if (migrated == null) return 0;
+    return _breakdownItems.any((i) => identical(i, migrated)) ? migrated.amount : 0;
+  }
+
+  /// Folds today's existing un-categorized direct-entry progress into the
+  /// breakdown list as a single editable item, the moment the user switches
+  /// into breakdown mode — runs at most once per sheet session. Skipped when
+  /// [_existingBreakdownEntries] already has data, since in that case
+  /// today's total is already (at least partly) categorized and guessing
+  /// would risk double-counting instead of filling a real gap.
+  void _migrateDirectAmountIfNeeded() {
+    if (_migratedItem != null) return;
+    if (_existingBreakdownEntries.isNotEmpty) return;
+    final amount = widget.item.progressValue;
+    if (amount <= 0) return;
+    final lang = ref.read(appLanguageProvider);
+    final draft = SpendingBreakdownDraft(
+      category: SpendingBreakdownCategory.dailyNeeds,
+      label: lang == AppLang.id ? 'Input sebelumnya (catat langsung)' : 'Previous direct entry',
+      amount: amount,
+    );
+    _migratedItem = draft;
+    _breakdownItems.add(draft);
+  }
 
   /// True once there's any breakdown data at all — added this session or
   /// already persisted for the day — used to lock the entry mode to
@@ -267,7 +306,10 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
             else
               _EntryModeToggle(
                 useBreakdown: _useBreakdownMode,
-                onChanged: (v) => setState(() => _useBreakdownMode = v),
+                onChanged: (v) => setState(() {
+                  _useBreakdownMode = v;
+                  if (v) _migrateDirectAmountIfNeeded();
+                }),
               ),
           ],
           const SizedBox(height: 20),
@@ -357,7 +399,15 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
                       ? () => Navigator.of(context).pop(
                             _isBreakdownEntry
                                 ? QuickProgressResult(
-                                    value: widget.item.progressValue + _breakdownTotal,
+                                    // Subtract back out the direct-entry
+                                    // amount that got folded into
+                                    // `_breakdownItems` (see
+                                    // `_migrateDirectAmountIfNeeded`) — it's
+                                    // now counted via `_breakdownTotal`
+                                    // instead, so adding both would double it.
+                                    value: widget.item.progressValue -
+                                        _migratedAmountStillIncluded +
+                                        _breakdownTotal,
                                     breakdownItems: _breakdownItems,
                                   )
                                 : QuickProgressResult(value: _value, breakdownItems: const []),
