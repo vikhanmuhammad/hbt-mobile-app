@@ -203,6 +203,21 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
 
   late final PageController _controller = PageController(initialPage: _pageForDate(widget.selectedDate));
 
+  // Guards against a feedback loop: `PageView.onPageChanged` fires for
+  // every intermediate page a driven `animateToPage` animation passes
+  // through, not just its destination (worse the farther the jump — e.g.
+  // `_TodayResync` catching up a date left stale for weeks). Left
+  // unguarded, each intermediate callback wrote straight back into
+  // `selectedHomeDateProvider`, which re-entered `didUpdateWidget` mid-
+  // animation and kicked off a fresh `animateToPage` from wherever the
+  // controller currently was — a self-sustaining chase that made the
+  // date (and the whole page) spiral further and further before ever
+  // settling (observed as a runaway backward scroll on a Xiaomi device).
+  // While this flag is set, we already know the destination (it's
+  // `widget.selectedDate`, which is what triggered the animation) so
+  // there's nothing new to report back.
+  bool _isAnimatingProgrammatically = false;
+
   int _pageForDate(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
     return day.difference(_epoch).inDays;
@@ -221,11 +236,14 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
     // to animate, PageView already did it natively. Only DateStrip taps,
     // the month-nav arrows, and "Today" reach this branch.
     if ((_controller.page ?? targetPage.toDouble()).round() == targetPage) return;
-    _controller.animateToPage(
-      targetPage,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-    );
+    _isAnimatingProgrammatically = true;
+    _controller
+        .animateToPage(
+          targetPage,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(() => _isAnimatingProgrammatically = false);
   }
 
   @override
@@ -240,7 +258,10 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
       controller: _controller,
       itemCount: _pageCount,
       physics: widget.enabled ? const PageScrollPhysics() : const NeverScrollableScrollPhysics(),
-      onPageChanged: (page) => widget.onDateChanged(_dateForPage(page)),
+      onPageChanged: (page) {
+        if (_isAnimatingProgrammatically) return;
+        widget.onDateChanged(_dateForPage(page));
+      },
       itemBuilder: (context, index) => widget.pageBuilder(_dateForPage(index)),
     );
   }
@@ -780,6 +801,7 @@ class _HabitList extends ConsumerWidget {
     // Finance screen until some unrelated action (e.g. changing day)
     // happened to trigger a rebuild.
     ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
   }
 }
 

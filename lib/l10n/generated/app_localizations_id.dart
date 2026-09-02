@@ -587,7 +587,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get communityTitle => 'Community';
 
   @override
-  String get communityCreateGroup => '+ Buat Grup';
+  String get communityCreateGroup => 'Buat Grup';
 
   @override
   String get communityJoinViaCode => 'Gabung via Kode';

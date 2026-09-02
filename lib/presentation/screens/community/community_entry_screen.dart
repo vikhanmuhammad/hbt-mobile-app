@@ -75,9 +75,10 @@ class _CommunityPreviewMock extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton(
+                    child: FilledButton.icon(
                       onPressed: null,
-                      child: Text(AppLocalizations.of(context)!.communityCreateGroup),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(AppLocalizations.of(context)!.communityCreateGroup),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -240,11 +241,18 @@ class _GroupListView extends ConsumerWidget {
                     Expanded(
                       child: SizedBox(
                         height: 52,
-                        child: ElevatedButton(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            // Poppins' generous ascent leaves the glyphs
+                            // sitting low in their line box — nudge the
+                            // padding to actually land the label on center.
+                            padding: const EdgeInsets.fromLTRB(16, 13, 16, 19),
+                          ),
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
                           ),
-                          child: Text(l10n.communityCreateGroup),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text(l10n.communityCreateGroup),
                         ),
                       ),
                     ),

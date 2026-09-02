@@ -64,6 +64,16 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final summaryAsync = ref.watch(
       financeSummaryForPeriodProvider(period, anchor),
     );
+    // "Total Saved" must always read as the running saved-so-far since the
+    // budget was set — from whichever day the budget habit started through
+    // today (clamped, never projected past today) — regardless of which
+    // Daily/Weekly/Monthly tab is active. Switching tabs re-slices
+    // totalExpense/totalBudget to a narrower window, which made "Total
+    // Saved" swing wildly instead of staying pinned to today's cumulative.
+    // Only navigating to a different month resets it.
+    final monthlySavedAsync = ref.watch(
+      financeMonthToDateSummaryProvider(DateTime(anchor.year, anchor.month)),
+    );
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     // Kategori Save Money cuma boleh 1 habit aktif — dicek di sini supaya
@@ -165,10 +175,15 @@ class FinanceSummaryScreen extends ConsumerWidget {
               ),
               data: (summary) {
                 if (!summary.hasData) return const _EmptyFinance();
+                // Falls back to the period summary's own totalSaved while
+                // the month summary is (re)loading, so the chip doesn't
+                // blank out momentarily on tab/anchor changes.
+                final totalSaved =
+                    monthlySavedAsync.value?.totalSaved ?? summary.totalSaved;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _TotalsSection(summary: summary),
+                    _TotalsSection(summary: summary, totalSaved: totalSaved),
                     if (summary.categoryBreakdown.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       SpendingDistributionPieChart(
@@ -282,6 +297,7 @@ class _TodayProgressCard extends ConsumerWidget {
       ref.invalidate(daySummaryProvider);
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeSummaryForPeriodProvider);
+      ref.invalidate(financeMonthToDateSummaryProvider);
       ref.invalidate(habitsWithProgressForDateProvider(item.date));
       unawaited(syncCommunityHabit(ref, item.habit.id, item.date));
     } catch (e) {
@@ -444,15 +460,21 @@ class _EmptyFinance extends StatelessWidget {
 }
 
 class _TotalsSection extends StatelessWidget {
-  const _TotalsSection({required this.summary});
+  const _TotalsSection({required this.summary, required this.totalSaved});
 
   final FinanceSummary summary;
+
+  /// Calendar month-to-date saved (budget minus expense from the 1st
+  /// through today) — always month-scoped regardless of the active
+  /// Daily/Weekly/Monthly tab. See the call site for why this isn't just
+  /// `summary.totalSaved`.
+  final int totalSaved;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final saved = summary.totalSaved;
+    final saved = totalSaved;
     final isOverBudget = saved < 0;
     final hasBudget = summary.totalBudget > 0;
 

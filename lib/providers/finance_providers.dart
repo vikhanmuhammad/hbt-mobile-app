@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../domain/date_utils.dart';
 import '../domain/models/finance_summary.dart';
 import 'core_providers.dart';
 import 'ui_state_providers.dart';
@@ -18,6 +19,29 @@ Future<FinanceSummary> financeSummary(Ref ref, DateTime monthAnchor) {
   return ref
       .watch(financeRepositoryProvider)
       .computeSummary(firstDay, lastDay, excludeHabitIds: excludeHabitIds);
+}
+
+/// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+/// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+/// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+/// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+/// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+/// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+/// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+/// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+/// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+/// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+@riverpod
+Future<FinanceSummary> financeMonthToDateSummary(Ref ref, DateTime monthAnchor) {
+  final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
+  final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
+  final now = today();
+  var end = now.isBefore(lastDay) ? now : lastDay;
+  if (end.isBefore(firstDay)) end = firstDay;
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  return ref
+      .watch(financeRepositoryProvider)
+      .computeSummary(firstDay, end, excludeHabitIds: excludeHabitIds);
 }
 
 /// Start/end (inclusive) for a [FinancePeriod] anchored at [anchor] — Monday

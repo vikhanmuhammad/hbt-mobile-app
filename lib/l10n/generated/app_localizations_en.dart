@@ -584,7 +584,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get communityTitle => 'Community';
 
   @override
-  String get communityCreateGroup => '+ Create Group';
+  String get communityCreateGroup => 'Create Group';
 
   @override
   String get communityJoinViaCode => 'Join via Code';

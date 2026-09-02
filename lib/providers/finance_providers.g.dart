@@ -92,6 +92,137 @@ final class FinanceSummaryFamily extends $Family
   String toString() => r'financeSummaryProvider';
 }
 
+/// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+/// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+/// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+/// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+/// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+/// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+/// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+/// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+/// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+/// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+
+@ProviderFor(financeMonthToDateSummary)
+final financeMonthToDateSummaryProvider = FinanceMonthToDateSummaryFamily._();
+
+/// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+/// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+/// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+/// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+/// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+/// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+/// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+/// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+/// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+/// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+
+final class FinanceMonthToDateSummaryProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<FinanceSummary>,
+          FinanceSummary,
+          FutureOr<FinanceSummary>
+        >
+    with $FutureModifier<FinanceSummary>, $FutureProvider<FinanceSummary> {
+  /// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+  /// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+  /// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+  /// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+  /// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+  /// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+  /// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+  /// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+  /// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+  /// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+  FinanceMonthToDateSummaryProvider._({
+    required FinanceMonthToDateSummaryFamily super.from,
+    required DateTime super.argument,
+  }) : super(
+         retry: null,
+         name: r'financeMonthToDateSummaryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$financeMonthToDateSummaryHash();
+
+  @override
+  String toString() {
+    return r'financeMonthToDateSummaryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<FinanceSummary> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<FinanceSummary> create(Ref ref) {
+    final argument = this.argument as DateTime;
+    return financeMonthToDateSummary(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is FinanceMonthToDateSummaryProvider &&
+        other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$financeMonthToDateSummaryHash() =>
+    r'0777ffcd0e43fc574bebdb24595cd8325eb86e2f';
+
+/// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+/// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+/// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+/// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+/// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+/// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+/// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+/// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+/// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+/// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+
+final class FinanceMonthToDateSummaryFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<FinanceSummary>, DateTime> {
+  FinanceMonthToDateSummaryFamily._()
+    : super(
+        retry: null,
+        name: r'financeMonthToDateSummaryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+  /// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+  /// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+  /// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+  /// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+  /// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+  /// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+  /// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+  /// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+  /// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+
+  FinanceMonthToDateSummaryProvider call(DateTime monthAnchor) =>
+      FinanceMonthToDateSummaryProvider._(argument: monthAnchor, from: this);
+
+  @override
+  String toString() => r'financeMonthToDateSummaryProvider';
+}
+
 /// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
 /// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
 /// Monthly (`selectedFinancePeriodProvider`).

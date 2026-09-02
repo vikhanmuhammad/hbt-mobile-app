@@ -278,6 +278,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
     ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
 
     HabitTemplate? matchedTemplate;
     _createdHabitIds.forEach((template, id) {
@@ -1455,46 +1456,90 @@ class _CommunityScreenMockState extends State<_CommunityScreenMock> {
       (rank: 3, name: 'Sam', value: 7, streak: 3, isMe: false),
     ];
     return _PhoneFrame(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 28, 18, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                HabitIcon(
-                  icon: 'people-group',
-                  size: 14,
-                  color: theme.colorScheme.primary,
+                Row(
+                  children: [
+                    HabitIcon(
+                      icon: 'people-group',
+                      size: 14,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Study Group',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(height: 4),
                 Text(
-                  'Study Group',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
+                  'Reading — Weekly Leaderboard',
+                  style: theme.textTheme.bodySmall,
                 ),
+                const SizedBox(height: 18),
+                for (final m in members)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _MockLeaderboardTile(
+                      rank: m.rank,
+                      name: m.name,
+                      isMe: m.isMe,
+                      value: m.value,
+                      streak: m.streak,
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Reading — Weekly Leaderboard',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 18),
-            for (final m in members)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _MockLeaderboardTile(
-                  rank: m.rank,
-                  name: m.name,
-                  isMe: m.isMe,
-                  value: m.value,
-                  streak: m.streak,
-                ),
+          ),
+          Positioned(
+            top: 8,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
               ),
-          ],
-        ),
+              decoration: BoxDecoration(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 13,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'PRO',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

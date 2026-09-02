@@ -1127,7 +1127,7 @@ abstract class AppLocalizations {
   /// No description provided for @communityCreateGroup.
   ///
   /// In en, this message translates to:
-  /// **'+ Create Group'**
+  /// **'Create Group'**
   String get communityCreateGroup;
 
   /// No description provided for @communityJoinViaCode.

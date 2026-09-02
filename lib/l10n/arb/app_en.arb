@@ -246,7 +246,7 @@
   "communityProBenefit2": "Compete on real-time leaderboards to stay motivated together",
   "communityProBenefit3": "Group chat to cheer each other on and stay accountable",
   "communityTitle": "Community",
-  "communityCreateGroup": "+ Create Group",
+  "communityCreateGroup": "Create Group",
   "communityJoinViaCode": "Join via Code",
   "communityMembersCount": "{count} members",
   "@communityMembersCount": {

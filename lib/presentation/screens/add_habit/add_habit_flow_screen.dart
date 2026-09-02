@@ -2090,6 +2090,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
     ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
@@ -2119,6 +2120,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.invalidate(daySummaryProvider);
     ref.invalidate(financeSummaryProvider);
     ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
   }
 }
 

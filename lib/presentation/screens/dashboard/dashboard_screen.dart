@@ -623,6 +623,7 @@ class _DayDetailSheet extends ConsumerWidget {
       ref.invalidate(daySummaryProvider);
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeSummaryForPeriodProvider);
+      ref.invalidate(financeMonthToDateSummaryProvider);
       unawaited(syncCommunityHabit(ref, item.habit.id, date));
     } catch (e) {
       if (context.mounted) {
