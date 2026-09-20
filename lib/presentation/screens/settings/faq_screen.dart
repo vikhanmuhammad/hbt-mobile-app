@@ -17,6 +17,10 @@ class FaqScreen extends StatelessWidget {
       (q: l10n.faqQ2, a: l10n.faqA2),
       (q: l10n.faqQ3, a: l10n.faqA3),
       (q: l10n.faqQ4, a: l10n.faqA4),
+      (q: l10n.faqQ5, a: l10n.faqA5),
+      (q: l10n.faqQ6, a: l10n.faqA6),
+      (q: l10n.faqQ7, a: l10n.faqA7),
+      (q: l10n.faqQ8, a: l10n.faqA8),
     ];
     return Scaffold(
       appBar: AppBar(title: Text(l10n.faqTitle)),

@@ -14,6 +14,7 @@ import 'l10n/generated/app_localizations.dart';
 import 'presentation/screens/onboarding/onboarding_flow.dart';
 import 'presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'presentation/screens/splash/motion_splash_screen.dart';
+import 'presentation/theme/app_palettes.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/widgets/app_logo.dart';
 import 'presentation/widgets/pro_upgrade_celebration.dart';
@@ -380,6 +381,9 @@ class _SplashScreenState extends State<_SplashScreen> with TickerProviderStateMi
                     animation: _progressController,
                     builder: (context, _) => LinearProgressIndicator(
                       value: _progressController.value,
+                      // Warna disamakan tetap dengan logo (kuning), tidak
+                      // ikut theme personalize agar konsisten (feedback 6, slide 5).
+                      color: AppPalettes.sunnyGold.accent,
                     ),
                   ),
                 ),

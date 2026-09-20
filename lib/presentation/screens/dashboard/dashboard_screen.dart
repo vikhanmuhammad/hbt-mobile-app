@@ -897,18 +897,32 @@ class _HabitBreakdown extends ConsumerWidget {
   }
 }
 
-class _MonthlyTrend extends ConsumerWidget {
+class _MonthlyTrend extends ConsumerStatefulWidget {
   const _MonthlyTrend({required this.summary});
 
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MonthlyTrend> createState() => _MonthlyTrendState();
+}
+
+class _MonthlyTrendState extends ConsumerState<_MonthlyTrend> {
+  static const _chartHeight = 140.0;
+  static const _axisWidth = 40.0;
+
+  /// Index (into the currently displayed `points`) of the bar last tapped,
+  /// showing its exact percentage — before this, a user had no way to read
+  /// an exact value off the chart, only eyeball it against the axis
+  /// (feedback 6, slide 15).
+  int? _selectedIndex;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lang = ref.watch(appLanguageProvider);
-    final points = summary.monthlyStats.length > 6
-        ? summary.monthlyStats.sublist(summary.monthlyStats.length - 6)
-        : summary.monthlyStats;
+    final points = widget.summary.monthlyStats.length > 6
+        ? widget.summary.monthlyStats.sublist(widget.summary.monthlyStats.length - 6)
+        : widget.summary.monthlyStats;
 
     return Card(
       child: Padding(
@@ -921,17 +935,20 @@ class _MonthlyTrend extends ConsumerWidget {
             Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Y-axis: 100/50/0% ticks aligned to the bar area below.
+                  // Y-axis: 100/50/0% ticks, each vertically centered exactly
+                  // on its corresponding gridline (via `_AxisTick`) instead of
+                  // two independently-laid-out columns (labels vs. lines)
+                  // that drifted apart once label/line heights differed —
+                  // and `softWrap: false` so "100%" can no longer wrap its
+                  // "%" onto a second line (feedback 6, slide 14).
                   SizedBox(
-                    width: 32,
-                    height: 140,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    width: _axisWidth,
+                    height: _chartHeight,
+                    child: Stack(
                       children: [
-                        Text('100%', style: theme.textTheme.labelSmall),
-                        Text('50%', style: theme.textTheme.labelSmall),
-                        Text('0%', style: theme.textTheme.labelSmall),
+                        _AxisTick(text: '100%', topFraction: 0, chartHeight: _chartHeight),
+                        _AxisTick(text: '50%', topFraction: 0.5, chartHeight: _chartHeight),
+                        _AxisTick(text: '0%', topFraction: 1, chartHeight: _chartHeight),
                       ],
                     ),
                   ),
@@ -942,7 +959,7 @@ class _MonthlyTrend extends ConsumerWidget {
                         // Gridlines behind the bars at the 0/50/100% ticks so
                         // each bar's height can be read against a scale.
                         SizedBox(
-                          height: 140,
+                          height: _chartHeight,
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: const [
@@ -953,49 +970,66 @@ class _MonthlyTrend extends ConsumerWidget {
                           ),
                         ),
                         SizedBox(
-                          height: 140,
+                          height: _chartHeight,
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              for (final point in points)
+                              for (final (index, point) in points.indexed)
                                 Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Expanded gives this slot a bounded/tight height
-                                        // so FractionallySizedBox has something to size
-                                        // its heightFactor against — a bare Column doesn't
-                                        // bound non-flex children, which crashes it.
-                                        Expanded(
-                                          child: Align(
-                                            alignment: Alignment.bottomCenter,
-                                            child: FractionallySizedBox(
-                                              heightFactor: point.successRate.clamp(
-                                                0.03,
-                                                1,
-                                              ),
-                                              child: ConstrainedBox(
-                                                constraints: const BoxConstraints(
-                                                  maxWidth: 44,
-                                                ),
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    color: theme.colorScheme.primary,
-                                                    borderRadius: const BorderRadius.only(
-                                                      topLeft: Radius.circular(10),
-                                                      topRight: Radius.circular(10),
-                                                      bottomLeft: Radius.circular(4),
-                                                      bottomRight: Radius.circular(4),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => setState(
+                                      () => _selectedIndex = _selectedIndex == index ? null : index,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Expanded gives this slot a bounded/tight height
+                                          // so FractionallySizedBox has something to size
+                                          // its heightFactor against — a bare Column doesn't
+                                          // bound non-flex children, which crashes it.
+                                          Expanded(
+                                            child: Stack(
+                                              clipBehavior: Clip.none,
+                                              alignment: Alignment.bottomCenter,
+                                              children: [
+                                                if (_selectedIndex == index)
+                                                  Positioned(
+                                                    bottom: _chartHeight * point.successRate.clamp(0.03, 1) + 6,
+                                                    child: _PercentBadge(
+                                                      percent: point.successRate,
+                                                      color: theme.colorScheme.primary,
+                                                    ),
+                                                  ),
+                                                FractionallySizedBox(
+                                                  heightFactor: point.successRate.clamp(
+                                                    0.03,
+                                                    1,
+                                                  ),
+                                                  child: ConstrainedBox(
+                                                    constraints: const BoxConstraints(
+                                                      maxWidth: 44,
+                                                    ),
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        color: theme.colorScheme.primary,
+                                                        borderRadius: const BorderRadius.only(
+                                                          topLeft: Radius.circular(10),
+                                                          topRight: Radius.circular(10),
+                                                          bottomLeft: Radius.circular(4),
+                                                          bottomRight: Radius.circular(4),
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1010,7 +1044,7 @@ class _MonthlyTrend extends ConsumerWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                const SizedBox(width: 40),
+                SizedBox(width: _axisWidth),
                 for (final point in points)
                   Expanded(
                     child: Text(
@@ -1022,6 +1056,66 @@ class _MonthlyTrend extends ConsumerWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One Y-axis percentage label, vertically centered exactly on the gridline
+/// at [topFraction] of [chartHeight] — matches where `DashedLine` (laid out
+/// with the same `spaceBetween` 3-tick pattern) actually draws, instead of
+/// each being positioned independently and drifting apart at different text
+/// sizes (feedback 6, slide 14).
+class _AxisTick extends StatelessWidget {
+  const _AxisTick({required this.text, required this.topFraction, required this.chartHeight});
+
+  final String text;
+  final double topFraction;
+  final double chartHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: chartHeight * topFraction,
+      right: 0,
+      left: 0,
+      child: FractionalTranslation(
+        translation: const Offset(0, -0.5),
+        child: Text(
+          text,
+          textAlign: TextAlign.right,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill showing a tapped bar's exact percentage (feedback 6, slide 15)
+/// — floats just above that bar's current height.
+class _PercentBadge extends StatelessWidget {
+  const _PercentBadge({required this.percent, required this.color});
+
+  final double percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '${(percent * 100).round()}%',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

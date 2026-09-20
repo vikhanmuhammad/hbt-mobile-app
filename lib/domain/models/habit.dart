@@ -124,6 +124,26 @@ class Habit {
     return goalDirection == GoalDirection.atMost ? 'Maks. $value' : value;
   }
 
+  /// Konversi goal habit ini (disimpan pada goalPeriod aslinya — Daily,
+  /// Weekly, atau Monthly) menjadi rate per-hari untuk [date] — aturan
+  /// tunggal yang dipakai Finance/Budget Tracker supaya budget yang
+  /// diinput di satu periode ikut menyesuaikan otomatis ke periode lain,
+  /// bukan diam sebagai angka mentah yang sama (feedback 6, slide 18-21):
+  /// Monthly -> Daily = goalValue dibagi jumlah hari di bulan [date];
+  /// Weekly -> Daily = goalValue dibagi 7; Daily sudah berupa rate harian
+  /// (lewat [goalValueFor], termasuk override akhir pekan).
+  double dailyRateFor(DateTime date) {
+    switch (goalPeriod) {
+      case GoalPeriod.daily:
+        return goalValueFor(date).toDouble();
+      case GoalPeriod.weekly:
+        return goalValue / 7;
+      case GoalPeriod.monthly:
+        final daysInMonth = DateTime(date.year, date.month + 1, 0).day;
+        return goalValue / daysInMonth;
+    }
+  }
+
   /// Varian [goalValueLabel] yang menampilkan weekdays & weekend terpisah
   /// kalau [goalValueWeekend] diset (mis. "Maks. Rp50.000 (hari kerja) /
   /// Rp100.000 (akhir pekan)").
@@ -144,7 +164,17 @@ class Habit {
   /// tercapai kalau progress <= goalValue. [date] dipakai untuk resolve
   /// goalValue efektif lewat [goalValueFor] — null berarti pakai [goalValue]
   /// langsung (backward compatible untuk caller yang belum date-aware).
-  bool isAchieved(int progressValue, {DateTime? date}) {
+  /// [hasLog] tells whether [progressValue] actually came from a real log,
+  /// as opposed to just defaulting to 0 because none exists yet. Only
+  /// matters for `atMost` (mis. Budget Tracker): 0 spending trivially
+  /// satisfies "at most limit", which wrongly marks it "achieved" before the
+  /// user has ever touched it for this period (feedback 6, slide 10 & 11 —
+  /// the same bug inflated the checklist checkmark AND the progress ring/
+  /// dashboard, since both fed off this same unconditional comparison).
+  /// `atLeast` is unaffected: 0 progress is already correctly "not achieved"
+  /// whenever goal > 0.
+  bool isAchieved(int progressValue, {DateTime? date, bool hasLog = true}) {
+    if (goalDirection == GoalDirection.atMost && !hasLog) return false;
     final goal = date != null ? goalValueFor(date) : goalValue;
     return goalDirection == GoalDirection.atMost
         ? progressValue <= goal
@@ -156,10 +186,10 @@ class Habit {
   /// tetap tercatat sebagian, bukan cuma dihitung kalau sudah `isAchieved`
   /// penuh. Untuk `atMost` (batas maksimum) tetap biner: progres di bawah
   /// limit tidak punya "porsi" yang natural untuk dihitung parsial.
-  double progressCredit(int progressValue, {DateTime? date}) {
+  double progressCredit(int progressValue, {DateTime? date, bool hasLog = true}) {
     final goal = date != null ? goalValueFor(date) : goalValue;
     if (goalDirection == GoalDirection.atMost || goal <= 0) {
-      return isAchieved(progressValue, date: date) ? 1.0 : 0.0;
+      return isAchieved(progressValue, date: date, hasLog: hasLog) ? 1.0 : 0.0;
     }
     return (progressValue / goal).clamp(0.0, 1.0);
   }

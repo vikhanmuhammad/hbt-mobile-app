@@ -128,10 +128,23 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
     super.dispose();
   }
 
+  /// Website tempat orang yang belum punya app bisa download (feedback 6,
+  /// slide 26/31) — bukan deep link (app tidak kontrol domain ini, jadi
+  /// tidak bisa auto-buka app/auto-join). Klik link ini selalu membuka
+  /// browser ke website tsb; join yang sebenarnya tetap lewat Invite Code
+  /// (lihat `_shareGroupMessage`), yang harus di-input manual user lewat
+  /// alur "Join via Code" di dalam app.
+  static const _downloadLink = 'https://nindaferdailyhabits.com';
+
   /// Join-by-link is a Pro perk (see `showProRequiredDialog` gate below) —
-  /// the link itself just deep-links into the join flow pre-filled with the
-  /// invite code; a free user can still join by typing the code manually.
-  String get _inviteLink => 'https://habittracker.app/join?code=${widget.group.inviteCode}';
+  /// menyertakan link download DAN invite code, supaya penerima yang belum
+  /// punya app tahu ke mana harus download, lalu bisa join manual pakai
+  /// code begitu app terpasang.
+  String _shareGroupMessage(bool indonesian) => indonesian
+      ? 'Yuk gabung grup "${widget.group.name}" di Daily Habits! '
+          'Belum punya app-nya? Download di $_downloadLink lalu masukkan kode undangan: ${widget.group.inviteCode}'
+      : 'Join my "${widget.group.name}" group on Daily Habits! '
+          "Don't have the app yet? Download it at $_downloadLink then enter invite code: ${widget.group.inviteCode}";
 
   Future<void> _shareGroup() async {
     final lang = ref.read(appLanguageProvider);
@@ -174,7 +187,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
         return;
       }
       await SharePlus.instance.share(
-        ShareParams(text: _inviteLink, subject: widget.group.name),
+        ShareParams(text: _shareGroupMessage(indonesian), subject: widget.group.name),
       );
       return;
     }
@@ -675,7 +688,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
         unawaited(backfillCommunityHabitLink(
           syncService: syncService,
           uid: user.uid,
-          displayName: user.displayName ?? user.email ?? 'User',
+          displayName: ref.read(currentDisplayNameProvider),
           habitId: widget.habit.id,
           linkId: linkId,
           groupId: widget.groupId,
@@ -1329,7 +1342,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
         unawaited(backfillCommunityHabitLink(
           syncService: syncService,
           uid: user.uid,
-          displayName: user.displayName ?? user.email ?? 'User',
+          displayName: ref.read(currentDisplayNameProvider),
           habitId: existingMatch.id,
           linkId: linkId,
           groupId: groupHabit.groupId,
@@ -1475,7 +1488,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       unawaited(backfillCommunityHabitLink(
         syncService: syncService,
         uid: user.uid,
-        displayName: user.displayName ?? user.email ?? 'User',
+        displayName: ref.read(currentDisplayNameProvider),
         habitId: habitId,
         linkId: linkId,
         groupId: groupHabit.groupId,

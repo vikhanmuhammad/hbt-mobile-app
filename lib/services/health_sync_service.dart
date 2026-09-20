@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
 /// Wraps the `health` package (HealthKit on iOS, Health Connect on Android)
@@ -35,7 +36,14 @@ class HealthSyncService {
         permissions: [HealthDataAccess.READ_WRITE],
       );
       return granted;
-    } catch (_) {
+    } catch (e, st) {
+      // Was a bare `catch (_) { return false; }` — every failure was
+      // completely silent, which is why 3 devices could all "just not work"
+      // with zero error trail to debug from (feedback 6, slide 28).
+      // `debugPrint` only, not a crash reporter call: this runs on every
+      // permission denial too (a normal, expected outcome), not just real
+      // errors.
+      debugPrint('HealthSyncService.requestPermissions failed: $e\n$st');
       return false;
     }
   }
@@ -47,7 +55,8 @@ class HealthSyncService {
       final midnight = DateTime(now.year, now.month, now.day);
       final steps = await _health.getTotalStepsInInterval(midnight, now);
       return steps;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('HealthSyncService.getStepsToday failed: $e\n$st');
       return null;
     }
   }
@@ -65,7 +74,8 @@ class HealthSyncService {
         startTime: midnight,
         endTime: now,
       );
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('HealthSyncService.writeStepsToday failed: $e\n$st');
       return false;
     }
   }

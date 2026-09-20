@@ -239,7 +239,7 @@ final class HabitsWithProgressForDateProvider
 }
 
 String _$habitsWithProgressForDateHash() =>
-    r'e2943f025ea8a88d4e6abea38fbba1172d133895';
+    r'd4959df7480483886859f7645378e51d0007ded9';
 
 /// Semua habit aktif ditagih pada [date] (flat, lintas goal phrase), dengan
 /// progress-nya. Dipakai di Beranda (flat list, CLAUDE.md v3 §6.1) dan

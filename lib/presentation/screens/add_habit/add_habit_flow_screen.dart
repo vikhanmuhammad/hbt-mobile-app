@@ -1215,19 +1215,25 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
             setState(() => _currency = v);
           },
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(l10n.budgetTrackerDifferentWeekendGoal, style: theme.textTheme.bodyMedium),
-            ),
-            Switch(
-              value: _customWeekendGoal,
-              onChanged: (v) => setState(() => _customWeekendGoal = v),
-            ),
-          ],
-        ),
+        // "Different Goal for Weekends" cuma masuk akal untuk Goal Period
+        // Daily (target per-hari) — untuk Weekly/Monthly, goal-nya sudah
+        // satu angka untuk seluruh periode, jadi opsi ini tidak seharusnya
+        // muncul (feedback 6, slide 17).
+        if (_goalPeriod == GoalPeriod.daily) ...[
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(l10n.budgetTrackerDifferentWeekendGoal, style: theme.textTheme.bodyMedium),
+              ),
+              Switch(
+                value: _customWeekendGoal,
+                onChanged: (v) => setState(() => _customWeekendGoal = v),
+              ),
+            ],
+          ),
+        ],
         const SizedBox(height: 16),
         if (!_customWeekendGoal)
           Column(

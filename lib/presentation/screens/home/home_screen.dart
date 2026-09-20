@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -257,6 +258,14 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
     return PageView.builder(
       controller: _controller,
       itemCount: _pageCount,
+      // `DragStartBehavior.down` (rather than the default `.start`) tracks
+      // the drag from the initial touch-down point instead of from the
+      // first detected movement — on some devices (reported on Samsung,
+      // feedback 6 slide 8) the default behavior combined with the vertical
+      // habit list nested inside each page made the gesture arena treat the
+      // first swipe as ambiguous, requiring a second swipe to actually
+      // change date. This makes the very first movement decisive.
+      dragStartBehavior: DragStartBehavior.down,
       physics: widget.enabled ? const PageScrollPhysics() : const NeverScrollableScrollPhysics(),
       onPageChanged: (page) {
         if (_isAnimatingProgrammatically) return;

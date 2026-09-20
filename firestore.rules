@@ -29,6 +29,18 @@ service cloud.firestore {
         (memberData.photoBase64 is string && memberData.photoBase64.size() < 20000);
     }
 
+    // `displayName` is the member's own profile name, sourced from the app
+    // profile they set during onboarding. Capped so a client bug or tampered
+    // request can't bloat the group doc every member's listener re-downloads,
+    // and required non-empty so a member can't blank themselves out of every
+    // roster/leaderboard row.
+    function validDisplayName(memberData) {
+      return !('displayName' in memberData) ||
+        (memberData.displayName is string &&
+         memberData.displayName.size() > 0 &&
+         memberData.displayName.size() <= 100);
+    }
+
     // Lookup kode invite -> groupId (dokumen `id` = kode). Hanya bisa dibaca
     // per-ID (harus tahu kode persisnya) — tidak ada `list` supaya tidak jadi
     // direktori grup publik (Group tetap private & invite-based).
@@ -92,11 +104,14 @@ service cloud.firestore {
          !(request.auth.uid in request.resource.data.members) &&
          !(request.auth.uid in request.resource.data.memberUids)) ||
         // Self-update: any current member (admin or not) may update ONLY
-        // the `photoBase64` field of their own entry — used when a user
-        // changes their profile photo in Settings and it's fanned out to
-        // every group they belong to. Size-capped since photoBase64 is an
-        // inline base64 thumbnail (no Firebase Storage on the Spark plan),
-        // not a validated-elsewhere uploaded file.
+        // the `photoBase64` and/or `displayName` fields of their own entry —
+        // used when a user changes their profile photo or name in Settings
+        // and it's fanned out to every group they belong to (member data is
+        // denormalized per-group, so there's no central profile doc to
+        // update instead). Both are size-capped since they're inline data
+        // (no Firebase Storage on the Spark plan), not validated-elsewhere
+        // uploaded files. Role/joinedAt stay out of this list so a member
+        // still can't promote themselves.
         (isSignedIn() &&
          request.auth.uid in resource.data.members &&
          request.resource.data.diff(resource.data).affectedKeys()
@@ -105,8 +120,9 @@ service cloud.firestore {
            .affectedKeys().hasOnly([request.auth.uid]) &&
          request.resource.data.members[request.auth.uid]
            .diff(resource.data.members[request.auth.uid]).affectedKeys()
-           .hasOnly(['photoBase64']) &&
-         validPhotoBase64(request.resource.data.members[request.auth.uid]));
+           .hasOnly(['photoBase64', 'displayName']) &&
+         validPhotoBase64(request.resource.data.members[request.auth.uid]) &&
+         validDisplayName(request.resource.data.members[request.auth.uid]));
       allow delete: if isAdminOfGroup(groupId);
 
       match /groupHabits/{habitId} {

@@ -5,10 +5,21 @@ import '../../domain/models/user_profile.dart';
 import '../database/app_database.dart' as db;
 import 'mappers.dart';
 
+/// Batas atas umur yang boleh disimpan (feedback 6, slide 3).
+const int maxUserAge = 99;
+
 class ProfileRepository {
   ProfileRepository(this._db);
 
   final db.AppDatabase _db;
+
+  /// Pengaman terakhir untuk batas umur. Field di UI (onboarding & Settings >
+  /// Profile) sudah dibatasi 2 digit, tapi `inputFormatters` cuma menyaring
+  /// ketikan user — tidak menyentuh nilai yang sudah terlanjur tersimpan
+  /// sebelum batas itu ada, yang akan dimuat apa adanya ke form lalu
+  /// tersimpan ulang. Menjepitnya di sini membuat batasnya berlaku untuk
+  /// semua jalur tulis, sekarang maupun nanti.
+  int? _clampAge(int? age) => age == null || age <= maxUserAge ? age : maxUserAge;
 
   Stream<UserProfile?> watchProfile() {
     return _db.profileDao
@@ -33,7 +44,7 @@ class ProfileRepository {
       await _db.profileDao.insertProfile(
         db.UserProfileCompanion.insert(
           name: name,
-          age: Value(age),
+          age: Value(_clampAge(age)),
           photoPath: Value(photoPath),
         ),
       );
@@ -54,7 +65,7 @@ class ProfileRepository {
       db.UserProfileCompanion(
         id: Value(profile.id),
         name: Value(profile.name),
-        age: Value(profile.age),
+        age: Value(_clampAge(profile.age)),
         photoPath: Value(profile.photoPath),
         themeKey: Value(profile.themeKey),
         createdAt: Value(profile.createdAt),

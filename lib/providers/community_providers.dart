@@ -21,6 +21,7 @@ import '../services/community_sync_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/purchase_service.dart';
 import 'core_providers.dart';
+import 'settings_providers.dart';
 
 part 'community_providers.g.dart';
 
@@ -38,8 +39,16 @@ Stream<User?> authState(Ref ref) =>
 @riverpod
 String? currentUid(Ref ref) => ref.watch(authStateProvider).value?.uid;
 
+/// Nama yang dipakai di Community — diambil dari profil app (yang di-input
+/// user sendiri saat intro/onboarding), BUKAN dari nama akun Google/email
+/// sign-in, supaya konsisten dengan identitas yang user kenal di dalam app
+/// (feedback 6, slide 24). Auth displayName/email cuma jadi fallback kalau
+/// profil lokal belum ada (mis. race kecil tepat setelah sign-in pertama
+/// kali, sebelum onboarding selesai).
 @riverpod
 String currentDisplayName(Ref ref) {
+  final profile = ref.watch(userProfileStreamProvider).value;
+  if (profile != null && profile.name.trim().isNotEmpty) return profile.name;
   final user = ref.watch(authStateProvider).value;
   return user?.displayName ?? user?.email ?? 'User';
 }
@@ -171,7 +180,10 @@ Future<void> syncCommunityHabit(WidgetRef ref, int habitId, DateTime date) async
           habitId: habitId,
           date: date,
           uid: user.uid,
-          displayName: user.displayName ?? user.email ?? 'User',
+          // Nama profil app, bukan nama akun Google/email (feedback 6,
+          // slide 24) — baris leaderboard ditulis ulang tiap sync, jadi
+          // baris lama ikut terkoreksi sendiri begitu ada progress baru.
+          displayName: ref.read(currentDisplayNameProvider),
           avatarIcon: null,
         );
   } catch (_) {
@@ -258,30 +270,41 @@ Future<int> restoreCommunityHabitBackup({
 }
 
 // ---------------------------------------------------------------------
-// Photo auto-sync
+// Profile (name + photo) auto-sync
 // ---------------------------------------------------------------------
 
-/// Fans the local profile photo out to every Community group the user
-/// belongs to the first time they open Community in this app session —
-/// covers a fresh install/login where the user already set a profile photo
-/// (in onboarding or Settings) before ever joining/creating a group, so
-/// their photo shows up in Community without needing a manual re-save in
-/// Settings. `keepAlive: true` so it runs once per session rather than on
-/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
-/// itself a no-op if the user isn't in any groups yet.
+/// Fans the local profile name and photo out to every Community group the
+/// user belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set those (in
+/// onboarding or Settings) before ever joining/creating a group, so they
+/// show up in Community without needing a manual re-save in Settings.
+///
+/// The name pass also repairs groups joined back when the name was taken
+/// from the Google account/email instead of the app profile (feedback 6,
+/// slide 24) — `members.{uid}.displayName` is written once at create/join
+/// time, so without this those groups would keep the old name forever.
+///
+/// `keepAlive: true` so it runs once per session rather than on every
+/// re-entry into the Community tab. Both repository calls are themselves
+/// no-ops if the user isn't in any groups yet (and the name one also skips
+/// groups that already carry the right name).
 @Riverpod(keepAlive: true)
 Future<void> profilePhotoCommunitySync(Ref ref) async {
   final uid = ref.watch(currentUidProvider);
   if (uid == null) return;
   final profile = await ref.watch(profileRepositoryProvider).getProfile();
+  final repo = ref.watch(communityRepositoryProvider);
+
+  final name = profile?.name.trim();
+  if (name != null && name.isNotEmpty) {
+    await repo.updateMyNameAcrossGroups(uid: uid, displayName: name);
+  }
+
   final photoPath = profile?.photoPath;
   if (photoPath == null) return;
   final base64 = await AvatarImageService().thumbnailBase64FromFile(photoPath);
   if (base64 == null) return;
-  await ref.watch(communityRepositoryProvider).updateMyPhotoAcrossGroups(
-        uid: uid,
-        photoBase64: base64,
-      );
+  await repo.updateMyPhotoAcrossGroups(uid: uid, photoBase64: base64);
 }
 
 // ---------------------------------------------------------------------

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
+import '../../domain/models/enums.dart';
 import '../../domain/models/habit_with_progress.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/settings_providers.dart';
@@ -58,9 +59,18 @@ class HabitProgressCard extends ConsumerWidget {
     final lang = ref.watch(appLanguageProvider);
     final done = item.isDone;
     final ratio = _ratio;
+    // Budget Tracker (`atMost` direction, mis. batas pengeluaran) punya
+    // sistem yang beda dari checklist habit biasa: "tercapai" cuma berarti
+    // "masih di bawah limit", bukan "sudah dikerjakan penuh". Menyamakan
+    // tampilannya (fill solid + centang) dengan habit biasa jadi
+    // membingungkan (feedback 6, slide 10), jadi Budget Tracker selalu pakai
+    // fill proporsional (bukan solid saat "done") dan ikon dompet, bukan
+    // centang.
+    final isBudgetTracker = item.habit.goalDirection == GoalDirection.atMost;
+    final showWhiteText = done && !isBudgetTracker;
 
     final baseColor = theme.cardColor;
-    final fillColor = done
+    final fillColor = done && !isBudgetTracker
         ? accentColor.withValues(alpha: 0.9)
         : Color.lerp(baseColor, accentColor, 0.16 + ratio * 0.2)!;
 
@@ -71,7 +81,7 @@ class HabitProgressCard extends ConsumerWidget {
         onTap: isEditMode ? onEdit : onTap,
         child: Stack(
           children: [
-            if (!done)
+            if (!done || isBudgetTracker)
               Positioned.fill(
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
@@ -105,7 +115,7 @@ class HabitProgressCard extends ConsumerWidget {
                         Text(
                           item.habit.displayName(lang),
                           style: theme.textTheme.titleSmall?.copyWith(
-                            color: done ? Colors.white : null,
+                            color: showWhiteText ? Colors.white : null,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -116,7 +126,7 @@ class HabitProgressCard extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: done ? Colors.white.withValues(alpha: 0.85) : null,
+                            color: showWhiteText ? Colors.white.withValues(alpha: 0.85) : null,
                           ),
                         ),
                       ],
@@ -133,7 +143,13 @@ class HabitProgressCard extends ConsumerWidget {
                       icon: const Icon(Icons.delete_outline_rounded, size: 20),
                       style: IconButton.styleFrom(backgroundColor: baseColor),
                     ),
-                  ] else
+                  ] else if (isBudgetTracker)
+                    Icon(
+                      done ? Icons.savings_rounded : Icons.savings_outlined,
+                      color: done ? accentColor : theme.dividerColor,
+                      size: 26,
+                    )
+                  else
                     Icon(
                       done ? Icons.check_circle_rounded : Icons.circle_outlined,
                       color: done ? Colors.white : theme.dividerColor,

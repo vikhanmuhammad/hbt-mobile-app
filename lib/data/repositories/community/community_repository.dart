@@ -166,6 +166,34 @@ class CommunityRepository {
     await batch.commit();
   }
 
+  /// Fans the local profile name out to every group the user belongs to —
+  /// same denormalized-per-group reasoning as [updateMyPhotoAcrossGroups].
+  /// Needed because `members.{uid}.displayName` is written once at
+  /// create/join time: without this, a member who joined before the app
+  /// started sourcing the name from the local profile (feedback 6, slide 24)
+  /// would keep showing their Google account/email name forever, and a later
+  /// rename in Settings would never reach Community either.
+  Future<void> updateMyNameAcrossGroups({
+    required String uid,
+    required String displayName,
+  }) async {
+    final mine = await _groups.where('memberUids', arrayContains: uid).get();
+    if (mine.docs.isEmpty) return;
+    final batch = _firestore.batch();
+    var changed = 0;
+    for (final doc in mine.docs) {
+      final members = doc.data()['members'] as Map<String, dynamic>?;
+      final current = (members?[uid] as Map<String, dynamic>?)?['displayName'];
+      // Skip groups already carrying the right name so a session-start
+      // repair pass doesn't burn a write on every group every launch.
+      if (current == displayName) continue;
+      batch.update(doc.reference, {'members.$uid.displayName': displayName});
+      changed++;
+    }
+    if (changed == 0) return;
+    await batch.commit();
+  }
+
   Future<void> setMemberRole({
     required String groupId,
     required String targetUid,

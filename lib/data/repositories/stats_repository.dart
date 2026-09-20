@@ -97,8 +97,9 @@ class StatsRepository {
         if (!isHabitActiveOn(habit, day)) continue;
 
         final periodStart = periodBoundsFor(habit.goalPeriod, day).$1;
-        final sum = periodProgress[_periodKey(habit.id, periodStart)] ?? 0;
-        final credit = habit.progressCredit(sum);
+        final periodKey = _periodKey(habit.id, periodStart);
+        final sum = periodProgress[periodKey] ?? 0;
+        final credit = habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
 
         totalLogs++;
         doneLogs += credit;
@@ -202,8 +203,9 @@ class StatsRepository {
         if (!isHabitActiveOn(habit, day)) continue;
         total++;
         final periodStart = periodBoundsFor(habit.goalPeriod, day).$1;
-        final sum = periodProgress[_periodKey(habit.id, periodStart)] ?? 0;
-        done += habit.progressCredit(sum);
+        final periodKey = _periodKey(habit.id, periodStart);
+        final sum = periodProgress[periodKey] ?? 0;
+        done += habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
       }
       summaries.add(DaySummary(date: day, totalCount: total, doneCount: done));
     }
@@ -227,8 +229,9 @@ class StatsRepository {
       if (!isHabitActiveOn(habit, date)) continue;
       total++;
       final periodStart = periodBoundsFor(habit.goalPeriod, date).$1;
-      final sum = periodProgress[_periodKey(habit.id, periodStart)] ?? 0;
-      done += habit.progressCredit(sum);
+      final periodKey = _periodKey(habit.id, periodStart);
+      final sum = periodProgress[periodKey] ?? 0;
+      done += habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
     }
     return DaySummary(date: date, totalCount: total, doneCount: done);
   }

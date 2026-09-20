@@ -88,7 +88,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShareText =>
-      'I\'m building better habits with Daily Habits — join me!';
+      'I\'m building better habits with Daily Habits — join me! Get it at https://nindaferdailyhabits.com';
 
   @override
   String get settingsSignInFirstToRestore =>
@@ -962,32 +962,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faqTitle => 'FAQ';
 
   @override
-  String get faqQ1 => 'Why is this app fully offline?';
+  String get faqQ1 => 'Why is this app offline-first?';
 
   @override
   String get faqA1 =>
-      'So your daily habit data stays private and can be used anytime without needing an internet connection. No account, no server, no tracking.';
+      'Your daily habit data stays private and can be used anytime without needing an internet connection — no account, no server, no tracking. Pro features (Budget Tracker sync, Community) are the exception and do need an internet connection.';
 
   @override
   String get faqQ2 => 'How is my data stored and is it safe?';
 
   @override
   String get faqA2 =>
-      'All data (categories, habits, progress history, profile) is stored in a local database on your own device — never sent anywhere.';
+      'Your habits, progress history, and profile are stored in a local database on your own device — never sent anywhere. If you use Community (Pro), your group data and messages are stored securely on our server so they can sync across your groups.';
 
   @override
   String get faqQ3 => 'What if I switch phones? Does my data move too?';
 
   @override
   String get faqA3 =>
-      'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone.';
+      'Local data (habits, progress, profile) doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone. If you\'re signed in for Community, your groups come back automatically once you sign in again on the new phone.';
 
   @override
   String get faqQ4 => 'Do I need to log in or sign up for an account?';
 
   @override
   String get faqA4 =>
-      'No. This app has no account system at all — open it and start using it right away.';
+      'No — core habit tracking never requires an account. You\'ll only be asked to sign in with Google if you choose to use Community, which needs an account to sync groups between devices.';
+
+  @override
+  String get faqQ5 => 'What\'s included in Daily Habits Pro?';
+
+  @override
+  String get faqA5 =>
+      'Pro unlocks Budget Tracker for managing your spending goals, and Community so you can join groups and stay accountable with others.';
+
+  @override
+  String get faqQ6 => 'Do I need an internet connection to use Pro features?';
+
+  @override
+  String get faqA6 =>
+      'Yes. Budget Tracker and Community both need a connection to save and sync your data.';
+
+  @override
+  String get faqQ7 =>
+      'What happens to my Budget Tracker or Community data if I cancel Pro?';
+
+  @override
+  String get faqA7 =>
+      'Your data stays saved, but you\'ll lose access to view or edit it until you resubscribe.';
+
+  @override
+  String get faqQ8 => 'How do I manage or cancel my Pro subscription?';
+
+  @override
+  String get faqA8 =>
+      'You can manage your subscription anytime through your App Store or Google Play account settings.';
 
   @override
   String get usageTipsTitle => 'Usage Tips';

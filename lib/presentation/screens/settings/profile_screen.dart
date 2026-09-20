@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/repositories/profile_repository.dart';
 import '../../../domain/language.dart';
 import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/user_profile.dart';
@@ -49,7 +51,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_loaded) return;
     _loaded = true;
     _nameController.text = profile.name;
-    _ageController.text = profile.age?.toString() ?? '';
+    // Nilai yang tersimpan sebelum batas umur ada bisa melebihi [maxUserAge];
+    // `inputFormatters` tidak menyentuh teks yang diisi secara programatik,
+    // jadi dijepit di sini supaya form tidak menampilkan angka yang lebih
+    // besar dari yang sebenarnya akan tersimpan.
+    final age = profile.age;
+    _ageController.text =
+        age == null ? '' : (age > maxUserAge ? maxUserAge : age).toString();
   }
 
   Future<void> _onPhotoPicked(ProcessedAvatar avatar, UserProfile current) async {
@@ -112,6 +120,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       if (gender != null) {
         await ref.read(settingsRepositoryProvider).setGender(gender.name);
       }
+      // Community memakai nama profil ini (feedback 6, slide 24), tapi
+      // menyimpannya secara denormalized per-grup — jadi rename di sini
+      // harus didorong ke tiap grup, sama seperti perubahan foto di
+      // `_pickPhoto`. Kegagalan sync tidak boleh menggagalkan simpan lokal
+      // yang sudah berhasil di atas.
+      final uid = ref.read(currentUidProvider);
+      if (uid != null && name != current.name) {
+        try {
+          await ref.read(communityRepositoryProvider).updateMyNameAcrossGroups(
+                uid: uid,
+                displayName: name,
+              );
+        } catch (_) {
+          // Sinkronisasi Community gagal (mis. offline) — nama lokal sudah
+          // tersimpan, dan pass sync saat membuka Community berikutnya
+          // (`profilePhotoCommunitySyncProvider`) akan memperbaikinya.
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
       }
@@ -169,6 +195,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   TextField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
+                    // Dibatasi 2 digit (maks. 99) — sama seperti field umur di
+                    // onboarding, supaya batasnya berlaku di SEMUA jalur input
+                    // umur, bukan cuma saat pertama kali daftar (feedback 6,
+                    // slide 3).
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
                     decoration: InputDecoration(hintText: l10n.profileAgeHint),
                   ),
                   const SizedBox(height: 16),

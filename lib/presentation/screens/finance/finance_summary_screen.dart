@@ -74,6 +74,11 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final monthlySavedAsync = ref.watch(
       financeMonthToDateSummaryProvider(DateTime(anchor.year, anchor.month)),
     );
+    // Status On-Track/Overspending diambil dari scope paling parah di antara
+    // Daily/Weekly/Monthly, bukan cuma dari tab yang sedang dibuka — supaya
+    // tidak pernah terjadi satu tab bilang "On Track" sementara tab lain
+    // "Overspending" untuk data yang sama (feedback 6, slide 21).
+    final worstPaceStatus = ref.watch(worstBudgetPaceStatusTodayProvider).value;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
     // Kategori Save Money cuma boleh 1 habit aktif — dicek di sini supaya
@@ -183,7 +188,11 @@ class FinanceSummaryScreen extends ConsumerWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _TotalsSection(summary: summary, totalSaved: totalSaved),
+                    _TotalsSection(
+                      summary: summary,
+                      totalSaved: totalSaved,
+                      worstStatus: worstPaceStatus,
+                    ),
                     if (summary.categoryBreakdown.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       SpendingDistributionPieChart(
@@ -460,7 +469,11 @@ class _EmptyFinance extends StatelessWidget {
 }
 
 class _TotalsSection extends StatelessWidget {
-  const _TotalsSection({required this.summary, required this.totalSaved});
+  const _TotalsSection({
+    required this.summary,
+    required this.totalSaved,
+    this.worstStatus,
+  });
 
   final FinanceSummary summary;
 
@@ -469,6 +482,12 @@ class _TotalsSection extends StatelessWidget {
   /// Daily/Weekly/Monthly tab. See the call site for why this isn't just
   /// `summary.totalSaved`.
   final int totalSaved;
+
+  /// Status pace paling parah lintas Daily/Weekly/Monthly (lihat
+  /// `worstBudgetPaceStatusTodayProvider`) — dipakai menggantikan status
+  /// milik tab ini sendiri supaya indikator konsisten di semua tab. Null
+  /// selagi provider-nya masih loading; saat itu status tab ini yang dipakai.
+  final BudgetPaceStatus? worstStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -499,7 +518,10 @@ class _TotalsSection extends StatelessWidget {
                     ),
                     if (hasBudget) ...[
                       const SizedBox(width: 8),
-                      _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
+                      _BudgetPaceChip(
+                        pace: summary.paceAt(DateTime.now()),
+                        statusOverride: worstStatus,
+                      ),
                     ],
                   ],
                 ),
@@ -593,16 +615,23 @@ class _TotalsSection extends StatelessWidget {
 /// (see [FinanceSummary.paceAt]). Hidden when pacing isn't meaningful (e.g.
 /// viewing a past/future period).
 class _BudgetPaceChip extends StatelessWidget {
-  const _BudgetPaceChip({required this.pace});
+  const _BudgetPaceChip({required this.pace, this.statusOverride});
 
   final BudgetPace? pace;
+
+  /// Status paling parah lintas Daily/Weekly/Monthly, menggantikan status
+  /// milik periode ini sendiri supaya semua tab menampilkan indikator yang
+  /// sama (feedback 6, slide 21). [pace] tetap dipakai untuk menentukan
+  /// apakah chip ini relevan sama sekali (null = periode lampau/mendatang,
+  /// chip disembunyikan).
+  final BudgetPaceStatus? statusOverride;
 
   @override
   Widget build(BuildContext context) {
     final pace = this.pace;
     if (pace == null) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context)!;
-    final (color, icon, label) = switch (pace.status) {
+    final (color, icon, label) = switch (statusOverride ?? pace.status) {
       BudgetPaceStatus.onTrack => (
         const Color(0xFF3E9B5C),
         // A downward trend arrow read as "getting worse" next to the "On

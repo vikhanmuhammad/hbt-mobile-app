@@ -223,6 +223,78 @@ final class FinanceMonthToDateSummaryFamily extends $Family
   String toString() => r'financeMonthToDateSummaryProvider';
 }
 
+/// Status pace paling parah di antara scope Daily, Weekly, dan Monthly
+/// untuk hari ini — dipakai supaya indikator On-Track/Overspending tidak
+/// pernah saling bertentangan antar tab (feedback 6, slide 21: "kalau salah
+/// satu Overspending, yang lain juga harus reflect itu").
+///
+/// Tiap scope tetap dihitung dengan dasarnya sendiri (pengeluaran aktual vs
+/// alokasi yang seharusnya sudah terpakai sampai hari ini di scope itu),
+/// lalu yang paling parah yang dipakai untuk semua tab. Null kalau tidak ada
+/// budget sama sekali untuk dibandingkan.
+
+@ProviderFor(worstBudgetPaceStatusToday)
+final worstBudgetPaceStatusTodayProvider =
+    WorstBudgetPaceStatusTodayProvider._();
+
+/// Status pace paling parah di antara scope Daily, Weekly, dan Monthly
+/// untuk hari ini — dipakai supaya indikator On-Track/Overspending tidak
+/// pernah saling bertentangan antar tab (feedback 6, slide 21: "kalau salah
+/// satu Overspending, yang lain juga harus reflect itu").
+///
+/// Tiap scope tetap dihitung dengan dasarnya sendiri (pengeluaran aktual vs
+/// alokasi yang seharusnya sudah terpakai sampai hari ini di scope itu),
+/// lalu yang paling parah yang dipakai untuk semua tab. Null kalau tidak ada
+/// budget sama sekali untuk dibandingkan.
+
+final class WorstBudgetPaceStatusTodayProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<BudgetPaceStatus?>,
+          BudgetPaceStatus?,
+          FutureOr<BudgetPaceStatus?>
+        >
+    with
+        $FutureModifier<BudgetPaceStatus?>,
+        $FutureProvider<BudgetPaceStatus?> {
+  /// Status pace paling parah di antara scope Daily, Weekly, dan Monthly
+  /// untuk hari ini — dipakai supaya indikator On-Track/Overspending tidak
+  /// pernah saling bertentangan antar tab (feedback 6, slide 21: "kalau salah
+  /// satu Overspending, yang lain juga harus reflect itu").
+  ///
+  /// Tiap scope tetap dihitung dengan dasarnya sendiri (pengeluaran aktual vs
+  /// alokasi yang seharusnya sudah terpakai sampai hari ini di scope itu),
+  /// lalu yang paling parah yang dipakai untuk semua tab. Null kalau tidak ada
+  /// budget sama sekali untuk dibandingkan.
+  WorstBudgetPaceStatusTodayProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'worstBudgetPaceStatusTodayProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$worstBudgetPaceStatusTodayHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<BudgetPaceStatus?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<BudgetPaceStatus?> create(Ref ref) {
+    return worstBudgetPaceStatusToday(ref);
+  }
+}
+
+String _$worstBudgetPaceStatusTodayHash() =>
+    r'6a2f5d616647158c127d98088b5554ff7d12f1f7';
+
 /// Rangkuman keuangan untuk [period] (harian/mingguan/bulanan) yang memuat
 /// [anchor] — dipakai layar Rangkuman Keuangan untuk toggle Daily/Weekly/
 /// Monthly (`selectedFinancePeriodProvider`).

@@ -124,12 +124,32 @@ final class CurrentUidProvider
 
 String _$currentUidHash() => r'82b0b5869abac0dfde0b42bd075c9fc5f45bef12';
 
+/// Nama yang dipakai di Community — diambil dari profil app (yang di-input
+/// user sendiri saat intro/onboarding), BUKAN dari nama akun Google/email
+/// sign-in, supaya konsisten dengan identitas yang user kenal di dalam app
+/// (feedback 6, slide 24). Auth displayName/email cuma jadi fallback kalau
+/// profil lokal belum ada (mis. race kecil tepat setelah sign-in pertama
+/// kali, sebelum onboarding selesai).
+
 @ProviderFor(currentDisplayName)
 final currentDisplayNameProvider = CurrentDisplayNameProvider._();
+
+/// Nama yang dipakai di Community — diambil dari profil app (yang di-input
+/// user sendiri saat intro/onboarding), BUKAN dari nama akun Google/email
+/// sign-in, supaya konsisten dengan identitas yang user kenal di dalam app
+/// (feedback 6, slide 24). Auth displayName/email cuma jadi fallback kalau
+/// profil lokal belum ada (mis. race kecil tepat setelah sign-in pertama
+/// kali, sebelum onboarding selesai).
 
 final class CurrentDisplayNameProvider
     extends $FunctionalProvider<String, String, String>
     with $Provider<String> {
+  /// Nama yang dipakai di Community — diambil dari profil app (yang di-input
+  /// user sendiri saat intro/onboarding), BUKAN dari nama akun Google/email
+  /// sign-in, supaya konsisten dengan identitas yang user kenal di dalam app
+  /// (feedback 6, slide 24). Auth displayName/email cuma jadi fallback kalau
+  /// profil lokal belum ada (mis. race kecil tepat setelah sign-in pertama
+  /// kali, sebelum onboarding selesai).
   CurrentDisplayNameProvider._()
     : super(
         from: null,
@@ -164,7 +184,7 @@ final class CurrentDisplayNameProvider
 }
 
 String _$currentDisplayNameHash() =>
-    r'779fd6e2aa1cdc27b06ba5f36bf8bfd7fa6a477f';
+    r'3d071c8de896ffe5b390efa8c771dc62abe179ae';
 
 @ProviderFor(mockEntitlementService)
 final mockEntitlementServiceProvider = MockEntitlementServiceProvider._();
@@ -770,38 +790,59 @@ final class CommunitySyncServiceProvider
 String _$communitySyncServiceHash() =>
     r'847b162b7f484d845e7bcd90a40e6d0d592b4356';
 
-/// Fans the local profile photo out to every Community group the user
-/// belongs to the first time they open Community in this app session —
-/// covers a fresh install/login where the user already set a profile photo
-/// (in onboarding or Settings) before ever joining/creating a group, so
-/// their photo shows up in Community without needing a manual re-save in
-/// Settings. `keepAlive: true` so it runs once per session rather than on
-/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
-/// itself a no-op if the user isn't in any groups yet.
+/// Fans the local profile name and photo out to every Community group the
+/// user belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set those (in
+/// onboarding or Settings) before ever joining/creating a group, so they
+/// show up in Community without needing a manual re-save in Settings.
+///
+/// The name pass also repairs groups joined back when the name was taken
+/// from the Google account/email instead of the app profile (feedback 6,
+/// slide 24) — `members.{uid}.displayName` is written once at create/join
+/// time, so without this those groups would keep the old name forever.
+///
+/// `keepAlive: true` so it runs once per session rather than on every
+/// re-entry into the Community tab. Both repository calls are themselves
+/// no-ops if the user isn't in any groups yet (and the name one also skips
+/// groups that already carry the right name).
 
 @ProviderFor(profilePhotoCommunitySync)
 final profilePhotoCommunitySyncProvider = ProfilePhotoCommunitySyncProvider._();
 
-/// Fans the local profile photo out to every Community group the user
-/// belongs to the first time they open Community in this app session —
-/// covers a fresh install/login where the user already set a profile photo
-/// (in onboarding or Settings) before ever joining/creating a group, so
-/// their photo shows up in Community without needing a manual re-save in
-/// Settings. `keepAlive: true` so it runs once per session rather than on
-/// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
-/// itself a no-op if the user isn't in any groups yet.
+/// Fans the local profile name and photo out to every Community group the
+/// user belongs to the first time they open Community in this app session —
+/// covers a fresh install/login where the user already set those (in
+/// onboarding or Settings) before ever joining/creating a group, so they
+/// show up in Community without needing a manual re-save in Settings.
+///
+/// The name pass also repairs groups joined back when the name was taken
+/// from the Google account/email instead of the app profile (feedback 6,
+/// slide 24) — `members.{uid}.displayName` is written once at create/join
+/// time, so without this those groups would keep the old name forever.
+///
+/// `keepAlive: true` so it runs once per session rather than on every
+/// re-entry into the Community tab. Both repository calls are themselves
+/// no-ops if the user isn't in any groups yet (and the name one also skips
+/// groups that already carry the right name).
 
 final class ProfilePhotoCommunitySyncProvider
     extends $FunctionalProvider<AsyncValue<void>, void, FutureOr<void>>
     with $FutureModifier<void>, $FutureProvider<void> {
-  /// Fans the local profile photo out to every Community group the user
-  /// belongs to the first time they open Community in this app session —
-  /// covers a fresh install/login where the user already set a profile photo
-  /// (in onboarding or Settings) before ever joining/creating a group, so
-  /// their photo shows up in Community without needing a manual re-save in
-  /// Settings. `keepAlive: true` so it runs once per session rather than on
-  /// every re-entry into the Community tab. `updateMyPhotoAcrossGroups` is
-  /// itself a no-op if the user isn't in any groups yet.
+  /// Fans the local profile name and photo out to every Community group the
+  /// user belongs to the first time they open Community in this app session —
+  /// covers a fresh install/login where the user already set those (in
+  /// onboarding or Settings) before ever joining/creating a group, so they
+  /// show up in Community without needing a manual re-save in Settings.
+  ///
+  /// The name pass also repairs groups joined back when the name was taken
+  /// from the Google account/email instead of the app profile (feedback 6,
+  /// slide 24) — `members.{uid}.displayName` is written once at create/join
+  /// time, so without this those groups would keep the old name forever.
+  ///
+  /// `keepAlive: true` so it runs once per session rather than on every
+  /// re-entry into the Community tab. Both repository calls are themselves
+  /// no-ops if the user isn't in any groups yet (and the name one also skips
+  /// groups that already carry the right name).
   ProfilePhotoCommunitySyncProvider._()
     : super(
         from: null,
@@ -828,7 +869,7 @@ final class ProfilePhotoCommunitySyncProvider
 }
 
 String _$profilePhotoCommunitySyncHash() =>
-    r'931c47d2e777acb684624ee076cb659a6ecae14b';
+    r'b0cf1d2a448bea2f80ce1b02e38dd5aa22dae5a3';
 
 @ProviderFor(myGroups)
 final myGroupsProvider = MyGroupsProvider._();

@@ -60,6 +60,7 @@ class FinanceRepository {
 
     var totalExpense = 0;
     var totalBudget = 0;
+    var totalBudgetElapsed = 0;
     var totalSavingsDeposit = 0;
     var totalSavingsTarget = 0;
     final habitStats = <FinanceHabitStat>[];
@@ -69,19 +70,15 @@ class FinanceRepository {
       final totalValue =
           habitLogs.fold<int>(0, (sum, l) => sum + l.progressValue);
 
-      // Target dihitung dari berapa banyak instance goalPeriod habit ini
-      // sendiri (hari/minggu/bulan) yang tercakup dalam jendela [start,
-      // endInclusive] — bukan dari `habitLogs.length` (jumlah hari yang
-      // kebetulan ada log). Itu penting supaya habit weekly/monthly dilihat
-      // benar walau jendela tampilan Finance (Daily/Weekly/Monthly toggle)
-      // tidak sama dengan goalPeriod-nya sendiri — mis. habit weekly dilihat
-      // dalam tampilan Monthly seharusnya dibandingkan ke goalValue dikali
-      // jumlah minggu dalam bulan itu, bukan dikali jumlah hari yang dicatat.
-      // Habit daily dengan override weekend (`goalValueWeekend`) punya target
-      // yang beda per hari — dijumlahkan hari demi hari lewat `goalValueFor`
-      // alih-alih `goalValue * periodCount` yang mengasumsikan nilai sama
-      // setiap hari. `weekly`/`monthly` tidak pernah punya override ini,
-      // jadi tetap pakai perkalian lama.
+      // Target dihitung hari demi hari lewat `Habit.dailyRateFor`, yang
+      // mengonversi goalValue habit ini (disimpan di goalPeriod aslinya —
+      // Daily/Weekly/Monthly) ke rate per-hari, lalu dijumlahkan untuk tiap
+      // hari aktif dalam jendela [start, endInclusive]. Ini yang membuat
+      // budget yang diinput di satu periode ikut menyesuaikan otomatis ke
+      // tab Daily/Weekly/Monthly lain — bukan `goalValue` mentah dikali
+      // jumlah periode overlap seperti sebelumnya, yang membuat budget
+      // Monthly 1 juta tampil sebagai 1 juta juga di tab Daily, dan 2 juta
+      // di tab Weekly kalau minggunya lintas bulan (feedback 6, slide 18).
       // For savings habits (`atLeast`, e.g. a Nabung/Save Money target), the
       // target shown alongside "amount saved so far" must only cover days
       // that have actually happened — a weekly/monthly window still spans
@@ -96,9 +93,12 @@ class FinanceRepository {
       final targetEnd = habit.goalDirection == GoalDirection.atLeast
           ? _clampToElapsed(endInclusive)
           : endInclusive;
-      final totalTarget = habit.goalPeriod == GoalPeriod.daily
-          ? _dailyTargetSum(habit, start, targetEnd)
-          : habit.goalValue * countPeriodsOverlapping(habit.goalPeriod, start, targetEnd);
+      final totalTarget = _dailyTargetSum(habit, start, targetEnd);
+      // Selalu dipotong s.d. hari berjalan (beda dari [targetEnd] di atas,
+      // yang untuk `atMost` sengaja TIDAK dipotong) — dasar `totalSaved`,
+      // yang harus merefleksikan alokasi sampai hari ini saja, bukan
+      // alokasi 1 periode penuh (feedback 6, slide 18).
+      final elapsedTarget = _dailyTargetSum(habit, start, _clampToElapsed(endInclusive));
 
       // "Achieved" juga dihitung per-instance periode (jumlah progress di
       // dalam periode itu dibandingkan ke goalValue), bukan per hari log —
@@ -117,6 +117,7 @@ class FinanceRepository {
       if (habit.goalDirection == GoalDirection.atMost) {
         totalExpense += totalValue;
         totalBudget += totalTarget;
+        totalBudgetElapsed += elapsedTarget;
       } else {
         totalSavingsDeposit += totalValue;
         totalSavingsTarget += totalTarget;
@@ -157,6 +158,7 @@ class FinanceRepository {
       periodEndInclusive: endInclusive,
       totalExpense: totalExpense,
       totalBudget: totalBudget,
+      totalBudgetElapsed: totalBudgetElapsed,
       totalSavingsDeposit: totalSavingsDeposit,
       totalSavingsTarget: totalSavingsTarget,
       habitStats: habitStats,
@@ -201,15 +203,20 @@ class FinanceRepository {
     return end.isAfter(now) ? now : end;
   }
 
-  /// Jumlah target [habit] (daily) untuk tiap hari dalam [start, end] yang
-  /// habit-nya aktif ditagih (`isHabitActiveOn`), pakai goalValue efektif
-  /// hari itu (`goalValueFor` — beda kalau ada override weekend).
+  /// Jumlah target [habit] untuk tiap hari dalam [start, end] yang habit-nya
+  /// aktif ditagih (`isHabitActiveOn`), dikonversi ke rate harian lewat
+  /// [domain.Habit.dailyRateFor] terlepas dari goalPeriod asli habit itu
+  /// (Daily/Weekly/Monthly) — supaya target yang ditampilkan di tab
+  /// Daily/Weekly/Monthly Finance selalu proporsional terhadap budget asli
+  /// yang diinput user, bukan `goalValue` mentah dikali jumlah periode
+  /// overlap (bug lama: budget Monthly 1jt tampil sebagai 1jt juga di tab
+  /// Daily, dan 2jt di tab Weekly kalau minggunya lintas bulan).
   int _dailyTargetSum(domain.Habit habit, DateTime start, DateTime end) {
-    var sum = 0;
+    var sum = 0.0;
     for (var day = dateOnly(start); !day.isAfter(dateOnly(end)); day = day.add(const Duration(days: 1))) {
-      if (isHabitActiveOn(habit, day)) sum += habit.goalValueFor(day);
+      if (isHabitActiveOn(habit, day)) sum += habit.dailyRateFor(day);
     }
-    return sum;
+    return sum.round();
   }
 
   /// Sums [entries] by (category, label) — entries with no sub-category

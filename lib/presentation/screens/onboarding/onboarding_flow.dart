@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_undraw/flutter_undraw.dart';
 
@@ -653,32 +654,50 @@ class _FeatureSlide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-      children: [
-        FadeSlideIn(
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineMedium,
+    // Was a plain ListView with a fixed-height phone mock below, which on
+    // shorter/denser screens (e.g. some Samsung devices) pushed the mock
+    // past the visible viewport, forcing a scroll to see it in full
+    // (feedback 6, slide 4). Wrapping the mock in Flexible+FittedBox lets it
+    // scale down to whatever room remains instead, while SingleChildScrollView
+    // stays as a fallback only for extreme cases (huge system text scale).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FadeSlideIn(
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 80),
+                  child: Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Flexible(
+                  child: FadeSlideIn(
+                    delay: const Duration(milliseconds: 160),
+                    duration: const Duration(milliseconds: 450),
+                    child: FittedBox(fit: BoxFit.contain, child: mock),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 80),
-          child: Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge,
-          ),
-        ),
-        const SizedBox(height: 32),
-        FadeSlideIn(
-          delay: const Duration(milliseconds: 160),
-          duration: const Duration(milliseconds: 450),
-          child: mock,
-        ),
-      ],
+        );
+      },
     );
   }
 }
@@ -2280,6 +2299,10 @@ class _PersonalInfoStepState extends ConsumerState<_PersonalInfoStep> {
           TextField(
             controller: widget.ageController,
             keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(2),
+            ],
             decoration: InputDecoration(hintText: lang.ageHint),
           ),
           const SizedBox(height: 16),

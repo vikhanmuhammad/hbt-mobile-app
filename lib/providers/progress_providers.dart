@@ -53,6 +53,11 @@ List<HabitWithProgress> habitsWithProgressForDate(Ref ref, DateTime date) {
   }
 
   return activeHabits.map((h) {
+    final hasLog = switch (h.goalPeriod) {
+      GoalPeriod.daily => dayLogByHabit.containsKey(h.id),
+      GoalPeriod.weekly => weeklyLogs!.any((l) => l.habitId == h.id),
+      GoalPeriod.monthly => monthlyLogs!.any((l) => l.habitId == h.id),
+    };
     final progressValue = switch (h.goalPeriod) {
       GoalPeriod.daily => dayLogByHabit[h.id]?.progressValue ?? 0,
       GoalPeriod.weekly => _sumProgressInRange(weeklyLogs!, h.id),
@@ -62,7 +67,11 @@ List<HabitWithProgress> habitsWithProgressForDate(Ref ref, DateTime date) {
       habit: h,
       date: date,
       progressValue: progressValue,
-      isDone: h.isAchieved(progressValue, date: date),
+      // `hasLog` penting untuk habit `atMost` (mis. Budget Tracker): progress
+      // 0 secara teknis "di bawah limit" jadi akan selalu terhitung tercapai,
+      // padahal user belum input apapun untuk periode ini (feedback 6, slide
+      // 10 & 11). Lihat `Habit.isAchieved`.
+      isDone: h.isAchieved(progressValue, date: date, hasLog: hasLog),
     );
   }).toList();
 }

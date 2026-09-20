@@ -89,7 +89,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get settingsShareText =>
-      'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung!';
+      'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung! Unduh di https://nindaferdailyhabits.com';
 
   @override
   String get settingsSignInFirstToRestore =>
@@ -966,32 +966,62 @@ class AppLocalizationsId extends AppLocalizations {
   String get faqTitle => 'Tanya Jawab';
 
   @override
-  String get faqQ1 => 'Kenapa aplikasi ini sepenuhnya offline?';
+  String get faqQ1 => 'Kenapa aplikasi ini offline-first?';
 
   @override
   String get faqA1 =>
-      'Supaya data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet. Tanpa akun, tanpa server, tanpa pelacakan.';
+      'Data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet — tanpa akun, tanpa server, tanpa pelacakan. Fitur Pro (sinkron Budget Tracker, Community) jadi pengecualian dan tetap butuh koneksi internet.';
 
   @override
   String get faqQ2 => 'Bagaimana data saya disimpan dan apakah aman?';
 
   @override
   String get faqA2 =>
-      'Semua data (kategori, habit, riwayat progres, profil) disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun.';
+      'Habit, riwayat progres, dan profil Anda disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun. Kalau Anda memakai Community (Pro), data grup dan pesan disimpan secara aman di server kami supaya bisa sinkron antar grup Anda.';
 
   @override
   String get faqQ3 => 'Bagaimana kalau saya ganti HP? Apakah data ikut pindah?';
 
   @override
   String get faqA3 =>
-      'Karena tidak ada sinkronisasi cloud, data tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru.';
+      'Data lokal (habit, progres, profil) tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru. Kalau Anda sudah masuk akun untuk Community, grup Anda otomatis muncul kembali begitu masuk akun lagi di HP baru.';
 
   @override
   String get faqQ4 => 'Apakah saya perlu masuk atau daftar akun?';
 
   @override
   String get faqA4 =>
-      'Tidak. Aplikasi ini sama sekali tidak punya sistem akun — buka dan langsung pakai.';
+      'Tidak — pelacakan habit inti tidak pernah butuh akun. Anda cuma akan diminta masuk akun Google kalau memilih memakai Community, yang butuh akun untuk sinkron grup antar perangkat.';
+
+  @override
+  String get faqQ5 => 'Apa saja yang didapat dari Daily Habits Pro?';
+
+  @override
+  String get faqA5 =>
+      'Pro membuka Budget Tracker untuk mengelola target pengeluaran, dan Community supaya Anda bisa join grup dan saling menyemangati dengan orang lain.';
+
+  @override
+  String get faqQ6 => 'Apakah fitur Pro butuh koneksi internet?';
+
+  @override
+  String get faqA6 =>
+      'Ya. Budget Tracker dan Community sama-sama butuh koneksi untuk menyimpan dan sinkron data Anda.';
+
+  @override
+  String get faqQ7 =>
+      'Apa yang terjadi dengan data Budget Tracker atau Community saya kalau Pro dibatalkan?';
+
+  @override
+  String get faqA7 =>
+      'Data Anda tetap tersimpan, tapi Anda kehilangan akses untuk melihat atau mengeditnya sampai berlangganan lagi.';
+
+  @override
+  String get faqQ8 =>
+      'Bagaimana cara mengelola atau membatalkan langganan Pro?';
+
+  @override
+  String get faqA8 =>
+      'Anda bisa mengelola langganan kapan saja lewat pengaturan akun App Store atau Google Play.';
 
   @override
   String get usageTipsTitle => 'Tips Penggunaan';

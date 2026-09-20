@@ -117,13 +117,14 @@ class FinanceSummary {
     required this.periodEndInclusive,
     required this.totalExpense,
     required this.totalBudget,
+    int? totalBudgetElapsed,
     required this.totalSavingsDeposit,
     required this.totalSavingsTarget,
     required this.habitStats,
     required this.dailyTrend,
     this.categoryBreakdown = const [],
     this.currencyPrefix = 'Rp ',
-  });
+  }) : totalBudgetElapsed = totalBudgetElapsed ?? totalBudget;
 
   final DateTime periodStart;
   final DateTime periodEndInclusive;
@@ -131,9 +132,17 @@ class FinanceSummary {
   /// Jumlah yang dihabiskan (sum progressValue) dari habit `atMost`.
   final int totalExpense;
 
-  /// Jumlah batas/anggaran (sum goalValue*periodCount, lihat
-  /// [FinanceHabitStat.totalTarget]) dari habit `atMost`.
+  /// Jumlah batas/anggaran PENUH periode ini (sum goalValue*periodCount,
+  /// lihat [FinanceHabitStat.totalTarget]) dari habit `atMost` — dipakai
+  /// sebagai cap tetap untuk [FinanceSummary.paceAt], bukan untuk
+  /// [totalSaved] (lihat [totalBudgetElapsed]).
   final int totalBudget;
+
+  /// Sama seperti [totalBudget], tapi dipotong sampai hari berjalan saja
+  /// (bukan seluruh periode) — dasar [totalSaved], supaya "Total Saved" di
+  /// tanggal 14 September dari budget bulanan cuma membandingkan alokasi
+  /// s.d. 14 September, bukan alokasi 1 bulan penuh (feedback 6, slide 18).
+  final int totalBudgetElapsed;
 
   /// Jumlah yang disetor (sum progressValue) dari habit `atLeast` rupiah,
   /// mis. habit "Nabung" yang dibuat bersatuan rupiah.
@@ -158,8 +167,10 @@ class FinanceSummary {
   /// finance yang tercakup window ini.
   final String currencyPrefix;
 
-  /// Selisih budget - pengeluaran. Positif = hemat, negatif = kelebihan budget.
-  int get totalSaved => totalBudget - totalExpense;
+  /// Selisih alokasi budget SAMPAI HARI BERJALAN (bukan budget 1 periode
+  /// penuh, lihat [totalBudgetElapsed]) dikurangi pengeluaran. Positif =
+  /// hemat, negatif = kelebihan budget.
+  int get totalSaved => totalBudgetElapsed - totalExpense;
 
   bool get hasData => habitStats.isNotEmpty;
 

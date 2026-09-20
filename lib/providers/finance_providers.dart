@@ -44,6 +44,30 @@ Future<FinanceSummary> financeMonthToDateSummary(Ref ref, DateTime monthAnchor) 
       .computeSummary(firstDay, end, excludeHabitIds: excludeHabitIds);
 }
 
+/// Status pace paling parah di antara scope Daily, Weekly, dan Monthly
+/// untuk hari ini — dipakai supaya indikator On-Track/Overspending tidak
+/// pernah saling bertentangan antar tab (feedback 6, slide 21: "kalau salah
+/// satu Overspending, yang lain juga harus reflect itu").
+///
+/// Tiap scope tetap dihitung dengan dasarnya sendiri (pengeluaran aktual vs
+/// alokasi yang seharusnya sudah terpakai sampai hari ini di scope itu),
+/// lalu yang paling parah yang dipakai untuk semua tab. Null kalau tidak ada
+/// budget sama sekali untuk dibandingkan.
+@riverpod
+Future<BudgetPaceStatus?> worstBudgetPaceStatusToday(Ref ref) async {
+  final anchor = today();
+  final now = DateTime.now();
+  BudgetPaceStatus? worst;
+  for (final period in FinancePeriod.values) {
+    final summary =
+        await ref.watch(financeSummaryForPeriodProvider(period, anchor).future);
+    final status = summary.paceAt(now)?.status;
+    if (status == null) continue;
+    if (worst == null || status.index > worst.index) worst = status;
+  }
+  return worst;
+}
+
 /// Start/end (inclusive) for a [FinancePeriod] anchored at [anchor] — Monday
 /// as the first day of a week, matching `weekdayKeys`/`DateTime.weekday`
 /// conventions used elsewhere in the app.
