@@ -4,6 +4,7 @@ import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart' as domain;
 import '../../domain/models/habit_log.dart' as domain;
 import '../../domain/models/onboarding_response.dart' as domain;
+import '../../domain/models/spending_breakdown.dart' as domain;
 import '../../domain/models/task_days.dart';
 import '../../domain/models/user_profile.dart' as domain;
 import '../database/app_database.dart' as db;
@@ -27,13 +28,18 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       description: row.description,
       icon: row.icon,
       goalPeriod: GoalPeriod.fromValue(row.goalPeriod),
-      goalValue: row.goalValue,
+      // A target of 0 is never meaningful (shows "Target 0x" and counts as
+      // done with no progress). Older rows — e.g. adopted from a Community
+      // group habit saved with 0 — are floored here (feedback 7, slide 19).
+      goalValue: row.goalValue < 1 ? 1 : row.goalValue,
+      goalValueWeekend: row.goalValueWeekend,
       goalUnit: row.goalUnit,
       goalDirection: GoalDirection.fromValue(row.goalDirection),
       taskDays: TaskDays.decode(row.taskDays),
       timeRange: TimeRange.fromValue(row.timeRange),
       reminderEnabled: row.reminderEnabled,
       reminderTime: row.reminderTime,
+      reminderIntervalMinutes: row.reminderIntervalMinutes,
       startDate: row.startDate,
       endDate: row.endDate,
       isActive: row.isActive,
@@ -42,6 +48,7 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       nameId: row.nameId,
       isCustom: row.isCustom,
       templateKey: row.templateKey,
+      currency: row.currency,
     );
 
 domain.HabitLog mapHabitLog(db.HabitLog row) => domain.HabitLog(
@@ -79,3 +86,23 @@ domain.HabitGroupLink mapHabitGroupLink(db.HabitGroupLink row) =>
       linkedAt: row.linkedAt,
       lastSyncedAt: row.lastSyncedAt,
     );
+
+/// Returns null when `row.categoryKey` is a legacy value from before the
+/// Budget Tracker category rework (`urgent`/`health`/`custom`) — those rows
+/// are left unmigrated in the DB and intentionally hidden from the new UI
+/// rather than remapped, per product decision. Callers must filter out
+/// nulls (e.g. `.map(mapSpendingBreakdownEntry).whereType<...>()`).
+domain.SpendingBreakdownEntry? mapSpendingBreakdownEntry(
+  db.HabitSpendingBreakdown row,
+) {
+  final category = SpendingBreakdownCategory.tryFromValue(row.categoryKey);
+  if (category == null) return null;
+  return domain.SpendingBreakdownEntry(
+    id: row.id,
+    habitId: row.habitId,
+    date: row.date,
+    category: category,
+    label: row.label,
+    amount: row.amount,
+  );
+}

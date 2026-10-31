@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../domain/date_utils.dart';
 import '../domain/models/finance_summary.dart';
 import 'core_providers.dart';
 import 'ui_state_providers.dart';
@@ -11,7 +12,60 @@ part 'finance_providers.g.dart';
 Future<FinanceSummary> financeSummary(Ref ref, DateTime monthAnchor) {
   final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
   final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
-  return ref.watch(financeRepositoryProvider).computeSummary(firstDay, lastDay);
+  // `watch` (bukan `read`) supaya provider ini otomatis rebuild begitu Home
+  // menandai habit sebagai "sedang dihapus" — Finance langsung ikut
+  // melupakannya, tidak perlu menunggu delete fisik ~5 detik kemudian.
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  return ref
+      .watch(financeRepositoryProvider)
+      .computeSummary(firstDay, lastDay, excludeHabitIds: excludeHabitIds);
+}
+
+/// Rangkuman keuangan bulan kalender yang memuat [monthAnchor], tapi
+/// di-clamp sampai hari ini (bukan sampai akhir bulan) — dasar "Total
+/// Saved" di Finance: akumulasi sisa budget berjalan dari hari habit
+/// budget itu di-set (`isHabitActiveOn` sudah otomatis mengecualikan hari
+/// sebelum `habit.startDate`) sampai hari ini, bukan diproyeksikan ke
+/// seluruh bulan yang belum berjalan. Beda dari [financeSummaryProvider]
+/// biasa, yang sengaja TIDAK di-clamp supaya "X dari Rp Y budget" &
+/// `paceAt` di tab Monthly tetap membandingkan ke cap bulan penuh. Untuk
+/// bulan yang sudah lewat, clamp ke hari ini tidak berpengaruh — hasilnya
+/// otomatis sama dengan bulan penuh karena akhir bulan sudah di masa lalu.
+@riverpod
+Future<FinanceSummary> financeMonthToDateSummary(Ref ref, DateTime monthAnchor) {
+  final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
+  final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
+  final now = today();
+  var end = now.isBefore(lastDay) ? now : lastDay;
+  if (end.isBefore(firstDay)) end = firstDay;
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  return ref
+      .watch(financeRepositoryProvider)
+      .computeSummary(firstDay, end, excludeHabitIds: excludeHabitIds);
+}
+
+/// Status pace paling parah di antara scope Daily, Weekly, dan Monthly
+/// untuk hari ini — dipakai supaya indikator On-Track/Overspending tidak
+/// pernah saling bertentangan antar tab (feedback 6, slide 21: "kalau salah
+/// satu Overspending, yang lain juga harus reflect itu").
+///
+/// Tiap scope tetap dihitung dengan dasarnya sendiri (pengeluaran aktual vs
+/// alokasi yang seharusnya sudah terpakai sampai hari ini di scope itu),
+/// lalu yang paling parah yang dipakai untuk semua tab. Null kalau tidak ada
+/// budget sama sekali untuk dibandingkan.
+@riverpod
+Future<BudgetPaceStatus?> worstBudgetPaceStatusToday(Ref ref) async {
+  final anchor = today();
+  final now = DateTime.now();
+  BudgetPaceStatus? worst;
+  for (final period in FinancePeriod.values) {
+    final summary =
+        await ref.watch(financeSummaryForPeriodProvider(period, anchor).future);
+    final status = summary.paceAt(now)?.status;
+    if (status == null) continue;
+    if (worst == null || status.index > worst.index) worst = status;
+  }
+  return worst;
 }
 
 /// Start/end (inclusive) for a [FinancePeriod] anchored at [anchor] — Monday
@@ -44,5 +98,22 @@ Future<FinanceSummary> financeSummaryForPeriod(
   DateTime anchor,
 ) {
   final (start, end) = financePeriodRange(period, anchor);
-  return ref.watch(financeRepositoryProvider).computeSummary(start, end);
+  final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  // The trend chart has its own window, independent of the totals/pace
+  // window, in the active tab's own unit: the last 7 days for Daily
+  // (feedback 7, slide 39), the last 6 weeks for Weekly and the last 6
+  // months for Monthly — so Weekly no longer repeats Daily's per-day bars
+  // (feedback 8, slide 7).
+  final (trendStart, trendBucket) = switch (period) {
+    FinancePeriod.daily => (end.subtract(const Duration(days: 6)), FinanceTrendBucket.day),
+    FinancePeriod.weekly => (start.subtract(const Duration(days: 7 * 5)), FinanceTrendBucket.week),
+    FinancePeriod.monthly => (DateTime(start.year, start.month - 5, 1), FinanceTrendBucket.month),
+  };
+  return ref.watch(financeRepositoryProvider).computeSummary(
+        start,
+        end,
+        excludeHabitIds: excludeHabitIds,
+        trendBucket: trendBucket,
+        trendStart: trendStart,
+      );
 }

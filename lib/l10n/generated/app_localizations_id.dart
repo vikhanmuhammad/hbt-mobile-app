@@ -18,6 +18,15 @@ class AppLocalizationsId extends AppLocalizations {
   String get commonDelete => 'Hapus';
 
   @override
+  String get commonUndo => 'Urungkan';
+
+  @override
+  String get commonEdit => 'Ubah';
+
+  @override
+  String get commonRetry => 'Coba Lagi';
+
+  @override
   String get settingsLanguage => 'Bahasa';
 
   @override
@@ -83,7 +92,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get settingsShareText =>
-      'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung!';
+      'Saya sedang membangun kebiasaan baik dengan Daily Habits — yuk gabung! Unduh di https://nindaferdailyhabits.com';
 
   @override
   String get settingsSignInFirstToRestore =>
@@ -132,10 +141,16 @@ class AppLocalizationsId extends AppLocalizations {
   String get homeToday => 'Hari Ini';
 
   @override
+  String get homeJumpToDate => 'Lompat ke tanggal';
+
+  @override
   String get homeMyHabits => 'Habit Saya';
 
   @override
   String get homeCommunity => 'Komunitas';
+
+  @override
+  String get homeSpendingMoney => 'Pelacak Anggaran';
 
   @override
   String get homeDeleteHabitTitle => 'Hapus habit ini?';
@@ -146,9 +161,18 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String homeHabitDeleted(String name) {
+    return '\"$name\" dihapus.';
+  }
+
+  @override
   String homeFailedToSaveProgress(String error) {
     return 'Gagal menyimpan progres: $error';
   }
+
+  @override
+  String get homeFutureDayLocked =>
+      'Tanggal ini belum tiba — progres baru bisa diisi saat harinya datang.';
 
   @override
   String get homeNoHabitsScheduledYet => 'Belum ada habit terjadwal';
@@ -227,10 +251,56 @@ class AppLocalizationsId extends AppLocalizations {
   String get financeOnTrack => 'Sesuai Rencana';
 
   @override
+  String get financeApproachingLimit => 'Mendekati Batas';
+
+  @override
   String get financeOverspending => 'Boros';
 
   @override
   String get financeDailySpendingTrend => 'Tren Pengeluaran Harian';
+
+  @override
+  String get financeWeeklySpendingTrend => 'Tren Pengeluaran Mingguan';
+
+  @override
+  String get financeMonthlySpendingTrend => 'Tren Pengeluaran Bulanan';
+
+  @override
+  String get financeSpendingByCategory => 'Pengeluaran per Kategori';
+
+  @override
+  String get financeAddSpendingLimit => 'Tambah Batas Pengeluaran';
+
+  @override
+  String get financeEditSpendingLimit => 'Ubah Batas Pengeluaran';
+
+  @override
+  String get commonProgress => 'Progres';
+
+  @override
+  String get commonGoal => 'Target';
+
+  @override
+  String get genderLabel => 'Jenis kelamin';
+
+  @override
+  String get genderHint => 'Pilih jenis kelamin';
+
+  @override
+  String settingsAgeYears(int age) {
+    return '$age tahun';
+  }
+
+  @override
+  String get addHabitReminderRepeat => 'Ulangi';
+
+  @override
+  String get addHabitReminderOnce => 'Sekali';
+
+  @override
+  String addHabitReminderEveryMinutes(int minutes) {
+    return 'Tiap $minutes menit';
+  }
 
   @override
   String get financeNoDataYet => 'Belum ada data';
@@ -312,6 +382,20 @@ class AppLocalizationsId extends AppLocalizations {
       'Belum ada rekomendasi untuk kategori ini.';
 
   @override
+  String get addHabitAlreadyAdded => 'Sudah ditambahkan';
+
+  @override
+  String get addHabitDuplicateName => 'Anda sudah punya habit dengan nama ini.';
+
+  @override
+  String get addHabitSpendingMoneyExistsTitle =>
+      'Pelacak Anggaran Sudah Ditambahkan';
+
+  @override
+  String get addHabitSpendingMoneyExistsMessage =>
+      'Anda hanya bisa melacak satu habit Pelacak Anggaran. Edit yang sudah ada, bukan menambah baru.';
+
+  @override
   String get addHabitAdd => 'Tambah';
 
   @override
@@ -344,10 +428,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitFieldHabitName => 'Nama Habit';
 
   @override
-  String get addHabitHintNameEn => 'Name (English)';
-
-  @override
-  String get addHabitHintNameId => 'Nama (Indonesia)';
+  String get addHabitHintName => 'Nama habit';
 
   @override
   String get addHabitLockedNameNotice =>
@@ -367,6 +448,15 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get addHabitFieldGoalValue => 'Nilai Target';
+
+  @override
+  String get addHabitFieldGoalValueWeekday => 'Hari Kerja (Sen-Jum)';
+
+  @override
+  String get addHabitFieldGoalValueWeekend => 'Akhir Pekan (Sab-Min)';
+
+  @override
+  String get addHabitCustomWeekendGoalToggle => 'Target beda untuk akhir pekan';
 
   @override
   String get addHabitFieldUnit => 'Satuan';
@@ -411,8 +501,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitSaveHabit => 'Simpan Habit';
 
   @override
-  String get addHabitNameRequired =>
-      'Nama habit (Inggris & Indonesia) wajib diisi';
+  String get addHabitNameRequired => 'Nama habit wajib diisi';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pilih goal phrase dulu';
@@ -432,10 +521,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitFieldGoalPhraseName => 'Nama Goal Phrase';
 
   @override
-  String get addHabitHintCatNameEn => 'Name (English), mis. Hobby';
-
-  @override
-  String get addHabitHintCatNameId => 'Nama (Indonesia), mis. Hobi';
+  String get addHabitHintCatName => 'Nama goal phrase, mis. Hobi';
 
   @override
   String get addHabitFieldColor => 'Warna';
@@ -444,8 +530,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get addHabitCreateGoal => 'Buat Goal';
 
   @override
-  String get addHabitCatNameRequired =>
-      'Nama goal phrase (Inggris & Indonesia) wajib diisi';
+  String get addHabitCatNameRequired => 'Nama goal phrase wajib diisi';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -509,7 +594,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get communityTitle => 'Community';
 
   @override
-  String get communityCreateGroup => '+ Buat Grup';
+  String get communityCreateGroup => 'Buat Grup';
 
   @override
   String get communityJoinViaCode => 'Gabung via Kode';
@@ -888,32 +973,78 @@ class AppLocalizationsId extends AppLocalizations {
   String get faqTitle => 'Tanya Jawab';
 
   @override
-  String get faqQ1 => 'Kenapa aplikasi ini sepenuhnya offline?';
+  String get faqQ1 => 'Kenapa aplikasi ini offline-first?';
 
   @override
   String get faqA1 =>
-      'Supaya data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet. Tanpa akun, tanpa server, tanpa pelacakan.';
+      'Data habit harian Anda tetap privat dan bisa dipakai kapan saja tanpa perlu koneksi internet — tanpa akun, tanpa server, tanpa pelacakan. Fitur Pro (sinkron Budget Tracker, Community) jadi pengecualian dan tetap butuh koneksi internet.';
 
   @override
   String get faqQ2 => 'Bagaimana data saya disimpan dan apakah aman?';
 
   @override
   String get faqA2 =>
-      'Semua data (kategori, habit, riwayat progres, profil) disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun.';
+      'Habit, riwayat progres, dan profil Anda disimpan di database lokal pada perangkat Anda sendiri — tidak pernah dikirim ke mana pun. Kalau Anda memakai Community (Pro), data grup dan pesan disimpan secara aman di server kami supaya bisa sinkron antar grup Anda.';
 
   @override
   String get faqQ3 => 'Bagaimana kalau saya ganti HP? Apakah data ikut pindah?';
 
   @override
   String get faqA3 =>
-      'Karena tidak ada sinkronisasi cloud, data tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru.';
+      'Data lokal (habit, progres, profil) tidak berpindah otomatis. Gunakan fitur Export Data di Settings (segera hadir) untuk membuat cadangan manual sebelum ganti perangkat, lalu Import Data di HP baru. Kalau Anda sudah masuk akun untuk Community, grup Anda otomatis muncul kembali begitu masuk akun lagi di HP baru.';
 
   @override
   String get faqQ4 => 'Apakah saya perlu masuk atau daftar akun?';
 
   @override
   String get faqA4 =>
-      'Tidak. Aplikasi ini sama sekali tidak punya sistem akun — buka dan langsung pakai.';
+      'Tidak — pelacakan habit inti tidak pernah butuh akun. Anda cuma akan diminta masuk akun Google kalau memilih memakai Community, yang butuh akun untuk sinkron grup antar perangkat.';
+
+  @override
+  String get faqQ5 => 'Apa saja yang didapat dari Daily Habits Pro?';
+
+  @override
+  String get faqA5 =>
+      'Pro membuka Budget Tracker untuk mengelola target pengeluaran, dan Community supaya Anda bisa join grup dan saling menyemangati dengan orang lain.';
+
+  @override
+  String get faqQ6 => 'Apakah fitur Pro butuh koneksi internet?';
+
+  @override
+  String get faqA6 =>
+      'Ya. Budget Tracker dan Community sama-sama butuh koneksi untuk menyimpan dan sinkron data Anda.';
+
+  @override
+  String get faqQ7 =>
+      'Apa yang terjadi dengan data Budget Tracker atau Community saya kalau Pro dibatalkan?';
+
+  @override
+  String get faqA7 =>
+      'Data Anda tetap tersimpan, tapi Anda kehilangan akses untuk melihat atau mengeditnya sampai berlangganan lagi.';
+
+  @override
+  String get faqQ8 =>
+      'Bagaimana cara mengelola atau membatalkan langganan Pro?';
+
+  @override
+  String get faqA8 =>
+      'Anda bisa mengelola langganan kapan saja lewat pengaturan akun App Store atau Google Play.';
+
+  @override
+  String get faqQ9 =>
+      'Saya pengguna Pro — bagaimana cara mengundang teman ke grup Community?';
+
+  @override
+  String get faqA9 =>
+      'Buka grup dari tab Community, ketuk tombol Bagikan, lalu kirim pesan berisi kode undangan ke temanmu. Temanmu cukup memasukkan kode itu lewat \"Gabung via Kode\" di tab Community (kalau belum punya aplikasinya, pesan itu juga berisi link untuk mengunduh).';
+
+  @override
+  String get faqQ10 =>
+      'Saya pengguna Pro — bagaimana cara mengatur atau mengubah batas pengeluaran Budget Tracker?';
+
+  @override
+  String get faqA10 =>
+      'Buka tab Keuangan lalu ketuk \"Ubah Batas Pengeluaran\". Form akan terbuka sesuai tab yang sedang dilihat (Harian/Mingguan/Bulanan), dan batas di periode lain menyesuaikan otomatis.';
 
   @override
   String get usageTipsTitle => 'Tips Penggunaan';
@@ -963,6 +1094,17 @@ class AppLocalizationsId extends AppLocalizations {
       'Foto profil belum tersedia di versi ini';
 
   @override
+  String get avatarPickCamera => 'Ambil foto';
+
+  @override
+  String get avatarPickGallery => 'Pilih dari galeri';
+
+  @override
+  String profilePhotoCommunitySyncFailed(String error) {
+    return 'Foto tersimpan, tapi belum bisa disinkronkan ke grup kamu: $error';
+  }
+
+  @override
   String get profileNameLabel => 'Nama';
 
   @override
@@ -988,7 +1130,8 @@ class AppLocalizationsId extends AppLocalizations {
       'Pilih tema warna yang paling Anda suka. Warna ini dipakai untuk tombol, cincin progres, dan aksen di seluruh aplikasi.';
 
   @override
-  String get healthSyncStepsLabel => 'Sinkronkan langkah dari aplikasi Health';
+  String get healthSyncStepsLabel =>
+      'Sinkronkan aktivitas dari aplikasi Health';
 
   @override
   String get healthSyncCalendarLabel => 'Sinkronkan pengingat ke Kalender';
@@ -1008,6 +1151,69 @@ class AppLocalizationsId extends AppLocalizations {
   String get healthSyncFeatureCalendar => 'Akses Kalender';
 
   @override
+  String get healthConnectNotInstalledTitle => 'Health Connect diperlukan';
+
+  @override
+  String get healthConnectNotInstalledMessage =>
+      'Sinkronisasi aktivitas membutuhkan aplikasi Health Connect, yang belum terpasang di perangkat ini. Pasang dulu, lalu coba lagi.';
+
+  @override
+  String get healthConnectInstallButton => 'Pasang Health Connect';
+
+  @override
+  String get healthSyncNow => 'Sinkronkan sekarang';
+
+  @override
+  String healthSyncLastSynced(String time) {
+    return 'Terakhir disinkronkan $time';
+  }
+
+  @override
+  String get healthSyncNeverSynced => 'Belum pernah disinkronkan';
+
+  @override
+  String healthSyncResultUpdated(int count) {
+    return 'Data kesehatan tersinkron — $count habit diperbarui.';
+  }
+
+  @override
+  String get healthSyncResultUpToDate =>
+      'Data kesehatan tersinkron — habit kamu sudah terbaru.';
+
+  @override
+  String get healthSyncProblemTitle =>
+      'Sinkronisasi kesehatan belum bisa mengisi habit';
+
+  @override
+  String get healthSyncResultNoData =>
+      'Tidak ada data langkah atau olahraga dalam 7 hari terakhir. Health Connect baru punya data kalau ada aplikasi pencatat — mis. Google Fit, Samsung Health, Mi Fitness, atau Fitbit — yang terhubung dan menyinkronkan datanya ke Health Connect. Hubungkan salah satunya di Health Connect, lalu ketuk Sinkronkan sekarang.';
+
+  @override
+  String get healthSyncResultNoHabits =>
+      'Belum ada habit yang bisa diisi dari data kesehatan. Sinkronisasi mengisi habit dengan satuan langkah, serta habit jalan kaki, lari, renang, bersepeda, yoga/peregangan, dan olahraga.';
+
+  @override
+  String get healthSyncResultNoPermission =>
+      'Daily Habits belum bisa membaca data kesehatan kamu. Ketuk Beri akses lalu izinkan Langkah dan Olahraga untuk Daily Habits.';
+
+  @override
+  String get healthSyncResultFailed =>
+      'Sinkronisasi kesehatan gagal. Pastikan Health Connect sudah versi terbaru, lalu ketuk Sinkronkan sekarang lagi.';
+
+  @override
+  String get healthSyncGrantAccess => 'Beri akses';
+
+  @override
+  String get healthSyncAlarmEnabled =>
+      'Pengingat sekarang berbunyi seperti alarm, lengkap dengan Tunda dan Matikan.';
+
+  @override
+  String get alarmSnooze => 'Tunda 10 menit';
+
+  @override
+  String get alarmDismiss => 'Matikan';
+
+  @override
   String get iconPickerChooseIcon => 'Pilih Ikon';
 
   @override
@@ -1018,6 +1224,16 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get proFeatureUpgradeButton => 'Upgrade ke Pro';
+
+  @override
+  String get proUpgradeCelebrationTitle => 'Kamu sekarang Pro!';
+
+  @override
+  String get proUpgradeCelebrationSubtitle =>
+      'Habit tanpa batas, pelacakan Finansial, dan Community sudah terbuka semua.';
+
+  @override
+  String get proUpgradeCelebrationButton => 'Lanjutkan';
 
   @override
   String proFeatureSignInFailed(String error) {
@@ -1048,6 +1264,85 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get quickProgressMarkAchieved => 'Tandai Tercapai';
+
+  @override
+  String quickProgressRecordedToday(String amount) {
+    return 'Tercatat hari ini: $amount';
+  }
+
+  @override
+  String get quickProgressEntryModeDirect => 'Catat langsung';
+
+  @override
+  String get quickProgressEntryModeBreakdown => 'Rincian per kategori';
+
+  @override
+  String spendingBreakdownAlreadyLogged(String total) {
+    return 'Sudah dicatat hari ini ($total)';
+  }
+
+  @override
+  String get spendingBreakdownAddItem => 'Tambah rincian';
+
+  @override
+  String get spendingBreakdownEditItem => 'Edit rincian';
+
+  @override
+  String get spendingBreakdownCustomLabelHint => 'Keterangan';
+
+  @override
+  String get spendingBreakdownSubcategoryHint =>
+      'Detail sub-kategori (opsional)';
+
+  @override
+  String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownGrandTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownNoDetailLabel => 'Tanpa detail';
+
+  @override
+  String get spendingBreakdownDirectModeLockedHint =>
+      'Enter Total dinonaktifkan karena Anda sudah punya data rincian kategori — edit atau hapus item di atas sebagai gantinya.';
+
+  @override
+  String get budgetTrackerSaveBudget => 'Simpan Anggaran';
+
+  @override
+  String get budgetTrackerTitleEditBudget => 'Edit Anggaran';
+
+  @override
+  String get budgetTrackerTitleBudgetForm => 'Formulir Anggaran';
+
+  @override
+  String get budgetTrackerDifferentWeekendGoal =>
+      'Anggaran Berbeda untuk Akhir Pekan';
+
+  @override
+  String get budgetTrackerCurrency => 'Mata Uang';
+
+  @override
+  String get budgetTrackerGoalPeriod => 'Periode Target';
+
+  @override
+  String get budgetTrackerBudgetLabel => 'Anggaran';
+
+  @override
+  String get budgetTrackerWeekdayBudget => 'Anggaran Hari Kerja';
+
+  @override
+  String get budgetTrackerWeekendBudget => 'Anggaran Akhir Pekan';
+
+  @override
+  String get financeMonthToDate => 'Sejauh Bulan Ini';
+
+  @override
+  String get financeMonthlyTotal => 'Total Bulanan';
+
+  @override
+  String get financeSpendingDistribution => 'Distribusi Pengeluaran';
 
   @override
   String get commonSave => 'Simpan';

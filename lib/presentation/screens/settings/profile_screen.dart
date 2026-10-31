@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../data/repositories/profile_repository.dart';
+import '../../../domain/language.dart';
+import '../../../domain/models/onboarding_question.dart';
 import '../../../domain/models/user_profile.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../../services/avatar_image_service.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/app_logo.dart';
+import '../../widgets/avatar_picker.dart';
 
-/// Edit the user's name & age profile. Profile photo (CLAUDE.md v3 §8) is
-/// not yet implemented — marked "not available yet" following the
-/// Export/Import pattern in Settings, to avoid adding a native picker
-/// dependency outside this iteration's scope.
+/// Edit the user's name, age, gender & profile photo. Photo picking/
+/// processing lives in `AvatarImageService`/`AvatarPicker` (base64 inline
+/// in Firestore, not Firebase Storage — the project is on the Spark plan).
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
@@ -24,6 +29,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _ageController = TextEditingController();
   bool _loaded = false;
   bool _saving = false;
+  // Gender still lives in SettingsRepository/SharedPreferences (same as
+  // where onboarding wrote it), not on UserProfile itself — surfaced here
+  // and made editable per #22 without needing a DB schema migration.
+  Gender? _gender;
+
+  @override
+  void initState() {
+    super.initState();
+    _gender = Gender.fromValue(ref.read(settingsRepositoryProvider).gender);
+  }
 
   @override
   void dispose() {
@@ -36,7 +51,50 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_loaded) return;
     _loaded = true;
     _nameController.text = profile.name;
-    _ageController.text = profile.age?.toString() ?? '';
+    // Nilai yang tersimpan sebelum batas umur ada bisa melebihi [maxUserAge];
+    // `inputFormatters` tidak menyentuh teks yang diisi secara programatik,
+    // jadi dijepit di sini supaya form tidak menampilkan angka yang lebih
+    // besar dari yang sebenarnya akan tersimpan.
+    final age = profile.age;
+    _ageController.text =
+        age == null ? '' : (age > maxUserAge ? maxUserAge : age).toString();
+  }
+
+  Future<void> _onPhotoPicked(ProcessedAvatar avatar, UserProfile current) async {
+    final l10n = AppLocalizations.of(context)!;
+    await ref.read(profileRepositoryProvider).updateProfile(
+          UserProfile(
+            id: current.id,
+            name: current.name,
+            age: current.age,
+            photoPath: avatar.localFile.path,
+            themeKey: current.themeKey,
+            createdAt: current.createdAt,
+          ),
+        );
+    final uid = ref.read(currentUidProvider);
+    if (uid != null) {
+      try {
+        await ref.read(communityRepositoryProvider).updateMyPhotoAcrossGroups(
+              uid: uid,
+              photoBase64: avatar.base64Thumbnail,
+            );
+      } catch (e) {
+        // Local photo already saved above — don't lose that success message
+        // over a Community sync failure, but surface it distinctly instead
+        // of failing silently (this previously had no error handling at
+        // all, making a sync failure indistinguishable from success).
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.profilePhotoCommunitySyncFailed('$e'))),
+          );
+        }
+        return;
+      }
+    }
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
+    }
   }
 
   Future<void> _save(UserProfile current) async {
@@ -58,6 +116,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               createdAt: current.createdAt,
             ),
           );
+      final gender = _gender;
+      if (gender != null) {
+        await ref.read(settingsRepositoryProvider).setGender(gender.name);
+      }
+      // Community memakai nama profil ini (feedback 6, slide 24), tapi
+      // menyimpannya secara denormalized per-grup — jadi rename di sini
+      // harus didorong ke tiap grup, sama seperti perubahan foto di
+      // `_pickPhoto`. Kegagalan sync tidak boleh menggagalkan simpan lokal
+      // yang sudah berhasil di atas.
+      final uid = ref.read(currentUidProvider);
+      if (uid != null && name != current.name) {
+        try {
+          await ref.read(communityRepositoryProvider).updateMyNameAcrossGroups(
+                uid: uid,
+                displayName: name,
+              );
+        } catch (_) {
+          // Sinkronisasi Community gagal (mis. offline) — nama lokal sudah
+          // tersimpan, dan pass sync saat membuka Community berikutnya
+          // (`profilePhotoCommunitySyncProvider`) akan memperbaikinya.
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.profileSaved)));
       }
@@ -70,6 +150,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
     final profileAsync = ref.watch(userProfileStreamProvider);
 
     return Scaffold(
@@ -90,14 +171,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Center(
                     child: Column(
                       children: [
-                        const AppLogo(size: 64),
-                        const SizedBox(height: 10),
-                        TextButton(
-                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l10n.profilePhotoNotAvailable)),
-                          ),
-                          child: Text(l10n.profileChangePhoto),
+                        AvatarPicker(
+                          photoPath: profile.photoPath,
+                          displayName: profile.name,
+                          size: 72,
+                          onPicked: (avatar) => _onPhotoPicked(avatar, profile),
                         ),
+                        const SizedBox(height: 10),
+                        Text(l10n.profileChangePhoto, style: theme.textTheme.labelMedium),
                       ],
                     ),
                   ),
@@ -114,7 +195,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   TextField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
+                    // Dibatasi 2 digit (maks. 99) — sama seperti field umur di
+                    // onboarding, supaya batasnya berlaku di SEMUA jalur input
+                    // umur, bukan cuma saat pertama kali daftar (feedback 6,
+                    // slide 3).
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
                     decoration: InputDecoration(hintText: l10n.profileAgeHint),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.genderLabel, style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  DropdownMenu<Gender>(
+                    initialSelection: _gender,
+                    hintText: l10n.genderHint,
+                    expandedInsets: EdgeInsets.zero,
+                    // Match the Name/Age fields' fill/border above — see the
+                    // same fix's comment in onboarding_flow.dart.
+                    inputDecorationTheme: theme.inputDecorationTheme,
+                    onSelected: (value) => setState(() => _gender = value),
+                    dropdownMenuEntries: [
+                      for (final g in Gender.values)
+                        DropdownMenuEntry(value: g, label: g.label(lang == AppLang.id)),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(

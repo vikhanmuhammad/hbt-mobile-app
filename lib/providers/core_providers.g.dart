@@ -325,6 +325,55 @@ final class FinanceRepositoryProvider
 
 String _$financeRepositoryHash() => r'f685f1e19dff1d4bef15fed9fcc58c6baaef25a0';
 
+@ProviderFor(spendingBreakdownRepository)
+final spendingBreakdownRepositoryProvider =
+    SpendingBreakdownRepositoryProvider._();
+
+final class SpendingBreakdownRepositoryProvider
+    extends
+        $FunctionalProvider<
+          SpendingBreakdownRepository,
+          SpendingBreakdownRepository,
+          SpendingBreakdownRepository
+        >
+    with $Provider<SpendingBreakdownRepository> {
+  SpendingBreakdownRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'spendingBreakdownRepositoryProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$spendingBreakdownRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<SpendingBreakdownRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SpendingBreakdownRepository create(Ref ref) {
+    return spendingBreakdownRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SpendingBreakdownRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SpendingBreakdownRepository>(value),
+    );
+  }
+}
+
+String _$spendingBreakdownRepositoryHash() =>
+    r'ca9d7cd6d0ba057057a0f9edf0c4109357613bba';
+
 @ProviderFor(habitTemplateRepository)
 final habitTemplateRepositoryProvider = HabitTemplateRepositoryProvider._();
 
@@ -467,3 +516,62 @@ final class ProfileRepositoryProvider
 }
 
 String _$profileRepositoryHash() => r'66035faf3d0efdd46e580f1611c2aa9a2ad08939';
+
+/// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+/// Sync toggles (feedback 7, slide 46 & 48) — see
+/// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+
+@ProviderFor(reminderSyncCoordinator)
+final reminderSyncCoordinatorProvider = ReminderSyncCoordinatorProvider._();
+
+/// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+/// Sync toggles (feedback 7, slide 46 & 48) — see
+/// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+
+final class ReminderSyncCoordinatorProvider
+    extends
+        $FunctionalProvider<
+          ReminderSyncCoordinator,
+          ReminderSyncCoordinator,
+          ReminderSyncCoordinator
+        >
+    with $Provider<ReminderSyncCoordinator> {
+  /// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+  /// Sync toggles (feedback 7, slide 46 & 48) — see
+  /// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+  ReminderSyncCoordinatorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reminderSyncCoordinatorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reminderSyncCoordinatorHash();
+
+  @$internal
+  @override
+  $ProviderElement<ReminderSyncCoordinator> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ReminderSyncCoordinator create(Ref ref) {
+    return reminderSyncCoordinator(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ReminderSyncCoordinator value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ReminderSyncCoordinator>(value),
+    );
+  }
+}
+
+String _$reminderSyncCoordinatorHash() =>
+    r'c14c5791870d9624040f67224ff20768beaec3a0';

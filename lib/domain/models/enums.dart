@@ -101,6 +101,78 @@ enum GoalDirection {
       };
 }
 
+/// Category for a single spending-breakdown entry (see
+/// `SpendingBreakdownEntry`) — lets a user split one logged expense (e.g.
+/// Rp50.000) into where it actually went, tagged with one of these fixed
+/// categories, plus an optional free-text sub-category/detail label under
+/// any of them (e.g. "Bensin" under Fixed Spending).
+///
+/// This enum used to have different members (`urgent`, `health`, `custom`)
+/// before the Budget Tracker rework. Old rows in `HabitSpendingBreakdowns`
+/// may still hold those old string keys — they are intentionally left
+/// unmigrated in the DB and simply filtered out (not shown) by any code
+/// reading `categoryKey`, via [tryFromValue] returning null for them.
+enum SpendingBreakdownCategory {
+  dailyNeeds,
+  dailyWants,
+  unexpectedNeeds,
+  fixedSpending;
+
+  /// Parses a stored `categoryKey`, returning null for values that don't
+  /// match a current member (e.g. legacy pre-rework keys) instead of
+  /// silently falling back to some default — callers must decide to skip
+  /// unparseable entries rather than risk misattributing them.
+  static SpendingBreakdownCategory? tryFromValue(String value) {
+    for (final e in SpendingBreakdownCategory.values) {
+      if (e.name == value) return e;
+    }
+    return null;
+  }
+
+  /// Same as [tryFromValue] but falls back to [dailyNeeds] — only use this
+  /// where a non-null category is structurally required (e.g. building a
+  /// new entry from user input); prefer [tryFromValue] when reading
+  /// persisted data that might contain legacy keys.
+  static SpendingBreakdownCategory fromValue(String value) =>
+      tryFromValue(value) ?? SpendingBreakdownCategory.dailyNeeds;
+
+  String label(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'Daily Needs',
+            SpendingBreakdownCategory.dailyWants => 'Daily Wants',
+            SpendingBreakdownCategory.unexpectedNeeds => 'Unexpected Needs',
+            SpendingBreakdownCategory.fixedSpending => 'Fixed Spending',
+          },
+        AppLang.id => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'Kebutuhan Harian',
+            SpendingBreakdownCategory.dailyWants => 'Keinginan Harian',
+            SpendingBreakdownCategory.unexpectedNeeds => 'Kebutuhan Mendadak',
+            SpendingBreakdownCategory.fixedSpending => 'Pengeluaran Tetap',
+          },
+      };
+
+  /// Short example text shown under the category chip, e.g. "food,
+  /// transport" — purely descriptive, not stored anywhere.
+  String? hint(AppLang lang) => switch (lang) {
+        AppLang.en => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'e.g. food, transport',
+            SpendingBreakdownCategory.dailyWants => 'e.g. coffee, movies',
+            SpendingBreakdownCategory.unexpectedNeeds =>
+              'e.g. medical, repairs',
+            SpendingBreakdownCategory.fixedSpending =>
+              'e.g. subscriptions, rent',
+          },
+        AppLang.id => switch (this) {
+            SpendingBreakdownCategory.dailyNeeds => 'mis. makan, transport',
+            SpendingBreakdownCategory.dailyWants => 'mis. kopi, nonton',
+            SpendingBreakdownCategory.unexpectedNeeds =>
+              'mis. berobat, servis',
+            SpendingBreakdownCategory.fixedSpending =>
+              'mis. langganan, sewa',
+          },
+      };
+}
+
 /// Weekday keys Monday..Sunday, aligned with `DateTime.weekday` (1 = Monday).
 const List<String> weekdayKeys = [
   'mon',

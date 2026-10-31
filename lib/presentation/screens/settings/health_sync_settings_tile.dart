@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/core_providers.dart';
 import '../../../services/calendar_alarm_service.dart';
+import '../../../services/health_steps_sync.dart';
 import '../../../services/health_sync_service.dart';
+import '../../../services/reminder_reschedule.dart';
 import '../../widgets/toggle_switch.dart';
 
 /// Point 10 — three independent opt-in toggles: sync step count from the
@@ -35,12 +37,125 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
       return;
     }
     setState(() => _busy = true);
+    // On Android, `requestAuthorization` throws if Health Connect isn't
+    // installed — check first so we can offer to install it instead of
+    // just surfacing a generic "denied" message.
+    if (!await _health.isHealthConnectAvailable()) {
+      await repo.setStepsSyncEnabled(false);
+      if (mounted) {
+        setState(() => _busy = false);
+        _showHealthConnectMissing();
+      }
+      return;
+    }
     final granted = await _health.requestPermissions();
     await repo.setStepsSyncEnabled(granted);
-    if (mounted) {
-      setState(() => _busy = false);
-      if (!granted) _showDenied(AppLocalizations.of(context)!.healthSyncFeatureHealth);
+    if (!granted) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _showDenied(AppLocalizations.of(context)!.healthSyncFeatureHealth);
+      }
+      return;
     }
+    // Sync right away and say how it went, so turning this on has a visible
+    // effect — or a clear reason why not (feedback 7, slide 47; feedback 8,
+    // slide 9).
+    await _syncNow();
+  }
+
+  Future<void> _syncNow() async {
+    setState(() => _busy = true);
+    final result = await syncHealthSteps(ref);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    _showSyncResult(result);
+  }
+
+  Future<void> _grantAccess() async {
+    setState(() => _busy = true);
+    final granted = await _health.requestPermissions();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (granted) {
+      await _syncNow();
+    } else {
+      _showDenied(AppLocalizations.of(context)!.healthSyncFeatureHealth);
+    }
+  }
+
+  void _showSyncResult(HealthSyncResult? result) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (result?.status) {
+      case HealthSyncStatus.off:
+        return;
+      case HealthSyncStatus.unavailable:
+        _showHealthConnectMissing();
+      case HealthSyncStatus.updated:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.healthSyncResultUpdated(result!.updatedHabits))),
+        );
+      case HealthSyncStatus.upToDate:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.healthSyncResultUpToDate)),
+        );
+      case HealthSyncStatus.noPermission:
+        _showSyncProblem(l10n.healthSyncResultNoPermission, grantAccess: true);
+      case HealthSyncStatus.noData:
+        _showSyncProblem(l10n.healthSyncResultNoData);
+      case HealthSyncStatus.noMatchingHabits:
+        _showSyncProblem(l10n.healthSyncResultNoHabits);
+      case null:
+        _showSyncProblem(l10n.healthSyncResultFailed);
+    }
+  }
+
+  void _showSyncProblem(String message, {bool grantAccess = false}) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.healthSyncProblemTitle),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+          ),
+          if (grantAccess)
+            FilledButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                _grantAccess();
+              },
+              child: Text(l10n.healthSyncGrantAccess),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showHealthConnectMissing() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.healthConnectNotInstalledTitle),
+        content: Text(l10n.healthConnectNotInstalledMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(MaterialLocalizations.of(dialogContext).cancelButtonLabel),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _health.installHealthConnect();
+            },
+            child: Text(l10n.healthConnectInstallButton),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleCalendar(bool value) async {
@@ -67,6 +182,29 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
     final repo = ref.read(settingsRepositoryProvider);
     await repo.setAlarmSyncEnabled(value);
     setState(() {});
+    // Reminders already on the device switch to (or back from) ringing as
+    // an alarm right away, not only the next time each habit is saved.
+    if (value) {
+      final notifications = ref.read(notificationServiceProvider);
+      await notifications.requestExactAlarmPermissionIfNeeded();
+      await notifications.requestFullScreenIntentPermission();
+    }
+    await rescheduleRemindersIfNeeded(ref);
+    if (value && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context)!.healthSyncAlarmEnabled)),
+      );
+    }
+  }
+
+  String _lastSyncedText(AppLocalizations l10n) {
+    final at = ref.read(settingsRepositoryProvider).lastHealthSyncAt;
+    if (at == null) return l10n.healthSyncNeverSynced;
+    final localizations = MaterialLocalizations.of(context);
+    final time = localizations.formatTimeOfDay(TimeOfDay.fromDateTime(at));
+    final now = DateTime.now();
+    final sameDay = at.year == now.year && at.month == now.month && at.day == now.day;
+    return l10n.healthSyncLastSynced(sameDay ? time : '${localizations.formatShortDate(at)} $time');
   }
 
   void _showDenied(String feature) {
@@ -91,6 +229,21 @@ class _HealthSyncSettingsTileState extends ConsumerState<HealthSyncSettingsTile>
             enabled: !_busy,
             onChanged: _toggleSteps,
           ),
+          if (repo.stepsSyncEnabled)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(48, 0, 8, 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(_lastSyncedText(l10n), style: theme.textTheme.bodySmall),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _syncNow,
+                    child: Text(l10n.healthSyncNow),
+                  ),
+                ],
+              ),
+            ),
           Divider(height: 1, color: theme.dividerColor),
           _SyncRow(
             icon: Icons.calendar_month_rounded,

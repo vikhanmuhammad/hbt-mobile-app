@@ -5,13 +5,15 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../domain/language.dart';
+import '../../../domain/models/onboarding_question.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../providers/community_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../providers/settings_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/app_logo.dart';
+import '../../widgets/segmented_pill_toggle.dart';
 import '../../widgets/toggle_switch.dart';
+import '../../widgets/user_avatar.dart';
 import '../add_habit/add_habit_flow_screen.dart';
 import '../onboarding/onboarding_flow.dart';
 import 'faq_screen.dart';
@@ -38,6 +40,15 @@ class SettingsScreen extends ConsumerWidget {
 
     final profile = ref.watch(userProfileStreamProvider).value;
     final isPro = ref.watch(isProProvider);
+    final lang = ref.watch(appLanguageProvider);
+    final gender = Gender.fromValue(ref.watch(settingsRepositoryProvider).gender);
+    final age = profile?.age;
+    // Age & gender from onboarding (#22) — null pieces just get skipped
+    // instead of the whole line disappearing.
+    final ageGenderLabel = [
+      if (age != null) l10n.settingsAgeYears(age),
+      if (gender != null) gender.label(lang == AppLang.id),
+    ].join(' • ');
 
     return Scaffold(
       body: Center(
@@ -51,7 +62,11 @@ class SettingsScreen extends ConsumerWidget {
               // reference app's Settings layout (point 16).
               Row(
                 children: [
-                  const AppLogo(size: 52),
+                  UserAvatar(
+                    photoPath: profile?.photoPath,
+                    displayName: profile?.name.isNotEmpty == true ? profile!.name : '?',
+                    size: 52,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -61,21 +76,32 @@ class SettingsScreen extends ConsumerWidget {
                           profile?.name.isNotEmpty == true ? profile!.name : l10n.settingsNoName,
                           style: theme.textTheme.headlineSmall,
                         ),
-                        if (isPro) ...[
+                        if (ageGenderLabel.isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.workspace_premium_rounded, size: 14, color: theme.colorScheme.primary),
-                              const SizedBox(width: 4),
-                              Text(
-                                l10n.settingsProMember,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.primary,
-                                  fontWeight: FontWeight.w700,
+                          Text(ageGenderLabel, style: theme.textTheme.bodySmall),
+                        ],
+                        if (isPro) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.workspace_premium_rounded, size: 15, color: Colors.white),
+                                const SizedBox(width: 5),
+                                Text(
+                                  l10n.settingsProMember,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ],
@@ -135,18 +161,21 @@ class SettingsScreen extends ConsumerWidget {
                         l10n.settingsLanguage,
                         style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      SegmentedButton<AppLang>(
-                        segments: const [
-                          ButtonSegment(value: AppLang.en, label: Text('EN')),
-                          ButtonSegment(value: AppLang.id, label: Text('ID')),
-                        ],
-                        selected: {ref.watch(appLanguageProvider)},
-                        onSelectionChanged: (selection) => ref
-                            .read(appLanguageProvider.notifier)
-                            .setLanguage(selection.first),
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
+                      // `SegmentedPillToggle`, not the stock Material
+                      // `SegmentedButton` — its boxy black-outlined segments
+                      // clashed with the rest of the app's rounded-pill
+                      // toggles (same fix already applied to Finance's
+                      // Daily/Weekly/Monthly toggle).
+                      SizedBox(
+                        width: 120,
+                        child: SegmentedPillToggle<AppLang>(
+                          segments: const [
+                            PillSegment(value: AppLang.en, label: 'EN'),
+                            PillSegment(value: AppLang.id, label: 'ID'),
+                          ],
+                          selected: ref.watch(appLanguageProvider),
+                          onChanged: (value) =>
+                              ref.read(appLanguageProvider.notifier).setLanguage(value),
                         ),
                       ),
                     ],
@@ -369,12 +398,12 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     final habitRepo = ref.read(habitRepositoryProvider);
-    final notif = ref.read(notificationServiceProvider);
+    final reminderSync = ref.read(reminderSyncCoordinatorProvider);
 
     final habits = await habitRepo.getAll();
     for (final h in habits) {
       try {
-        await notif.cancelForHabit(h.id);
+        await reminderSync.removeForHabit(h.id);
       } catch (_) {
         // Notification platform not available — proceed with data deletion.
       }
@@ -390,6 +419,11 @@ class SettingsScreen extends ConsumerWidget {
     // unlinked, since the local link is gone — "Add to My Habits" resumes
     // syncing from wherever a freshly re-created local habit's progress is).
     await habitRepo.deleteAllData();
+    // deleteAllData() only wipes the Drift DB — the onboarding gender pick
+    // lives in SharedPreferences (SettingsRepository) and survives that,
+    // which made the "What's your name?" step come back with the old
+    // gender pre-selected instead of its placeholder.
+    await ref.read(settingsRepositoryProvider).clearGender();
 
     final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
     await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);

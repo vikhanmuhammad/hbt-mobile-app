@@ -16,10 +16,6 @@ class OnboardingStrings {
 
   // Language pick step.
   String get chooseLanguageTitle => _t('Choose your language', 'Pilih bahasa kamu');
-  String get chooseLanguageSubtitle => _t(
-        'This only changes the questions during setup — the rest of the app stays in English.',
-        'Ini hanya mengubah pertanyaan selama pengaturan awal — bagian lain aplikasi tetap berbahasa Inggris.',
-      );
   String get englishLabel => 'English';
   String get indonesianLabel => 'Bahasa Indonesia';
 
@@ -30,26 +26,30 @@ class OnboardingStrings {
           'Catat progresmu dalam hitungan detik',
           'Lihat konsistensimu sekilas pandang',
           'Bertumbuh bersama teman',
-          'Rayakan setiap streak-mu',
+          'Semua kebiasaanmu, dalam satu layar',
+          'Kelola keuanganmu juga',
         ]
       : const [
           'Log your progress in seconds',
           'See your consistency at a glance',
           'Grow together with friends',
-          'Celebrate every streak',
+          'Every habit, right on one screen',
+          'Manage your finances too',
         ];
   List<String> get introSubtitles => _id
       ? const [
           'Tap untuk selesaikan kebiasaan sederhana, atau tambahkan angka untuk yang kamu ukur.',
           'Kalender bulanan dengan ring progress menunjukkan seberapa konsisten kamu selama ini.',
           'Gabung Community, lacak kebiasaan bareng, dan naik di papan peringkat bersama.',
-          'Setiap hari kamu konsisten menambah streak-mu — langkah kecil yang berarti besar.',
+          'Beranda menunjukkan progres dan target tiap kebiasaan dengan jelas, setiap hari.',
+          'Lacak pengeluaran, tabungan, dan target finansialmu. Fitur khusus pengguna Pro.',
         ]
       : const [
           'Tap to check off simple habits, or add a quick number for the ones you measure.',
           'A monthly calendar with progress rings shows exactly how consistent you\'ve been.',
           'Join a Community group, track shared habits, and climb the leaderboard together.',
-          'Every day you show up adds to your streak — small steps that add up to real change.',
+          'Home shows your progress against each goal clearly, right from the first glance.',
+          'Track spending, savings, and financial goals. A Pro-only feature.',
         ];
   String get getStarted => _t('Get Started', 'Mulai');
 

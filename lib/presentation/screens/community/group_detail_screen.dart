@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../domain/models/community/app_group.dart';
 import '../../../domain/models/community/chat_message.dart';
@@ -11,6 +12,9 @@ import '../../../domain/models/community/group_member.dart';
 import '../../../domain/models/community/leaderboard_entry.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/community_enums.dart';
+import '../../../domain/date_utils.dart' as date_utils;
+import '../../../domain/format_utils.dart';
+import '../../../domain/language.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_template.dart';
@@ -28,6 +32,7 @@ import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import '../../widgets/segmented_pill_toggle.dart';
+import '../../widgets/user_avatar.dart';
 
 class GroupDetailScreen extends ConsumerStatefulWidget {
   const GroupDetailScreen({super.key, required this.groupId});
@@ -123,11 +128,47 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
     super.dispose();
   }
 
-  void _copyInviteCode() {
-    final l10n = AppLocalizations.of(context)!;
-    Clipboard.setData(ClipboardData(text: widget.group.inviteCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l10n.groupInviteCodeCopied(widget.group.inviteCode))),
+  /// Website tempat orang yang belum punya app bisa download (feedback 6,
+  /// slide 26/31) — bukan deep link (app tidak kontrol domain ini, jadi
+  /// tidak bisa auto-buka app/auto-join). Klik link ini selalu membuka
+  /// browser ke website tsb; join yang sebenarnya tetap lewat Invite Code,
+  /// yang harus di-input manual user lewat alur "Join via Code" di dalam
+  /// app — see [_shareGroup]'s doc comment for why there's no separate
+  /// "Share Link" option anymore.
+  static const _downloadLink = 'https://nindaferdailyhabits.com';
+
+  /// feedback 7, slide 44: there used to be a Pro-gated "Share Link" option
+  /// here alongside "Share Code". It never actually shared a clickable
+  /// invite link (e.g. `https://habittracker.app/join?code=...`) that could
+  /// open the app and auto-join — that needs Android App Links / iOS
+  /// Universal Links, which needs a domain the app controls plus
+  /// AndroidManifest `intent-filter`/iOS `associated-domains` entries and
+  /// Console-side host verification (see `AndroidManifest.xml`/
+  /// `Info.plist` — neither is configured, and `pubspec.yaml` has no
+  /// `app_links`/`uni_links` package either). It just shared this same text
+  /// message, so the two options were functionally identical except one
+  /// was needlessly Pro-gated and labelled in a way that implied tap-to-join
+  /// worked. Per QA feedback 7 slide 44, real deep-linking is out of scope
+  /// for now (needs the nindaferdailyhabits.com site + platform console
+  /// config that can't be verified without a live domain/device), so the
+  /// link option is removed entirely and only Code sharing remains — code
+  /// entry via "Join via Code" is the one join path that's guaranteed to
+  /// work everywhere.
+  String _shareGroupMessage(bool indonesian) => indonesian
+      ? 'Yuk gabung grup "${widget.group.name}" di Daily Habits! '
+          'Belum punya app-nya? Download di $_downloadLink lalu masukkan kode undangan: ${widget.group.inviteCode}'
+      : 'Join my "${widget.group.name}" group on Daily Habits! '
+          "Don't have the app yet? Download it at $_downloadLink then enter invite code: ${widget.group.inviteCode}";
+
+  Future<void> _shareGroup() async {
+    final lang = ref.read(appLanguageProvider);
+    final indonesian = lang == AppLang.id;
+    // feedback 7, slide 44 — single share action now (code + download link
+    // as text); see the doc comment on [_shareGroupMessage] for why the
+    // separate "Share Link" option was removed instead of trying to make it
+    // a real clickable deep link.
+    await SharePlus.instance.share(
+      ShareParams(text: _shareGroupMessage(indonesian), subject: widget.group.name),
     );
   }
 
@@ -242,7 +283,7 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
           IconButton(
             tooltip: l10n.groupCopyInviteCode,
             icon: const Icon(Icons.ios_share_rounded),
-            onPressed: _copyInviteCode,
+            onPressed: _shareGroup,
           ),
           PopupMenuButton<String>(
             onSelected: (action) {
@@ -380,35 +421,6 @@ class _HabitsTab extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          if (myUnlinkedHabits.isNotEmpty) ...[
-            _TabSectionLabel(l10n.groupYourHabits),
-            const SizedBox(height: 8),
-            for (var i = 0; i < myUnlinkedHabits.length; i++)
-              Builder(
-                builder: (context) {
-                  // Matched against the FULL group habits list (not just the
-                  // unlinked ones) — if this device already linked a
-                  // *different* local habit to the matching entry, we still
-                  // need to know that so "Publish" doesn't silently create a
-                  // duplicate (see _YourHabitRow's alreadyTrackedByMe).
-                  final match = findMatchingGroupHabit(groupHabits, myUnlinkedHabits[i]);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: FadeSlideIn(
-                      delay: staggeredDelay(i),
-                      child: _YourHabitRow(
-                        habit: myUnlinkedHabits[i],
-                        groupId: groupId,
-                        matchingGroupHabit: match,
-                        matchAlreadyTrackedByMe:
-                            match != null && linkedGroupHabitIds.contains(match.id),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 16),
-          ],
           if (communityUnlinkedHabits.isNotEmpty) ...[
             _TabSectionLabel(l10n.groupCommunityHabits),
             const SizedBox(height: 8),
@@ -436,6 +448,35 @@ class _HabitsTab extends ConsumerWidget {
                     canManage: iAmAdmin,
                   ),
                 ),
+              ),
+            const SizedBox(height: 16),
+          ],
+          if (myUnlinkedHabits.isNotEmpty) ...[
+            _TabSectionLabel(l10n.groupYourHabits),
+            const SizedBox(height: 8),
+            for (var i = 0; i < myUnlinkedHabits.length; i++)
+              Builder(
+                builder: (context) {
+                  // Matched against the FULL group habits list (not just the
+                  // unlinked ones) — if this device already linked a
+                  // *different* local habit to the matching entry, we still
+                  // need to know that so "Publish" doesn't silently create a
+                  // duplicate (see _YourHabitRow's alreadyTrackedByMe).
+                  final match = findMatchingGroupHabit(groupHabits, myUnlinkedHabits[i]);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FadeSlideIn(
+                      delay: staggeredDelay(i),
+                      child: _YourHabitRow(
+                        habit: myUnlinkedHabits[i],
+                        groupId: groupId,
+                        matchingGroupHabit: match,
+                        matchAlreadyTrackedByMe:
+                            match != null && linkedGroupHabitIds.contains(match.id),
+                      ),
+                    ),
+                  );
+                },
               ),
           ],
         ],
@@ -508,6 +549,26 @@ String _normalizeHabitName(String name) {
     return w;
   });
   return singularized.join(' ');
+}
+
+/// Formats a Group Habit's own target (value • period, "Maks." prefix for
+/// `atMost`) the same way `Habit.goalLabel` does locally, so a viewer
+/// deciding between "Link" and "Publish" can compare the two side by side
+/// instead of guessing why a same-named habit didn't auto-match (matching
+/// stays strict on purpose — see [findMatchingGroupHabit] — this just makes
+/// the mismatch visible instead of silent).
+String groupHabitTargetLabel(GroupHabit gh, AppLang lang) {
+  if (gh.goalValue == null || gh.goalPeriod == null) return gh.unit;
+  final period = GoalPeriod.values.firstWhere(
+    (p) => p.name == gh.goalPeriod,
+    orElse: () => GoalPeriod.daily,
+  );
+  final isRupiah = gh.unit.trim().toLowerCase() == 'rupiah';
+  final valueLabel = isRupiah
+      ? formatRupiah(gh.goalValue!)
+      : (gh.unit == 'x' ? '${gh.goalValue}x' : '${gh.goalValue} ${gh.unit}');
+  final prefixed = gh.goalDirection == 'atMost' ? 'Maks. $valueLabel' : valueLabel;
+  return '$prefixed • ${period.label(lang)}';
 }
 
 class _TabSectionLabel extends StatelessWidget {
@@ -597,7 +658,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
         unawaited(backfillCommunityHabitLink(
           syncService: syncService,
           uid: user.uid,
-          displayName: user.displayName ?? user.email ?? 'User',
+          displayName: ref.read(currentDisplayNameProvider),
           habitId: widget.habit.id,
           linkId: linkId,
           groupId: widget.groupId,
@@ -630,7 +691,7 @@ class _YourHabitRowState extends ConsumerState<_YourHabitRow> {
             widget.matchAlreadyTrackedByMe
                 ? l10n.groupAlreadyTrackedViaOther
                 : matched
-                    ? l10n.groupMatchesExisting
+                    ? '${l10n.groupMatchesExisting} • ${widget.habit.goalLabel(lang)}'
                     : widget.habit.goalLabel(lang),
             style: theme.textTheme.bodySmall,
           ),
@@ -681,7 +742,7 @@ class _CommunityHabitRow extends ConsumerWidget {
           leading: HabitIcon(icon: habit.icon, size: 20),
           title: Text(habit.displayName(lang)),
           subtitle: Text(
-            isReconnect ? l10n.groupReconnectBefore : habit.unit,
+            isReconnect ? l10n.groupReconnectBefore : groupHabitTargetLabel(habit, lang),
             style: theme.textTheme.bodySmall?.copyWith(
               color: isReconnect ? theme.colorScheme.primary : null,
               fontWeight: isReconnect ? FontWeight.w700 : null,
@@ -856,10 +917,17 @@ class _LeaderboardTabState extends ConsumerState<_LeaderboardTab> {
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final h = habits[i];
-                  return _HabitChip(
-                    label: h.displayName(lang),
-                    selected: h.id == selected.id,
-                    onTap: () => setState(() => _selectedHabitId = h.id),
+                  // A horizontal ListView top-aligns each item within the
+                  // row's fixed height by default — after the chip's own
+                  // padding was slimmed down, it no longer filled that
+                  // height, leaving it visibly sitting above-center instead
+                  // of centered in the 44px lane.
+                  return Center(
+                    child: _HabitChip(
+                      label: h.displayName(lang),
+                      selected: h.id == selected.id,
+                      onTap: () => setState(() => _selectedHabitId = h.id),
+                    ),
                   );
                 },
               ),
@@ -909,7 +977,7 @@ class _HabitChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected
               ? theme.colorScheme.primary
@@ -1053,6 +1121,20 @@ class _LeaderboardTile extends ConsumerWidget {
     // existing link there already belongs to the current user).
     final linksAsync = isMe ? null : ref.watch(habitGroupLinksForGroupHabitProvider(groupHabit.id));
     final alreadyLinked = isMe || (linksAsync?.value?.isNotEmpty ?? true);
+    // Leaderboard entries don't carry their own photo (see
+    // `CommunityRepository.updateMyPhotoAcrossGroups` doc comment) — looked
+    // up live from the group's member map instead, by uid, so it's always
+    // current even if the entry itself hasn't been rewritten recently.
+    final group = ref.watch(groupDetailProvider(groupHabit.groupId)).value;
+    String? memberPhoto;
+    if (group != null) {
+      for (final m in group.members) {
+        if (m.uid == entry.uid) {
+          memberPhoto = m.photoBase64;
+          break;
+        }
+      }
+    }
 
     return Card(
       color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
@@ -1066,11 +1148,37 @@ class _LeaderboardTile extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: rankColor ?? theme.colorScheme.surfaceContainerHighest,
-              foregroundColor: rankColor != null ? Colors.white : null,
-              child: Text('$rank', style: const TextStyle(fontWeight: FontWeight.w800)),
+            SizedBox(
+              width: 36,
+              height: 36,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  UserAvatar(photoBase64: memberPhoto, displayName: entry.displayName, size: 36),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: rankColor ?? theme.colorScheme.surfaceContainerHighest,
+                        border: Border.all(color: theme.cardColor, width: 1.5),
+                      ),
+                      child: Text(
+                        '$rank',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 9,
+                          color: rankColor != null ? Colors.white : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1204,7 +1312,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
         unawaited(backfillCommunityHabitLink(
           syncService: syncService,
           uid: user.uid,
-          displayName: user.displayName ?? user.email ?? 'User',
+          displayName: ref.read(currentDisplayNameProvider),
           habitId: existingMatch.id,
           linkId: linkId,
           groupId: groupHabit.groupId,
@@ -1234,7 +1342,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
 
   final goalPeriod =
       groupHabit.goalPeriod != null ? GoalPeriod.fromValue(groupHabit.goalPeriod!) : GoalPeriod.daily;
-  final goalValue = groupHabit.goalValue ?? 1;
+  final goalValue = (groupHabit.goalValue ?? 1) < 1 ? 1 : groupHabit.goalValue!;
   final goalDirection = groupHabit.goalDirection != null
       ? GoalDirection.fromValue(groupHabit.goalDirection!)
       : GoalDirection.atLeast;
@@ -1288,6 +1396,15 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
   if (confirmed != true) return;
 
   try {
+    // Starts today for a first-time adopt; a re-adopt (history backed up
+    // from earlier) starts at its oldest restored log instead — never at the
+    // Group Habit's own `createdAt`, which made it show up on days before
+    // the user ever joined (feedback 7, slide 18).
+    final earliestBackup =
+        await backupRepository.earliestLogDate(uid: uid, groupHabitId: groupHabit.id);
+    final todayDate = date_utils.today();
+    final startDate =
+        earliestBackup != null && earliestBackup.isBefore(todayDate) ? earliestBackup : todayDate;
     final habitId = await habitRepository.createHabit(
       categoryId: guessedCategoryId,
       name: groupHabit.name,
@@ -1300,12 +1417,9 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       taskDays: const [allDaysKey],
       timeRange: TimeRange.anytime,
       reminderEnabled: false,
-      // Backdated to when the Group Habit was first published, not
-      // today — so reconnecting after an uninstall doesn't hide the
-      // habit from every day before the reconnect.
-      startDate: groupHabit.createdAt,
+      startDate: startDate,
     );
-    await linkRepository.link(
+    final linkId = await linkRepository.link(
       habitId: habitId,
       groupId: groupHabit.groupId,
       groupHabitId: groupHabit.id,
@@ -1336,6 +1450,27 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       restoreMessage = l10n.groupAddedRestoreFailed(groupHabit.displayName(lang), '$e');
     }
     messenger.showSnackBar(SnackBar(content: Text(restoreMessage)));
+
+    // Without this, a habit adopted here shows as "linked" locally but
+    // never appears on the Leaderboard tab until the user happens to log
+    // progress against it — `watchLeaderboard()` only returns docs that
+    // already exist, and nothing else writes one at link time for a
+    // brand-new habit (unlike the "existing local habit" branch above,
+    // which already backfills immediately). Runs after the restore above so
+    // a reconnect-after-uninstall's restored history is reflected in the
+    // very first leaderboard entry instead of a starting streak/progress of
+    // 0 that only self-corrects on the next log.
+    if (user != null) {
+      unawaited(backfillCommunityHabitLink(
+        syncService: syncService,
+        uid: user.uid,
+        displayName: ref.read(currentDisplayNameProvider),
+        habitId: habitId,
+        linkId: linkId,
+        groupId: groupHabit.groupId,
+        groupHabitId: groupHabit.id,
+      ));
+    }
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text(l10n.groupFailedToAddHabit('$e'))));
   }
@@ -1474,8 +1609,33 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
                         reverse: true,
                         padding: const EdgeInsets.all(16),
                         itemCount: messages.length,
-                        itemBuilder: (context, i) =>
-                            _ChatBubble(message: messages[i], isMe: messages[i].senderUid == myUid),
+                        itemBuilder: (context, i) {
+                          // `messages` is newest-first (index 0) and the list
+                          // is reversed, so index i sits visually below index
+                          // i+1 (which is older) — a day-separator belongs
+                          // ABOVE the oldest message of each day, which in
+                          // build order means placing it after the bubble at
+                          // the index where the day changes (or the very
+                          // last/oldest index).
+                          final isFirstOfDay = i == messages.length - 1 ||
+                              !date_utils.isSameDay(
+                                messages[i].sentAt,
+                                messages[i + 1].sentAt,
+                              );
+                          final bubble = _ChatBubble(
+                            groupId: widget.groupId,
+                            message: messages[i],
+                            isMe: messages[i].senderUid == myUid,
+                          );
+                          if (!isFirstOfDay) return bubble;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _ChatDateSeparator(date: messages[i].sentAt),
+                              bubble,
+                            ],
+                          );
+                        },
                       ),
               );
             },
@@ -1511,25 +1671,47 @@ class _ChatTabState extends ConsumerState<_ChatTab> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({required this.message, required this.isMe});
+class _ChatBubble extends ConsumerWidget {
+  const _ChatBubble({required this.groupId, required this.message, required this.isMe});
 
+  final String groupId;
   final ChatMessage message;
   final bool isMe;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.72),
-        decoration: BoxDecoration(
-          color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(14),
-        ),
+    // Chat messages are immutable (rules deny update/delete) and don't
+    // carry their own photo — looked up live from the group's member map by
+    // senderUid instead, so a sender's avatar always reflects their current
+    // photo rather than freezing whatever it was when the message was sent.
+    String? senderPhoto;
+    if (!isMe) {
+      final group = ref.watch(groupDetailProvider(groupId)).value;
+      if (group != null) {
+        for (final m in group.members) {
+          if (m.uid == message.senderUid) {
+            senderPhoto = m.photoBase64;
+            break;
+          }
+        }
+      }
+    }
+
+    final bubble = Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.62),
+      decoration: BoxDecoration(
+        color: isMe ? theme.colorScheme.primary.withValues(alpha: 0.15) : theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      // `Align` below sizes itself to fill all available width when given
+      // loose constraints, which — without `IntrinsicWidth` bounding the
+      // Column to its actual content width first — silently stretched every
+      // bubble out to the full `maxWidth` regardless of message length
+      // (a short "Halo" ended up exactly as wide as a long sentence).
+      child: IntrinsicWidth(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1537,7 +1719,103 @@ class _ChatBubble extends StatelessWidget {
             if (!isMe)
               Text(message.senderName, style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
             Text(message.text, style: theme.textTheme.bodyMedium),
+            const SizedBox(height: 2),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatTime(message.sentAt),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  // Status only makes sense for the sender's own bubble —
+                  // other members' messages don't show pending/sent here.
+                  if (isMe) ...[
+                    const SizedBox(width: 4),
+                    message.pending
+                        ? SizedBox(
+                            width: 10,
+                            height: 10,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                            ),
+                          )
+                        : Icon(
+                            Icons.done_rounded,
+                            size: 13,
+                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
+                          ),
+                  ],
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+
+    if (isMe) {
+      return Align(alignment: Alignment.centerRight, child: bubble);
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        UserAvatar(photoBase64: senderPhoto, displayName: message.senderName, size: 26),
+        const SizedBox(width: 6),
+        Flexible(child: bubble),
+      ],
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+}
+
+/// Day divider between chat bubbles — "Today"/"Yesterday"/full date, shown
+/// once above the first message of each calendar day (see `_ChatTabState`).
+class _ChatDateSeparator extends ConsumerWidget {
+  const _ChatDateSeparator({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final lang = ref.watch(appLanguageProvider);
+    final local = date.toLocal();
+    final today = date_utils.today();
+    final yesterday = today.subtract(const Duration(days: 1));
+    final String label;
+    if (date_utils.isSameDay(local, today)) {
+      label = lang == AppLang.id ? 'Hari ini' : 'Today';
+    } else if (date_utils.isSameDay(local, yesterday)) {
+      label = lang == AppLang.id ? 'Kemarin' : 'Yesterday';
+    } else {
+      label = '${local.day} ${date_utils.monthFullName(local.month, lang)} ${local.year}';
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
         ),
       ),
     );
@@ -1672,7 +1950,7 @@ class _MemberTile extends ConsumerWidget {
     final lang = ref.watch(appLanguageProvider);
     return Card(
       child: ListTile(
-        leading: const CircleAvatar(child: Icon(Icons.person_rounded)),
+        leading: UserAvatar(photoBase64: member.photoBase64, displayName: member.displayName, size: 40),
         title: Text(member.displayName),
         subtitle: Text(member.role.label(lang), style: theme.textTheme.bodySmall),
         trailing: canManage

@@ -18,6 +18,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonDelete => 'Delete';
 
   @override
+  String get commonUndo => 'Undo';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override
@@ -82,7 +91,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShareText =>
-      'I\'m building better habits with Daily Habits — join me!';
+      'I\'m building better habits with Daily Habits — join me! Get it at https://nindaferdailyhabits.com';
 
   @override
   String get settingsSignInFirstToRestore =>
@@ -131,10 +140,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeToday => 'Today';
 
   @override
+  String get homeJumpToDate => 'Jump to date';
+
+  @override
   String get homeMyHabits => 'My Habits';
 
   @override
   String get homeCommunity => 'Community';
+
+  @override
+  String get homeSpendingMoney => 'Budget Tracker';
 
   @override
   String get homeDeleteHabitTitle => 'Delete this habit?';
@@ -145,9 +160,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String homeHabitDeleted(String name) {
+    return '\"$name\" deleted.';
+  }
+
+  @override
   String homeFailedToSaveProgress(String error) {
     return 'Failed to save progress: $error';
   }
+
+  @override
+  String get homeFutureDayLocked =>
+      'This day hasn\'t come yet — progress can be logged once it arrives.';
 
   @override
   String get homeNoHabitsScheduledYet => 'No habits scheduled yet';
@@ -226,10 +250,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get financeOnTrack => 'On Track';
 
   @override
+  String get financeApproachingLimit => 'Approaching Limit';
+
+  @override
   String get financeOverspending => 'Overspending';
 
   @override
   String get financeDailySpendingTrend => 'Daily Spending Trend';
+
+  @override
+  String get financeWeeklySpendingTrend => 'Weekly Spending Trend';
+
+  @override
+  String get financeMonthlySpendingTrend => 'Monthly Spending Trend';
+
+  @override
+  String get financeSpendingByCategory => 'Spending by Category';
+
+  @override
+  String get financeAddSpendingLimit => 'Add Spending Limit';
+
+  @override
+  String get financeEditSpendingLimit => 'Edit Spending Limit';
+
+  @override
+  String get commonProgress => 'Progress';
+
+  @override
+  String get commonGoal => 'Goal';
+
+  @override
+  String get genderLabel => 'Gender';
+
+  @override
+  String get genderHint => 'Select a gender';
+
+  @override
+  String settingsAgeYears(int age) {
+    return '$age y/o';
+  }
+
+  @override
+  String get addHabitReminderRepeat => 'Repeat';
+
+  @override
+  String get addHabitReminderOnce => 'Once';
+
+  @override
+  String addHabitReminderEveryMinutes(int minutes) {
+    return 'Every $minutes min';
+  }
 
   @override
   String get financeNoDataYet => 'No data yet';
@@ -309,6 +379,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recommendations for this category yet.';
 
   @override
+  String get addHabitAlreadyAdded => 'Already added';
+
+  @override
+  String get addHabitDuplicateName =>
+      'You already have a habit with this name.';
+
+  @override
+  String get addHabitSpendingMoneyExistsTitle => 'Budget Tracker Already Added';
+
+  @override
+  String get addHabitSpendingMoneyExistsMessage =>
+      'You can only track one Budget Tracker habit. Edit the existing one instead of adding a new one.';
+
+  @override
   String get addHabitAdd => 'Add';
 
   @override
@@ -341,10 +425,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitFieldHabitName => 'Habit Name';
 
   @override
-  String get addHabitHintNameEn => 'Name (English)';
-
-  @override
-  String get addHabitHintNameId => 'Nama (Indonesia)';
+  String get addHabitHintName => 'Habit name';
 
   @override
   String get addHabitLockedNameNotice =>
@@ -364,6 +445,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addHabitFieldGoalValue => 'Goal Value';
+
+  @override
+  String get addHabitFieldGoalValueWeekday => 'Weekdays (Mon-Fri)';
+
+  @override
+  String get addHabitFieldGoalValueWeekend => 'Weekend (Sat-Sun)';
+
+  @override
+  String get addHabitCustomWeekendGoalToggle => 'Different goal for weekends';
 
   @override
   String get addHabitFieldUnit => 'Unit';
@@ -408,8 +498,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitSaveHabit => 'Save Habit';
 
   @override
-  String get addHabitNameRequired =>
-      'Habit name (English & Indonesia) is required';
+  String get addHabitNameRequired => 'Habit name is required';
 
   @override
   String get addHabitPickGoalPhraseFirst => 'Pick a goal phrase first';
@@ -429,10 +518,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitFieldGoalPhraseName => 'Goal Phrase Name';
 
   @override
-  String get addHabitHintCatNameEn => 'Name (English), e.g. Hobby';
-
-  @override
-  String get addHabitHintCatNameId => 'Nama (Indonesia), mis. Hobi';
+  String get addHabitHintCatName => 'Goal phrase name, e.g. Hobby';
 
   @override
   String get addHabitFieldColor => 'Color';
@@ -441,8 +527,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addHabitCreateGoal => 'Create Goal';
 
   @override
-  String get addHabitCatNameRequired =>
-      'Goal phrase name (English & Indonesia) is required';
+  String get addHabitCatNameRequired => 'Goal phrase name is required';
 
   @override
   String addHabitFailedToCreateCategory(String error) {
@@ -506,7 +591,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get communityTitle => 'Community';
 
   @override
-  String get communityCreateGroup => '+ Create Group';
+  String get communityCreateGroup => 'Create Group';
 
   @override
   String get communityJoinViaCode => 'Join via Code';
@@ -884,32 +969,77 @@ class AppLocalizationsEn extends AppLocalizations {
   String get faqTitle => 'FAQ';
 
   @override
-  String get faqQ1 => 'Why is this app fully offline?';
+  String get faqQ1 => 'Why is this app offline-first?';
 
   @override
   String get faqA1 =>
-      'So your daily habit data stays private and can be used anytime without needing an internet connection. No account, no server, no tracking.';
+      'Your daily habit data stays private and can be used anytime without needing an internet connection — no account, no server, no tracking. Pro features (Budget Tracker sync, Community) are the exception and do need an internet connection.';
 
   @override
   String get faqQ2 => 'How is my data stored and is it safe?';
 
   @override
   String get faqA2 =>
-      'All data (categories, habits, progress history, profile) is stored in a local database on your own device — never sent anywhere.';
+      'Your habits, progress history, and profile are stored in a local database on your own device — never sent anywhere. If you use Community (Pro), your group data and messages are stored securely on our server so they can sync across your groups.';
 
   @override
   String get faqQ3 => 'What if I switch phones? Does my data move too?';
 
   @override
   String get faqA3 =>
-      'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone.';
+      'Local data (habits, progress, profile) doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone. If you\'re signed in for Community, your groups come back automatically once you sign in again on the new phone.';
 
   @override
   String get faqQ4 => 'Do I need to log in or sign up for an account?';
 
   @override
   String get faqA4 =>
-      'No. This app has no account system at all — open it and start using it right away.';
+      'No — core habit tracking never requires an account. You\'ll only be asked to sign in with Google if you choose to use Community, which needs an account to sync groups between devices.';
+
+  @override
+  String get faqQ5 => 'What\'s included in Daily Habits Pro?';
+
+  @override
+  String get faqA5 =>
+      'Pro unlocks Budget Tracker for managing your spending goals, and Community so you can join groups and stay accountable with others.';
+
+  @override
+  String get faqQ6 => 'Do I need an internet connection to use Pro features?';
+
+  @override
+  String get faqA6 =>
+      'Yes. Budget Tracker and Community both need a connection to save and sync your data.';
+
+  @override
+  String get faqQ7 =>
+      'What happens to my Budget Tracker or Community data if I cancel Pro?';
+
+  @override
+  String get faqA7 =>
+      'Your data stays saved, but you\'ll lose access to view or edit it until you resubscribe.';
+
+  @override
+  String get faqQ8 => 'How do I manage or cancel my Pro subscription?';
+
+  @override
+  String get faqA8 =>
+      'You can manage your subscription anytime through your App Store or Google Play account settings.';
+
+  @override
+  String get faqQ9 =>
+      'I\'m a Pro subscriber — how do I invite friends to a Community group?';
+
+  @override
+  String get faqA9 =>
+      'Open a group from the Community tab, tap Share, and send the message with the invite code to your friend. They just enter that code via \"Join via Code\" in the Community tab (the message also has a download link if they don\'t have the app yet).';
+
+  @override
+  String get faqQ10 =>
+      'I\'m a Pro subscriber — how do I set or change my Budget Tracker spending limits?';
+
+  @override
+  String get faqA10 =>
+      'Open the Finance tab and tap \"Edit Spending Limit\". The form opens in whichever tab you\'re viewing (Daily/Weekly/Monthly), and the limit for the other periods adjusts automatically.';
 
   @override
   String get usageTipsTitle => 'Usage Tips';
@@ -959,6 +1089,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Profile photo is not available in this version yet';
 
   @override
+  String get avatarPickCamera => 'Take a photo';
+
+  @override
+  String get avatarPickGallery => 'Choose from gallery';
+
+  @override
+  String profilePhotoCommunitySyncFailed(String error) {
+    return 'Photo saved, but couldn\'t sync to your groups yet: $error';
+  }
+
+  @override
   String get profileNameLabel => 'Name';
 
   @override
@@ -984,7 +1125,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick the color theme you like best. This color is used for buttons, progress rings, and accents throughout the app.';
 
   @override
-  String get healthSyncStepsLabel => 'Sync steps from Health app';
+  String get healthSyncStepsLabel => 'Sync activity from Health app';
 
   @override
   String get healthSyncCalendarLabel => 'Sync reminders to Calendar';
@@ -1004,6 +1145,68 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthSyncFeatureCalendar => 'Calendar access';
 
   @override
+  String get healthConnectNotInstalledTitle => 'Health Connect required';
+
+  @override
+  String get healthConnectNotInstalledMessage =>
+      'Syncing activity needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.';
+
+  @override
+  String get healthConnectInstallButton => 'Install Health Connect';
+
+  @override
+  String get healthSyncNow => 'Sync now';
+
+  @override
+  String healthSyncLastSynced(String time) {
+    return 'Last synced $time';
+  }
+
+  @override
+  String get healthSyncNeverSynced => 'Not synced yet';
+
+  @override
+  String healthSyncResultUpdated(int count) {
+    return 'Health data synced — $count habit(s) updated.';
+  }
+
+  @override
+  String get healthSyncResultUpToDate =>
+      'Health data synced — your habits are already up to date.';
+
+  @override
+  String get healthSyncProblemTitle => 'Health sync couldn\'t fill your habits';
+
+  @override
+  String get healthSyncResultNoData =>
+      'No steps or workouts were found for the last 7 days. Health Connect only has data when an app that records it — e.g. Google Fit, Samsung Health, Mi Fitness or Fitbit — is connected to Health Connect and syncing. Connect one in Health Connect, then tap Sync now.';
+
+  @override
+  String get healthSyncResultNoHabits =>
+      'None of your habits can be filled from health data yet. Health sync fills habits measured in steps, plus walk, run, swim, cycling, yoga/stretch and workout habits.';
+
+  @override
+  String get healthSyncResultNoPermission =>
+      'Daily Habits can\'t read your health data. Tap Grant access and allow Steps and Exercise for Daily Habits.';
+
+  @override
+  String get healthSyncResultFailed =>
+      'Health sync failed. Make sure Health Connect is up to date, then tap Sync now again.';
+
+  @override
+  String get healthSyncGrantAccess => 'Grant access';
+
+  @override
+  String get healthSyncAlarmEnabled =>
+      'Reminders will now ring like an alarm, with Snooze and Dismiss.';
+
+  @override
+  String get alarmSnooze => 'Snooze 10 min';
+
+  @override
+  String get alarmDismiss => 'Dismiss';
+
+  @override
   String get iconPickerChooseIcon => 'Choose Icon';
 
   @override
@@ -1014,6 +1217,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get proFeatureUpgradeButton => 'Upgrade to Pro';
+
+  @override
+  String get proUpgradeCelebrationTitle => 'You\'re Pro now!';
+
+  @override
+  String get proUpgradeCelebrationSubtitle =>
+      'Unlimited habits, Finance tracking, and Community are all unlocked.';
+
+  @override
+  String get proUpgradeCelebrationButton => 'Let\'s go';
 
   @override
   String proFeatureSignInFailed(String error) {
@@ -1044,6 +1257,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickProgressMarkAchieved => 'Mark Achieved';
+
+  @override
+  String quickProgressRecordedToday(String amount) {
+    return 'Recorded today: $amount';
+  }
+
+  @override
+  String get quickProgressEntryModeDirect => 'Quick entry';
+
+  @override
+  String get quickProgressEntryModeBreakdown => 'Break down by category';
+
+  @override
+  String spendingBreakdownAlreadyLogged(String total) {
+    return 'Already logged today ($total)';
+  }
+
+  @override
+  String get spendingBreakdownAddItem => 'Add breakdown item';
+
+  @override
+  String get spendingBreakdownEditItem => 'Edit breakdown item';
+
+  @override
+  String get spendingBreakdownCustomLabelHint => 'Description';
+
+  @override
+  String get spendingBreakdownSubcategoryHint =>
+      'Sub-category detail (optional)';
+
+  @override
+  String get spendingBreakdownTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownGrandTotalLabel => 'Total';
+
+  @override
+  String get spendingBreakdownNoDetailLabel => 'No detail';
+
+  @override
+  String get spendingBreakdownDirectModeLockedHint =>
+      'Enter total is disabled because you already have breakdown data — edit or delete items above instead.';
+
+  @override
+  String get budgetTrackerSaveBudget => 'Save Budget';
+
+  @override
+  String get budgetTrackerTitleEditBudget => 'Edit Budget';
+
+  @override
+  String get budgetTrackerTitleBudgetForm => 'Budget Form';
+
+  @override
+  String get budgetTrackerDifferentWeekendGoal => 'Different Goal for Weekends';
+
+  @override
+  String get budgetTrackerCurrency => 'Currency';
+
+  @override
+  String get budgetTrackerGoalPeriod => 'Goal Period';
+
+  @override
+  String get budgetTrackerBudgetLabel => 'Budget';
+
+  @override
+  String get budgetTrackerWeekdayBudget => 'Weekday Budget';
+
+  @override
+  String get budgetTrackerWeekendBudget => 'Weekend Budget';
+
+  @override
+  String get financeMonthToDate => 'Month to Date';
+
+  @override
+  String get financeMonthlyTotal => 'Monthly Total';
+
+  @override
+  String get financeSpendingDistribution => 'Spending Distribution';
 
   @override
   String get commonSave => 'Save';

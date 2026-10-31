@@ -116,6 +116,24 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get commonDelete;
 
+  /// No description provided for @commonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get commonUndo;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get commonEdit;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
   /// Label for the app language switcher on the Settings screen.
   ///
   /// In en, this message translates to:
@@ -239,7 +257,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShareText.
   ///
   /// In en, this message translates to:
-  /// **'I\'m building better habits with Daily Habits — join me!'**
+  /// **'I\'m building better habits with Daily Habits — join me! Get it at https://nindaferdailyhabits.com'**
   String get settingsShareText;
 
   /// No description provided for @settingsSignInFirstToRestore.
@@ -320,6 +338,12 @@ abstract class AppLocalizations {
   /// **'Today'**
   String get homeToday;
 
+  /// No description provided for @homeJumpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to date'**
+  String get homeJumpToDate;
+
   /// No description provided for @homeMyHabits.
   ///
   /// In en, this message translates to:
@@ -331,6 +355,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Community'**
   String get homeCommunity;
+
+  /// No description provided for @homeSpendingMoney.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Tracker'**
+  String get homeSpendingMoney;
 
   /// No description provided for @homeDeleteHabitTitle.
   ///
@@ -344,11 +374,23 @@ abstract class AppLocalizations {
   /// **'\"{name}\" and all of its progress history will be permanently deleted and will no longer count toward your Dashboard stats. This cannot be undone.'**
   String homeDeleteHabitBody(String name);
 
+  /// No description provided for @homeHabitDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" deleted.'**
+  String homeHabitDeleted(String name);
+
   /// No description provided for @homeFailedToSaveProgress.
   ///
   /// In en, this message translates to:
   /// **'Failed to save progress: {error}'**
   String homeFailedToSaveProgress(String error);
+
+  /// No description provided for @homeFutureDayLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This day hasn\'t come yet — progress can be logged once it arrives.'**
+  String get homeFutureDayLocked;
 
   /// No description provided for @homeNoHabitsScheduledYet.
   ///
@@ -482,6 +524,12 @@ abstract class AppLocalizations {
   /// **'On Track'**
   String get financeOnTrack;
 
+  /// No description provided for @financeApproachingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Approaching Limit'**
+  String get financeApproachingLimit;
+
   /// No description provided for @financeOverspending.
   ///
   /// In en, this message translates to:
@@ -493,6 +541,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Daily Spending Trend'**
   String get financeDailySpendingTrend;
+
+  /// No description provided for @financeWeeklySpendingTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly Spending Trend'**
+  String get financeWeeklySpendingTrend;
+
+  /// No description provided for @financeMonthlySpendingTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Spending Trend'**
+  String get financeMonthlySpendingTrend;
+
+  /// No description provided for @financeSpendingByCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending by Category'**
+  String get financeSpendingByCategory;
+
+  /// No description provided for @financeAddSpendingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Spending Limit'**
+  String get financeAddSpendingLimit;
+
+  /// No description provided for @financeEditSpendingLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Spending Limit'**
+  String get financeEditSpendingLimit;
+
+  /// No description provided for @commonProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get commonProgress;
+
+  /// No description provided for @commonGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal'**
+  String get commonGoal;
+
+  /// No description provided for @genderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get genderLabel;
+
+  /// No description provided for @genderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a gender'**
+  String get genderHint;
+
+  /// No description provided for @settingsAgeYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{age} y/o'**
+  String settingsAgeYears(int age);
+
+  /// No description provided for @addHabitReminderRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get addHabitReminderRepeat;
+
+  /// No description provided for @addHabitReminderOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'Once'**
+  String get addHabitReminderOnce;
+
+  /// No description provided for @addHabitReminderEveryMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Every {minutes} min'**
+  String addHabitReminderEveryMinutes(int minutes);
 
   /// No description provided for @financeNoDataYet.
   ///
@@ -614,6 +740,30 @@ abstract class AppLocalizations {
   /// **'No recommendations for this category yet.'**
   String get addHabitNoRecommendations;
 
+  /// No description provided for @addHabitAlreadyAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Already added'**
+  String get addHabitAlreadyAdded;
+
+  /// No description provided for @addHabitDuplicateName.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have a habit with this name.'**
+  String get addHabitDuplicateName;
+
+  /// No description provided for @addHabitSpendingMoneyExistsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Tracker Already Added'**
+  String get addHabitSpendingMoneyExistsTitle;
+
+  /// No description provided for @addHabitSpendingMoneyExistsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only track one Budget Tracker habit. Edit the existing one instead of adding a new one.'**
+  String get addHabitSpendingMoneyExistsMessage;
+
   /// No description provided for @addHabitAdd.
   ///
   /// In en, this message translates to:
@@ -674,17 +824,11 @@ abstract class AppLocalizations {
   /// **'Habit Name'**
   String get addHabitFieldHabitName;
 
-  /// No description provided for @addHabitHintNameEn.
+  /// No description provided for @addHabitHintName.
   ///
   /// In en, this message translates to:
-  /// **'Name (English)'**
-  String get addHabitHintNameEn;
-
-  /// No description provided for @addHabitHintNameId.
-  ///
-  /// In en, this message translates to:
-  /// **'Nama (Indonesia)'**
-  String get addHabitHintNameId;
+  /// **'Habit name'**
+  String get addHabitHintName;
 
   /// No description provided for @addHabitLockedNameNotice.
   ///
@@ -721,6 +865,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Goal Value'**
   String get addHabitFieldGoalValue;
+
+  /// No description provided for @addHabitFieldGoalValueWeekday.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays (Mon-Fri)'**
+  String get addHabitFieldGoalValueWeekday;
+
+  /// No description provided for @addHabitFieldGoalValueWeekend.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend (Sat-Sun)'**
+  String get addHabitFieldGoalValueWeekend;
+
+  /// No description provided for @addHabitCustomWeekendGoalToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Different goal for weekends'**
+  String get addHabitCustomWeekendGoalToggle;
 
   /// No description provided for @addHabitFieldUnit.
   ///
@@ -809,7 +971,7 @@ abstract class AppLocalizations {
   /// No description provided for @addHabitNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Habit name (English & Indonesia) is required'**
+  /// **'Habit name is required'**
   String get addHabitNameRequired;
 
   /// No description provided for @addHabitPickGoalPhraseFirst.
@@ -842,17 +1004,11 @@ abstract class AppLocalizations {
   /// **'Goal Phrase Name'**
   String get addHabitFieldGoalPhraseName;
 
-  /// No description provided for @addHabitHintCatNameEn.
+  /// No description provided for @addHabitHintCatName.
   ///
   /// In en, this message translates to:
-  /// **'Name (English), e.g. Hobby'**
-  String get addHabitHintCatNameEn;
-
-  /// No description provided for @addHabitHintCatNameId.
-  ///
-  /// In en, this message translates to:
-  /// **'Nama (Indonesia), mis. Hobi'**
-  String get addHabitHintCatNameId;
+  /// **'Goal phrase name, e.g. Hobby'**
+  String get addHabitHintCatName;
 
   /// No description provided for @addHabitFieldColor.
   ///
@@ -869,7 +1025,7 @@ abstract class AppLocalizations {
   /// No description provided for @addHabitCatNameRequired.
   ///
   /// In en, this message translates to:
-  /// **'Goal phrase name (English & Indonesia) is required'**
+  /// **'Goal phrase name is required'**
   String get addHabitCatNameRequired;
 
   /// No description provided for @addHabitFailedToCreateCategory.
@@ -983,7 +1139,7 @@ abstract class AppLocalizations {
   /// No description provided for @communityCreateGroup.
   ///
   /// In en, this message translates to:
-  /// **'+ Create Group'**
+  /// **'Create Group'**
   String get communityCreateGroup;
 
   /// No description provided for @communityJoinViaCode.
@@ -1583,13 +1739,13 @@ abstract class AppLocalizations {
   /// No description provided for @faqQ1.
   ///
   /// In en, this message translates to:
-  /// **'Why is this app fully offline?'**
+  /// **'Why is this app offline-first?'**
   String get faqQ1;
 
   /// No description provided for @faqA1.
   ///
   /// In en, this message translates to:
-  /// **'So your daily habit data stays private and can be used anytime without needing an internet connection. No account, no server, no tracking.'**
+  /// **'Your daily habit data stays private and can be used anytime without needing an internet connection — no account, no server, no tracking. Pro features (Budget Tracker sync, Community) are the exception and do need an internet connection.'**
   String get faqA1;
 
   /// No description provided for @faqQ2.
@@ -1601,7 +1757,7 @@ abstract class AppLocalizations {
   /// No description provided for @faqA2.
   ///
   /// In en, this message translates to:
-  /// **'All data (categories, habits, progress history, profile) is stored in a local database on your own device — never sent anywhere.'**
+  /// **'Your habits, progress history, and profile are stored in a local database on your own device — never sent anywhere. If you use Community (Pro), your group data and messages are stored securely on our server so they can sync across your groups.'**
   String get faqA2;
 
   /// No description provided for @faqQ3.
@@ -1613,7 +1769,7 @@ abstract class AppLocalizations {
   /// No description provided for @faqA3.
   ///
   /// In en, this message translates to:
-  /// **'Since there\'s no cloud sync, data doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone.'**
+  /// **'Local data (habits, progress, profile) doesn\'t transfer automatically. Use the Export Data feature in Settings (coming soon) to make a manual backup before switching devices, then Import Data on the new phone. If you\'re signed in for Community, your groups come back automatically once you sign in again on the new phone.'**
   String get faqA3;
 
   /// No description provided for @faqQ4.
@@ -1625,8 +1781,80 @@ abstract class AppLocalizations {
   /// No description provided for @faqA4.
   ///
   /// In en, this message translates to:
-  /// **'No. This app has no account system at all — open it and start using it right away.'**
+  /// **'No — core habit tracking never requires an account. You\'ll only be asked to sign in with Google if you choose to use Community, which needs an account to sync groups between devices.'**
   String get faqA4;
+
+  /// No description provided for @faqQ5.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s included in Daily Habits Pro?'**
+  String get faqQ5;
+
+  /// No description provided for @faqA5.
+  ///
+  /// In en, this message translates to:
+  /// **'Pro unlocks Budget Tracker for managing your spending goals, and Community so you can join groups and stay accountable with others.'**
+  String get faqA5;
+
+  /// No description provided for @faqQ6.
+  ///
+  /// In en, this message translates to:
+  /// **'Do I need an internet connection to use Pro features?'**
+  String get faqQ6;
+
+  /// No description provided for @faqA6.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes. Budget Tracker and Community both need a connection to save and sync your data.'**
+  String get faqA6;
+
+  /// No description provided for @faqQ7.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens to my Budget Tracker or Community data if I cancel Pro?'**
+  String get faqQ7;
+
+  /// No description provided for @faqA7.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data stays saved, but you\'ll lose access to view or edit it until you resubscribe.'**
+  String get faqA7;
+
+  /// No description provided for @faqQ8.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I manage or cancel my Pro subscription?'**
+  String get faqQ8;
+
+  /// No description provided for @faqA8.
+  ///
+  /// In en, this message translates to:
+  /// **'You can manage your subscription anytime through your App Store or Google Play account settings.'**
+  String get faqA8;
+
+  /// No description provided for @faqQ9.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m a Pro subscriber — how do I invite friends to a Community group?'**
+  String get faqQ9;
+
+  /// No description provided for @faqA9.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a group from the Community tab, tap Share, and send the message with the invite code to your friend. They just enter that code via \"Join via Code\" in the Community tab (the message also has a download link if they don\'t have the app yet).'**
+  String get faqA9;
+
+  /// No description provided for @faqQ10.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m a Pro subscriber — how do I set or change my Budget Tracker spending limits?'**
+  String get faqQ10;
+
+  /// No description provided for @faqA10.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Finance tab and tap \"Edit Spending Limit\". The form opens in whichever tab you\'re viewing (Daily/Weekly/Monthly), and the limit for the other periods adjusts automatically.'**
+  String get faqA10;
 
   /// No description provided for @usageTipsTitle.
   ///
@@ -1712,6 +1940,24 @@ abstract class AppLocalizations {
   /// **'Profile photo is not available in this version yet'**
   String get profilePhotoNotAvailable;
 
+  /// No description provided for @avatarPickCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get avatarPickCamera;
+
+  /// No description provided for @avatarPickGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get avatarPickGallery;
+
+  /// No description provided for @profilePhotoCommunitySyncFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo saved, but couldn\'t sync to your groups yet: {error}'**
+  String profilePhotoCommunitySyncFailed(String error);
+
   /// No description provided for @profileNameLabel.
   ///
   /// In en, this message translates to:
@@ -1763,7 +2009,7 @@ abstract class AppLocalizations {
   /// No description provided for @healthSyncStepsLabel.
   ///
   /// In en, this message translates to:
-  /// **'Sync steps from Health app'**
+  /// **'Sync activity from Health app'**
   String get healthSyncStepsLabel;
 
   /// No description provided for @healthSyncCalendarLabel.
@@ -1796,6 +2042,108 @@ abstract class AppLocalizations {
   /// **'Calendar access'**
   String get healthSyncFeatureCalendar;
 
+  /// No description provided for @healthConnectNotInstalledTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Connect required'**
+  String get healthConnectNotInstalledTitle;
+
+  /// No description provided for @healthConnectNotInstalledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing activity needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.'**
+  String get healthConnectNotInstalledMessage;
+
+  /// No description provided for @healthConnectInstallButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Health Connect'**
+  String get healthConnectInstallButton;
+
+  /// No description provided for @healthSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get healthSyncNow;
+
+  /// No description provided for @healthSyncLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {time}'**
+  String healthSyncLastSynced(String time);
+
+  /// No description provided for @healthSyncNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get healthSyncNeverSynced;
+
+  /// No description provided for @healthSyncResultUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Health data synced — {count} habit(s) updated.'**
+  String healthSyncResultUpdated(int count);
+
+  /// No description provided for @healthSyncResultUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Health data synced — your habits are already up to date.'**
+  String get healthSyncResultUpToDate;
+
+  /// No description provided for @healthSyncProblemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health sync couldn\'t fill your habits'**
+  String get healthSyncProblemTitle;
+
+  /// No description provided for @healthSyncResultNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No steps or workouts were found for the last 7 days. Health Connect only has data when an app that records it — e.g. Google Fit, Samsung Health, Mi Fitness or Fitbit — is connected to Health Connect and syncing. Connect one in Health Connect, then tap Sync now.'**
+  String get healthSyncResultNoData;
+
+  /// No description provided for @healthSyncResultNoHabits.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your habits can be filled from health data yet. Health sync fills habits measured in steps, plus walk, run, swim, cycling, yoga/stretch and workout habits.'**
+  String get healthSyncResultNoHabits;
+
+  /// No description provided for @healthSyncResultNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Habits can\'t read your health data. Tap Grant access and allow Steps and Exercise for Daily Habits.'**
+  String get healthSyncResultNoPermission;
+
+  /// No description provided for @healthSyncResultFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Health sync failed. Make sure Health Connect is up to date, then tap Sync now again.'**
+  String get healthSyncResultFailed;
+
+  /// No description provided for @healthSyncGrantAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access'**
+  String get healthSyncGrantAccess;
+
+  /// No description provided for @healthSyncAlarmEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders will now ring like an alarm, with Snooze and Dismiss.'**
+  String get healthSyncAlarmEnabled;
+
+  /// No description provided for @alarmSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze 10 min'**
+  String get alarmSnooze;
+
+  /// No description provided for @alarmDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get alarmDismiss;
+
   /// No description provided for @iconPickerChooseIcon.
   ///
   /// In en, this message translates to:
@@ -1819,6 +2167,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Upgrade to Pro'**
   String get proFeatureUpgradeButton;
+
+  /// No description provided for @proUpgradeCelebrationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re Pro now!'**
+  String get proUpgradeCelebrationTitle;
+
+  /// No description provided for @proUpgradeCelebrationSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited habits, Finance tracking, and Community are all unlocked.'**
+  String get proUpgradeCelebrationSubtitle;
+
+  /// No description provided for @proUpgradeCelebrationButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s go'**
+  String get proUpgradeCelebrationButton;
 
   /// No description provided for @proFeatureSignInFailed.
   ///
@@ -1867,6 +2233,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mark Achieved'**
   String get quickProgressMarkAchieved;
+
+  /// No description provided for @quickProgressRecordedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded today: {amount}'**
+  String quickProgressRecordedToday(String amount);
+
+  /// No description provided for @quickProgressEntryModeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick entry'**
+  String get quickProgressEntryModeDirect;
+
+  /// No description provided for @quickProgressEntryModeBreakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Break down by category'**
+  String get quickProgressEntryModeBreakdown;
+
+  /// No description provided for @spendingBreakdownAlreadyLogged.
+  ///
+  /// In en, this message translates to:
+  /// **'Already logged today ({total})'**
+  String spendingBreakdownAlreadyLogged(String total);
+
+  /// No description provided for @spendingBreakdownAddItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Add breakdown item'**
+  String get spendingBreakdownAddItem;
+
+  /// No description provided for @spendingBreakdownEditItem.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit breakdown item'**
+  String get spendingBreakdownEditItem;
+
+  /// No description provided for @spendingBreakdownCustomLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get spendingBreakdownCustomLabelHint;
+
+  /// No description provided for @spendingBreakdownSubcategoryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-category detail (optional)'**
+  String get spendingBreakdownSubcategoryHint;
+
+  /// No description provided for @spendingBreakdownTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get spendingBreakdownTotalLabel;
+
+  /// No description provided for @spendingBreakdownGrandTotalLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get spendingBreakdownGrandTotalLabel;
+
+  /// No description provided for @spendingBreakdownNoDetailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No detail'**
+  String get spendingBreakdownNoDetailLabel;
+
+  /// No description provided for @spendingBreakdownDirectModeLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter total is disabled because you already have breakdown data — edit or delete items above instead.'**
+  String get spendingBreakdownDirectModeLockedHint;
+
+  /// No description provided for @budgetTrackerSaveBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Budget'**
+  String get budgetTrackerSaveBudget;
+
+  /// No description provided for @budgetTrackerTitleEditBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Budget'**
+  String get budgetTrackerTitleEditBudget;
+
+  /// No description provided for @budgetTrackerTitleBudgetForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget Form'**
+  String get budgetTrackerTitleBudgetForm;
+
+  /// No description provided for @budgetTrackerDifferentWeekendGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Different Goal for Weekends'**
+  String get budgetTrackerDifferentWeekendGoal;
+
+  /// No description provided for @budgetTrackerCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get budgetTrackerCurrency;
+
+  /// No description provided for @budgetTrackerGoalPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Goal Period'**
+  String get budgetTrackerGoalPeriod;
+
+  /// No description provided for @budgetTrackerBudgetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get budgetTrackerBudgetLabel;
+
+  /// No description provided for @budgetTrackerWeekdayBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday Budget'**
+  String get budgetTrackerWeekdayBudget;
+
+  /// No description provided for @budgetTrackerWeekendBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend Budget'**
+  String get budgetTrackerWeekendBudget;
+
+  /// No description provided for @financeMonthToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Month to Date'**
+  String get financeMonthToDate;
+
+  /// No description provided for @financeMonthlyTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly Total'**
+  String get financeMonthlyTotal;
+
+  /// No description provided for @financeSpendingDistribution.
+  ///
+  /// In en, this message translates to:
+  /// **'Spending Distribution'**
+  String get financeSpendingDistribution;
 
   /// No description provided for @commonSave.
   ///

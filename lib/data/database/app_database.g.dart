@@ -649,6 +649,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
   );
+  static const VerificationMeta _goalValueWeekendMeta = const VerificationMeta(
+    'goalValueWeekend',
+  );
+  @override
+  late final GeneratedColumn<int> goalValueWeekend = GeneratedColumn<int>(
+    'goal_value_weekend',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _goalUnitMeta = const VerificationMeta(
     'goalUnit',
   );
@@ -722,6 +733,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _reminderIntervalMinutesMeta =
+      const VerificationMeta('reminderIntervalMinutes');
+  @override
+  late final GeneratedColumn<int> reminderIntervalMinutes =
+      GeneratedColumn<int>(
+        'reminder_interval_minutes',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _startDateMeta = const VerificationMeta(
     'startDate',
   );
@@ -818,6 +840,17 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -827,12 +860,14 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     icon,
     goalPeriod,
     goalValue,
+    goalValueWeekend,
     goalUnit,
     goalDirection,
     taskDays,
     timeRange,
     reminderEnabled,
     reminderTime,
+    reminderIntervalMinutes,
     startDate,
     endDate,
     isActive,
@@ -841,6 +876,7 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     nameId,
     isCustom,
     templateKey,
+    currency,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -902,6 +938,15 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         goalValue.isAcceptableOrUnknown(data['goal_value']!, _goalValueMeta),
       );
     }
+    if (data.containsKey('goal_value_weekend')) {
+      context.handle(
+        _goalValueWeekendMeta,
+        goalValueWeekend.isAcceptableOrUnknown(
+          data['goal_value_weekend']!,
+          _goalValueWeekendMeta,
+        ),
+      );
+    }
     if (data.containsKey('goal_unit')) {
       context.handle(
         _goalUnitMeta,
@@ -946,6 +991,15 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         reminderTime.isAcceptableOrUnknown(
           data['reminder_time']!,
           _reminderTimeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reminder_interval_minutes')) {
+      context.handle(
+        _reminderIntervalMinutesMeta,
+        reminderIntervalMinutes.isAcceptableOrUnknown(
+          data['reminder_interval_minutes']!,
+          _reminderIntervalMinutesMeta,
         ),
       );
     }
@@ -1002,6 +1056,12 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         ),
       );
     }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
     return context;
   }
 
@@ -1039,6 +1099,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.int,
         data['${effectivePrefix}goal_value'],
       )!,
+      goalValueWeekend: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}goal_value_weekend'],
+      ),
       goalUnit: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}goal_unit'],
@@ -1062,6 +1126,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
       reminderTime: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}reminder_time'],
+      ),
+      reminderIntervalMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}reminder_interval_minutes'],
       ),
       startDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -1095,6 +1163,10 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.string,
         data['${effectivePrefix}template_key'],
       ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      ),
     );
   }
 
@@ -1112,12 +1184,21 @@ class Habit extends DataClass implements Insertable<Habit> {
   final String? icon;
   final String goalPeriod;
   final int goalValue;
+
+  /// Override goalValue khusus Sabtu-Minggu untuk habit `daily` — null berarti
+  /// nilai sama setiap hari (goalValue dipakai apa adanya, perilaku lama).
+  final int? goalValueWeekend;
   final String goalUnit;
   final String goalDirection;
   final String taskDays;
   final String timeRange;
   final bool reminderEnabled;
   final String? reminderTime;
+
+  /// Minutes between repeats starting at [reminderTime], e.g. every 30
+  /// minutes — null means a single reminder at [reminderTime] (the
+  /// pre-existing behavior). No end time: repeats until end of day.
+  final int? reminderIntervalMinutes;
   final DateTime startDate;
   final DateTime? endDate;
   final bool isActive;
@@ -1139,6 +1220,12 @@ class Habit extends DataClass implements Insertable<Habit> {
   /// Key stabil ke entri habit di `habit_templates.json` (mis.
   /// 'drink_water'). Null untuk habit custom buatan user.
   final String? templateKey;
+
+  /// Kode mata uang (IDR/USD/SGD/MYR/EUR) untuk habit Budget Tracker —
+  /// label/prefix tampilan saja, tidak mengubah cara angka diformat. Null
+  /// untuk habit non-finance, dan default ke 'IDR' di kode saat null untuk
+  /// habit finance lama yang dibuat sebelum kolom ini ada.
+  final String? currency;
   const Habit({
     required this.id,
     required this.categoryId,
@@ -1147,12 +1234,14 @@ class Habit extends DataClass implements Insertable<Habit> {
     this.icon,
     required this.goalPeriod,
     required this.goalValue,
+    this.goalValueWeekend,
     required this.goalUnit,
     required this.goalDirection,
     required this.taskDays,
     required this.timeRange,
     required this.reminderEnabled,
     this.reminderTime,
+    this.reminderIntervalMinutes,
     required this.startDate,
     this.endDate,
     required this.isActive,
@@ -1161,6 +1250,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     this.nameId,
     required this.isCustom,
     this.templateKey,
+    this.currency,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1176,6 +1266,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     }
     map['goal_period'] = Variable<String>(goalPeriod);
     map['goal_value'] = Variable<int>(goalValue);
+    if (!nullToAbsent || goalValueWeekend != null) {
+      map['goal_value_weekend'] = Variable<int>(goalValueWeekend);
+    }
     map['goal_unit'] = Variable<String>(goalUnit);
     map['goal_direction'] = Variable<String>(goalDirection);
     map['task_days'] = Variable<String>(taskDays);
@@ -1183,6 +1276,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     map['reminder_enabled'] = Variable<bool>(reminderEnabled);
     if (!nullToAbsent || reminderTime != null) {
       map['reminder_time'] = Variable<String>(reminderTime);
+    }
+    if (!nullToAbsent || reminderIntervalMinutes != null) {
+      map['reminder_interval_minutes'] = Variable<int>(reminderIntervalMinutes);
     }
     map['start_date'] = Variable<DateTime>(startDate);
     if (!nullToAbsent || endDate != null) {
@@ -1198,6 +1294,9 @@ class Habit extends DataClass implements Insertable<Habit> {
     if (!nullToAbsent || templateKey != null) {
       map['template_key'] = Variable<String>(templateKey);
     }
+    if (!nullToAbsent || currency != null) {
+      map['currency'] = Variable<String>(currency);
+    }
     return map;
   }
 
@@ -1212,6 +1311,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
       goalPeriod: Value(goalPeriod),
       goalValue: Value(goalValue),
+      goalValueWeekend: goalValueWeekend == null && nullToAbsent
+          ? const Value.absent()
+          : Value(goalValueWeekend),
       goalUnit: Value(goalUnit),
       goalDirection: Value(goalDirection),
       taskDays: Value(taskDays),
@@ -1220,6 +1322,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderTime: reminderTime == null && nullToAbsent
           ? const Value.absent()
           : Value(reminderTime),
+      reminderIntervalMinutes: reminderIntervalMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderIntervalMinutes),
       startDate: Value(startDate),
       endDate: endDate == null && nullToAbsent
           ? const Value.absent()
@@ -1234,6 +1339,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       templateKey: templateKey == null && nullToAbsent
           ? const Value.absent()
           : Value(templateKey),
+      currency: currency == null && nullToAbsent
+          ? const Value.absent()
+          : Value(currency),
     );
   }
 
@@ -1250,12 +1358,16 @@ class Habit extends DataClass implements Insertable<Habit> {
       icon: serializer.fromJson<String?>(json['icon']),
       goalPeriod: serializer.fromJson<String>(json['goalPeriod']),
       goalValue: serializer.fromJson<int>(json['goalValue']),
+      goalValueWeekend: serializer.fromJson<int?>(json['goalValueWeekend']),
       goalUnit: serializer.fromJson<String>(json['goalUnit']),
       goalDirection: serializer.fromJson<String>(json['goalDirection']),
       taskDays: serializer.fromJson<String>(json['taskDays']),
       timeRange: serializer.fromJson<String>(json['timeRange']),
       reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
       reminderTime: serializer.fromJson<String?>(json['reminderTime']),
+      reminderIntervalMinutes: serializer.fromJson<int?>(
+        json['reminderIntervalMinutes'],
+      ),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       isActive: serializer.fromJson<bool>(json['isActive']),
@@ -1264,6 +1376,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       nameId: serializer.fromJson<String?>(json['nameId']),
       isCustom: serializer.fromJson<bool>(json['isCustom']),
       templateKey: serializer.fromJson<String?>(json['templateKey']),
+      currency: serializer.fromJson<String?>(json['currency']),
     );
   }
   @override
@@ -1277,12 +1390,16 @@ class Habit extends DataClass implements Insertable<Habit> {
       'icon': serializer.toJson<String?>(icon),
       'goalPeriod': serializer.toJson<String>(goalPeriod),
       'goalValue': serializer.toJson<int>(goalValue),
+      'goalValueWeekend': serializer.toJson<int?>(goalValueWeekend),
       'goalUnit': serializer.toJson<String>(goalUnit),
       'goalDirection': serializer.toJson<String>(goalDirection),
       'taskDays': serializer.toJson<String>(taskDays),
       'timeRange': serializer.toJson<String>(timeRange),
       'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
       'reminderTime': serializer.toJson<String?>(reminderTime),
+      'reminderIntervalMinutes': serializer.toJson<int?>(
+        reminderIntervalMinutes,
+      ),
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'isActive': serializer.toJson<bool>(isActive),
@@ -1291,6 +1408,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       'nameId': serializer.toJson<String?>(nameId),
       'isCustom': serializer.toJson<bool>(isCustom),
       'templateKey': serializer.toJson<String?>(templateKey),
+      'currency': serializer.toJson<String?>(currency),
     };
   }
 
@@ -1302,12 +1420,14 @@ class Habit extends DataClass implements Insertable<Habit> {
     Value<String?> icon = const Value.absent(),
     String? goalPeriod,
     int? goalValue,
+    Value<int?> goalValueWeekend = const Value.absent(),
     String? goalUnit,
     String? goalDirection,
     String? taskDays,
     String? timeRange,
     bool? reminderEnabled,
     Value<String?> reminderTime = const Value.absent(),
+    Value<int?> reminderIntervalMinutes = const Value.absent(),
     DateTime? startDate,
     Value<DateTime?> endDate = const Value.absent(),
     bool? isActive,
@@ -1316,6 +1436,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     Value<String?> nameId = const Value.absent(),
     bool? isCustom,
     Value<String?> templateKey = const Value.absent(),
+    Value<String?> currency = const Value.absent(),
   }) => Habit(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
@@ -1324,12 +1445,18 @@ class Habit extends DataClass implements Insertable<Habit> {
     icon: icon.present ? icon.value : this.icon,
     goalPeriod: goalPeriod ?? this.goalPeriod,
     goalValue: goalValue ?? this.goalValue,
+    goalValueWeekend: goalValueWeekend.present
+        ? goalValueWeekend.value
+        : this.goalValueWeekend,
     goalUnit: goalUnit ?? this.goalUnit,
     goalDirection: goalDirection ?? this.goalDirection,
     taskDays: taskDays ?? this.taskDays,
     timeRange: timeRange ?? this.timeRange,
     reminderEnabled: reminderEnabled ?? this.reminderEnabled,
     reminderTime: reminderTime.present ? reminderTime.value : this.reminderTime,
+    reminderIntervalMinutes: reminderIntervalMinutes.present
+        ? reminderIntervalMinutes.value
+        : this.reminderIntervalMinutes,
     startDate: startDate ?? this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
     isActive: isActive ?? this.isActive,
@@ -1338,6 +1465,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     nameId: nameId.present ? nameId.value : this.nameId,
     isCustom: isCustom ?? this.isCustom,
     templateKey: templateKey.present ? templateKey.value : this.templateKey,
+    currency: currency.present ? currency.value : this.currency,
   );
   Habit copyWithCompanion(HabitsCompanion data) {
     return Habit(
@@ -1354,6 +1482,9 @@ class Habit extends DataClass implements Insertable<Habit> {
           ? data.goalPeriod.value
           : this.goalPeriod,
       goalValue: data.goalValue.present ? data.goalValue.value : this.goalValue,
+      goalValueWeekend: data.goalValueWeekend.present
+          ? data.goalValueWeekend.value
+          : this.goalValueWeekend,
       goalUnit: data.goalUnit.present ? data.goalUnit.value : this.goalUnit,
       goalDirection: data.goalDirection.present
           ? data.goalDirection.value
@@ -1366,6 +1497,9 @@ class Habit extends DataClass implements Insertable<Habit> {
       reminderTime: data.reminderTime.present
           ? data.reminderTime.value
           : this.reminderTime,
+      reminderIntervalMinutes: data.reminderIntervalMinutes.present
+          ? data.reminderIntervalMinutes.value
+          : this.reminderIntervalMinutes,
       startDate: data.startDate.present ? data.startDate.value : this.startDate,
       endDate: data.endDate.present ? data.endDate.value : this.endDate,
       isActive: data.isActive.present ? data.isActive.value : this.isActive,
@@ -1376,6 +1510,7 @@ class Habit extends DataClass implements Insertable<Habit> {
       templateKey: data.templateKey.present
           ? data.templateKey.value
           : this.templateKey,
+      currency: data.currency.present ? data.currency.value : this.currency,
     );
   }
 
@@ -1389,12 +1524,14 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('icon: $icon, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalValueWeekend: $goalValueWeekend, ')
           ..write('goalUnit: $goalUnit, ')
           ..write('goalDirection: $goalDirection, ')
           ..write('taskDays: $taskDays, ')
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
           ..write('reminderTime: $reminderTime, ')
+          ..write('reminderIntervalMinutes: $reminderIntervalMinutes, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
@@ -1402,7 +1539,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('createdAt: $createdAt, ')
           ..write('nameId: $nameId, ')
           ..write('isCustom: $isCustom, ')
-          ..write('templateKey: $templateKey')
+          ..write('templateKey: $templateKey, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -1416,12 +1554,14 @@ class Habit extends DataClass implements Insertable<Habit> {
     icon,
     goalPeriod,
     goalValue,
+    goalValueWeekend,
     goalUnit,
     goalDirection,
     taskDays,
     timeRange,
     reminderEnabled,
     reminderTime,
+    reminderIntervalMinutes,
     startDate,
     endDate,
     isActive,
@@ -1430,6 +1570,7 @@ class Habit extends DataClass implements Insertable<Habit> {
     nameId,
     isCustom,
     templateKey,
+    currency,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1442,12 +1583,14 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.icon == this.icon &&
           other.goalPeriod == this.goalPeriod &&
           other.goalValue == this.goalValue &&
+          other.goalValueWeekend == this.goalValueWeekend &&
           other.goalUnit == this.goalUnit &&
           other.goalDirection == this.goalDirection &&
           other.taskDays == this.taskDays &&
           other.timeRange == this.timeRange &&
           other.reminderEnabled == this.reminderEnabled &&
           other.reminderTime == this.reminderTime &&
+          other.reminderIntervalMinutes == this.reminderIntervalMinutes &&
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.isActive == this.isActive &&
@@ -1455,7 +1598,8 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.createdAt == this.createdAt &&
           other.nameId == this.nameId &&
           other.isCustom == this.isCustom &&
-          other.templateKey == this.templateKey);
+          other.templateKey == this.templateKey &&
+          other.currency == this.currency);
 }
 
 class HabitsCompanion extends UpdateCompanion<Habit> {
@@ -1466,12 +1610,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String?> icon;
   final Value<String> goalPeriod;
   final Value<int> goalValue;
+  final Value<int?> goalValueWeekend;
   final Value<String> goalUnit;
   final Value<String> goalDirection;
   final Value<String> taskDays;
   final Value<String> timeRange;
   final Value<bool> reminderEnabled;
   final Value<String?> reminderTime;
+  final Value<int?> reminderIntervalMinutes;
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<bool> isActive;
@@ -1480,6 +1626,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String?> nameId;
   final Value<bool> isCustom;
   final Value<String?> templateKey;
+  final Value<String?> currency;
   const HabitsCompanion({
     this.id = const Value.absent(),
     this.categoryId = const Value.absent(),
@@ -1488,12 +1635,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.icon = const Value.absent(),
     this.goalPeriod = const Value.absent(),
     this.goalValue = const Value.absent(),
+    this.goalValueWeekend = const Value.absent(),
     this.goalUnit = const Value.absent(),
     this.goalDirection = const Value.absent(),
     this.taskDays = const Value.absent(),
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.reminderTime = const Value.absent(),
+    this.reminderIntervalMinutes = const Value.absent(),
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1502,6 +1651,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.nameId = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.templateKey = const Value.absent(),
+    this.currency = const Value.absent(),
   });
   HabitsCompanion.insert({
     this.id = const Value.absent(),
@@ -1511,12 +1661,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.icon = const Value.absent(),
     required String goalPeriod,
     this.goalValue = const Value.absent(),
+    this.goalValueWeekend = const Value.absent(),
     this.goalUnit = const Value.absent(),
     this.goalDirection = const Value.absent(),
     required String taskDays,
     this.timeRange = const Value.absent(),
     this.reminderEnabled = const Value.absent(),
     this.reminderTime = const Value.absent(),
+    this.reminderIntervalMinutes = const Value.absent(),
     required DateTime startDate,
     this.endDate = const Value.absent(),
     this.isActive = const Value.absent(),
@@ -1525,6 +1677,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.nameId = const Value.absent(),
     this.isCustom = const Value.absent(),
     this.templateKey = const Value.absent(),
+    this.currency = const Value.absent(),
   }) : categoryId = Value(categoryId),
        name = Value(name),
        goalPeriod = Value(goalPeriod),
@@ -1538,12 +1691,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? icon,
     Expression<String>? goalPeriod,
     Expression<int>? goalValue,
+    Expression<int>? goalValueWeekend,
     Expression<String>? goalUnit,
     Expression<String>? goalDirection,
     Expression<String>? taskDays,
     Expression<String>? timeRange,
     Expression<bool>? reminderEnabled,
     Expression<String>? reminderTime,
+    Expression<int>? reminderIntervalMinutes,
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<bool>? isActive,
@@ -1552,6 +1707,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<String>? nameId,
     Expression<bool>? isCustom,
     Expression<String>? templateKey,
+    Expression<String>? currency,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1561,12 +1717,15 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (icon != null) 'icon': icon,
       if (goalPeriod != null) 'goal_period': goalPeriod,
       if (goalValue != null) 'goal_value': goalValue,
+      if (goalValueWeekend != null) 'goal_value_weekend': goalValueWeekend,
       if (goalUnit != null) 'goal_unit': goalUnit,
       if (goalDirection != null) 'goal_direction': goalDirection,
       if (taskDays != null) 'task_days': taskDays,
       if (timeRange != null) 'time_range': timeRange,
       if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
       if (reminderTime != null) 'reminder_time': reminderTime,
+      if (reminderIntervalMinutes != null)
+        'reminder_interval_minutes': reminderIntervalMinutes,
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (isActive != null) 'is_active': isActive,
@@ -1575,6 +1734,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (nameId != null) 'name_id': nameId,
       if (isCustom != null) 'is_custom': isCustom,
       if (templateKey != null) 'template_key': templateKey,
+      if (currency != null) 'currency': currency,
     });
   }
 
@@ -1586,12 +1746,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String?>? icon,
     Value<String>? goalPeriod,
     Value<int>? goalValue,
+    Value<int?>? goalValueWeekend,
     Value<String>? goalUnit,
     Value<String>? goalDirection,
     Value<String>? taskDays,
     Value<String>? timeRange,
     Value<bool>? reminderEnabled,
     Value<String?>? reminderTime,
+    Value<int?>? reminderIntervalMinutes,
     Value<DateTime>? startDate,
     Value<DateTime?>? endDate,
     Value<bool>? isActive,
@@ -1600,6 +1762,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<String?>? nameId,
     Value<bool>? isCustom,
     Value<String?>? templateKey,
+    Value<String?>? currency,
   }) {
     return HabitsCompanion(
       id: id ?? this.id,
@@ -1609,12 +1772,15 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       icon: icon ?? this.icon,
       goalPeriod: goalPeriod ?? this.goalPeriod,
       goalValue: goalValue ?? this.goalValue,
+      goalValueWeekend: goalValueWeekend ?? this.goalValueWeekend,
       goalUnit: goalUnit ?? this.goalUnit,
       goalDirection: goalDirection ?? this.goalDirection,
       taskDays: taskDays ?? this.taskDays,
       timeRange: timeRange ?? this.timeRange,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       reminderTime: reminderTime ?? this.reminderTime,
+      reminderIntervalMinutes:
+          reminderIntervalMinutes ?? this.reminderIntervalMinutes,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       isActive: isActive ?? this.isActive,
@@ -1623,6 +1789,7 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       nameId: nameId ?? this.nameId,
       isCustom: isCustom ?? this.isCustom,
       templateKey: templateKey ?? this.templateKey,
+      currency: currency ?? this.currency,
     );
   }
 
@@ -1650,6 +1817,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (goalValue.present) {
       map['goal_value'] = Variable<int>(goalValue.value);
     }
+    if (goalValueWeekend.present) {
+      map['goal_value_weekend'] = Variable<int>(goalValueWeekend.value);
+    }
     if (goalUnit.present) {
       map['goal_unit'] = Variable<String>(goalUnit.value);
     }
@@ -1667,6 +1837,11 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     }
     if (reminderTime.present) {
       map['reminder_time'] = Variable<String>(reminderTime.value);
+    }
+    if (reminderIntervalMinutes.present) {
+      map['reminder_interval_minutes'] = Variable<int>(
+        reminderIntervalMinutes.value,
+      );
     }
     if (startDate.present) {
       map['start_date'] = Variable<DateTime>(startDate.value);
@@ -1692,6 +1867,9 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (templateKey.present) {
       map['template_key'] = Variable<String>(templateKey.value);
     }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
     return map;
   }
 
@@ -1705,12 +1883,14 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('icon: $icon, ')
           ..write('goalPeriod: $goalPeriod, ')
           ..write('goalValue: $goalValue, ')
+          ..write('goalValueWeekend: $goalValueWeekend, ')
           ..write('goalUnit: $goalUnit, ')
           ..write('goalDirection: $goalDirection, ')
           ..write('taskDays: $taskDays, ')
           ..write('timeRange: $timeRange, ')
           ..write('reminderEnabled: $reminderEnabled, ')
           ..write('reminderTime: $reminderTime, ')
+          ..write('reminderIntervalMinutes: $reminderIntervalMinutes, ')
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('isActive: $isActive, ')
@@ -1718,7 +1898,8 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('createdAt: $createdAt, ')
           ..write('nameId: $nameId, ')
           ..write('isCustom: $isCustom, ')
-          ..write('templateKey: $templateKey')
+          ..write('templateKey: $templateKey, ')
+          ..write('currency: $currency')
           ..write(')'))
         .toString();
   }
@@ -2956,7 +3137,7 @@ class $HabitGroupLinksTable extends HabitGroupLinks
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
   List<Set<GeneratedColumn>> get uniqueKeys => [
-    {habitId, groupHabitId},
+    {habitId, groupHabitId, uid},
   ];
   @override
   HabitGroupLink map(Map<String, dynamic> data, {String? tablePrefix}) {
@@ -3263,6 +3444,461 @@ class HabitGroupLinksCompanion extends UpdateCompanion<HabitGroupLink> {
   }
 }
 
+class $HabitSpendingBreakdownsTable extends HabitSpendingBreakdowns
+    with TableInfo<$HabitSpendingBreakdownsTable, HabitSpendingBreakdown> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitSpendingBreakdownsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _habitIdMeta = const VerificationMeta(
+    'habitId',
+  );
+  @override
+  late final GeneratedColumn<int> habitId = GeneratedColumn<int>(
+    'habit_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES habits (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryKeyMeta = const VerificationMeta(
+    'categoryKey',
+  );
+  @override
+  late final GeneratedColumn<String> categoryKey = GeneratedColumn<String>(
+    'category_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<int> amount = GeneratedColumn<int>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    habitId,
+    date,
+    categoryKey,
+    label,
+    amount,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'habit_spending_breakdowns';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HabitSpendingBreakdown> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('habit_id')) {
+      context.handle(
+        _habitIdMeta,
+        habitId.isAcceptableOrUnknown(data['habit_id']!, _habitIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_habitIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('category_key')) {
+      context.handle(
+        _categoryKeyMeta,
+        categoryKey.isAcceptableOrUnknown(
+          data['category_key']!,
+          _categoryKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_categoryKeyMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HabitSpendingBreakdown map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HabitSpendingBreakdown(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      habitId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}habit_id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      categoryKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category_key'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      ),
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}amount'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HabitSpendingBreakdownsTable createAlias(String alias) {
+    return $HabitSpendingBreakdownsTable(attachedDatabase, alias);
+  }
+}
+
+class HabitSpendingBreakdown extends DataClass
+    implements Insertable<HabitSpendingBreakdown> {
+  final int id;
+  final int habitId;
+  final DateTime date;
+  final String categoryKey;
+
+  /// Teks bebas sub-kategori/detail, opsional untuk kategori manapun (mis.
+  /// "Bensin" di bawah kategori Fixed Spending).
+  final String? label;
+  final int amount;
+  final DateTime createdAt;
+  const HabitSpendingBreakdown({
+    required this.id,
+    required this.habitId,
+    required this.date,
+    required this.categoryKey,
+    this.label,
+    required this.amount,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['habit_id'] = Variable<int>(habitId);
+    map['date'] = Variable<DateTime>(date);
+    map['category_key'] = Variable<String>(categoryKey);
+    if (!nullToAbsent || label != null) {
+      map['label'] = Variable<String>(label);
+    }
+    map['amount'] = Variable<int>(amount);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  HabitSpendingBreakdownsCompanion toCompanion(bool nullToAbsent) {
+    return HabitSpendingBreakdownsCompanion(
+      id: Value(id),
+      habitId: Value(habitId),
+      date: Value(date),
+      categoryKey: Value(categoryKey),
+      label: label == null && nullToAbsent
+          ? const Value.absent()
+          : Value(label),
+      amount: Value(amount),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory HabitSpendingBreakdown.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HabitSpendingBreakdown(
+      id: serializer.fromJson<int>(json['id']),
+      habitId: serializer.fromJson<int>(json['habitId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      categoryKey: serializer.fromJson<String>(json['categoryKey']),
+      label: serializer.fromJson<String?>(json['label']),
+      amount: serializer.fromJson<int>(json['amount']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'habitId': serializer.toJson<int>(habitId),
+      'date': serializer.toJson<DateTime>(date),
+      'categoryKey': serializer.toJson<String>(categoryKey),
+      'label': serializer.toJson<String?>(label),
+      'amount': serializer.toJson<int>(amount),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  HabitSpendingBreakdown copyWith({
+    int? id,
+    int? habitId,
+    DateTime? date,
+    String? categoryKey,
+    Value<String?> label = const Value.absent(),
+    int? amount,
+    DateTime? createdAt,
+  }) => HabitSpendingBreakdown(
+    id: id ?? this.id,
+    habitId: habitId ?? this.habitId,
+    date: date ?? this.date,
+    categoryKey: categoryKey ?? this.categoryKey,
+    label: label.present ? label.value : this.label,
+    amount: amount ?? this.amount,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  HabitSpendingBreakdown copyWithCompanion(
+    HabitSpendingBreakdownsCompanion data,
+  ) {
+    return HabitSpendingBreakdown(
+      id: data.id.present ? data.id.value : this.id,
+      habitId: data.habitId.present ? data.habitId.value : this.habitId,
+      date: data.date.present ? data.date.value : this.date,
+      categoryKey: data.categoryKey.present
+          ? data.categoryKey.value
+          : this.categoryKey,
+      label: data.label.present ? data.label.value : this.label,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitSpendingBreakdown(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('date: $date, ')
+          ..write('categoryKey: $categoryKey, ')
+          ..write('label: $label, ')
+          ..write('amount: $amount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, habitId, date, categoryKey, label, amount, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HabitSpendingBreakdown &&
+          other.id == this.id &&
+          other.habitId == this.habitId &&
+          other.date == this.date &&
+          other.categoryKey == this.categoryKey &&
+          other.label == this.label &&
+          other.amount == this.amount &&
+          other.createdAt == this.createdAt);
+}
+
+class HabitSpendingBreakdownsCompanion
+    extends UpdateCompanion<HabitSpendingBreakdown> {
+  final Value<int> id;
+  final Value<int> habitId;
+  final Value<DateTime> date;
+  final Value<String> categoryKey;
+  final Value<String?> label;
+  final Value<int> amount;
+  final Value<DateTime> createdAt;
+  const HabitSpendingBreakdownsCompanion({
+    this.id = const Value.absent(),
+    this.habitId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.categoryKey = const Value.absent(),
+    this.label = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  HabitSpendingBreakdownsCompanion.insert({
+    this.id = const Value.absent(),
+    required int habitId,
+    required DateTime date,
+    required String categoryKey,
+    this.label = const Value.absent(),
+    required int amount,
+    this.createdAt = const Value.absent(),
+  }) : habitId = Value(habitId),
+       date = Value(date),
+       categoryKey = Value(categoryKey),
+       amount = Value(amount);
+  static Insertable<HabitSpendingBreakdown> custom({
+    Expression<int>? id,
+    Expression<int>? habitId,
+    Expression<DateTime>? date,
+    Expression<String>? categoryKey,
+    Expression<String>? label,
+    Expression<int>? amount,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (habitId != null) 'habit_id': habitId,
+      if (date != null) 'date': date,
+      if (categoryKey != null) 'category_key': categoryKey,
+      if (label != null) 'label': label,
+      if (amount != null) 'amount': amount,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  HabitSpendingBreakdownsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? habitId,
+    Value<DateTime>? date,
+    Value<String>? categoryKey,
+    Value<String?>? label,
+    Value<int>? amount,
+    Value<DateTime>? createdAt,
+  }) {
+    return HabitSpendingBreakdownsCompanion(
+      id: id ?? this.id,
+      habitId: habitId ?? this.habitId,
+      date: date ?? this.date,
+      categoryKey: categoryKey ?? this.categoryKey,
+      label: label ?? this.label,
+      amount: amount ?? this.amount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (habitId.present) {
+      map['habit_id'] = Variable<int>(habitId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (categoryKey.present) {
+      map['category_key'] = Variable<String>(categoryKey.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<int>(amount.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HabitSpendingBreakdownsCompanion(')
+          ..write('id: $id, ')
+          ..write('habitId: $habitId, ')
+          ..write('date: $date, ')
+          ..write('categoryKey: $categoryKey, ')
+          ..write('label: $label, ')
+          ..write('amount: $amount, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3275,6 +3911,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $HabitGroupLinksTable habitGroupLinks = $HabitGroupLinksTable(
     this,
   );
+  late final $HabitSpendingBreakdownsTable habitSpendingBreakdowns =
+      $HabitSpendingBreakdownsTable(this);
   late final Index idxHabitLogsDate = Index(
     'idx_habit_logs_date',
     'CREATE INDEX idx_habit_logs_date ON habit_logs (date)',
@@ -3287,6 +3925,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_habit_group_links_habit_id',
     'CREATE INDEX idx_habit_group_links_habit_id ON habit_group_links (habit_id)',
   );
+  late final Index idxHabitSpendingBreakdownsHabitDate = Index(
+    'idx_habit_spending_breakdowns_habit_date',
+    'CREATE INDEX idx_habit_spending_breakdowns_habit_date ON habit_spending_breakdowns (habit_id, date)',
+  );
   late final CategoryDao categoryDao = CategoryDao(this as AppDatabase);
   late final HabitDao habitDao = HabitDao(this as AppDatabase);
   late final HabitLogDao habitLogDao = HabitLogDao(this as AppDatabase);
@@ -3294,6 +3936,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final HabitGroupLinkDao habitGroupLinkDao = HabitGroupLinkDao(
     this as AppDatabase,
   );
+  late final HabitSpendingBreakdownDao habitSpendingBreakdownDao =
+      HabitSpendingBreakdownDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3305,9 +3949,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userProfile,
     onboardingResponses,
     habitGroupLinks,
+    habitSpendingBreakdowns,
     idxHabitLogsDate,
     idxHabitLogsHabitId,
     idxHabitGroupLinksHabitId,
+    idxHabitSpendingBreakdownsHabitDate,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3324,6 +3970,15 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('habit_group_links', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'habits',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('habit_spending_breakdowns', kind: UpdateKind.delete),
+      ],
     ),
   ]);
 }
@@ -3709,12 +4364,14 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String?> icon,
       required String goalPeriod,
       Value<int> goalValue,
+      Value<int?> goalValueWeekend,
       Value<String> goalUnit,
       Value<String> goalDirection,
       required String taskDays,
       Value<String> timeRange,
       Value<bool> reminderEnabled,
       Value<String?> reminderTime,
+      Value<int?> reminderIntervalMinutes,
       required DateTime startDate,
       Value<DateTime?> endDate,
       Value<bool> isActive,
@@ -3723,6 +4380,7 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<String?> nameId,
       Value<bool> isCustom,
       Value<String?> templateKey,
+      Value<String?> currency,
     });
 typedef $$HabitsTableUpdateCompanionBuilder =
     HabitsCompanion Function({
@@ -3733,12 +4391,14 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String?> icon,
       Value<String> goalPeriod,
       Value<int> goalValue,
+      Value<int?> goalValueWeekend,
       Value<String> goalUnit,
       Value<String> goalDirection,
       Value<String> taskDays,
       Value<String> timeRange,
       Value<bool> reminderEnabled,
       Value<String?> reminderTime,
+      Value<int?> reminderIntervalMinutes,
       Value<DateTime> startDate,
       Value<DateTime?> endDate,
       Value<bool> isActive,
@@ -3747,6 +4407,7 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<String?> nameId,
       Value<bool> isCustom,
       Value<String?> templateKey,
+      Value<String?> currency,
     });
 
 final class $$HabitsTableReferences
@@ -3809,6 +4470,34 @@ final class $$HabitsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $HabitSpendingBreakdownsTable,
+    List<HabitSpendingBreakdown>
+  >
+  _habitSpendingBreakdownsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.habitSpendingBreakdowns,
+        aliasName: $_aliasNameGenerator(
+          db.habits.id,
+          db.habitSpendingBreakdowns.habitId,
+        ),
+      );
+
+  $$HabitSpendingBreakdownsTableProcessedTableManager
+  get habitSpendingBreakdownsRefs {
+    final manager = $$HabitSpendingBreakdownsTableTableManager(
+      $_db,
+      $_db.habitSpendingBreakdowns,
+    ).filter((f) => f.habitId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _habitSpendingBreakdownsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$HabitsTableFilterComposer
@@ -3850,6 +4539,11 @@ class $$HabitsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get goalUnit => $composableBuilder(
     column: $table.goalUnit,
     builder: (column) => ColumnFilters(column),
@@ -3877,6 +4571,11 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<String> get reminderTime => $composableBuilder(
     column: $table.reminderTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3917,6 +4616,11 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<String> get templateKey => $composableBuilder(
     column: $table.templateKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3992,6 +4696,32 @@ class $$HabitsTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> habitSpendingBreakdownsRefs(
+    Expression<bool> Function($$HabitSpendingBreakdownsTableFilterComposer f) f,
+  ) {
+    final $$HabitSpendingBreakdownsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.habitSpendingBreakdowns,
+          getReferencedColumn: (t) => t.habitId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HabitSpendingBreakdownsTableFilterComposer(
+                $db: $db,
+                $table: $db.habitSpendingBreakdowns,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$HabitsTableOrderingComposer
@@ -4033,6 +4763,11 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get goalUnit => $composableBuilder(
     column: $table.goalUnit,
     builder: (column) => ColumnOrderings(column),
@@ -4060,6 +4795,11 @@ class $$HabitsTableOrderingComposer
 
   ColumnOrderings<String> get reminderTime => $composableBuilder(
     column: $table.reminderTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4100,6 +4840,11 @@ class $$HabitsTableOrderingComposer
 
   ColumnOrderings<String> get templateKey => $composableBuilder(
     column: $table.templateKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4158,6 +4903,11 @@ class $$HabitsTableAnnotationComposer
   GeneratedColumn<int> get goalValue =>
       $composableBuilder(column: $table.goalValue, builder: (column) => column);
 
+  GeneratedColumn<int> get goalValueWeekend => $composableBuilder(
+    column: $table.goalValueWeekend,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get goalUnit =>
       $composableBuilder(column: $table.goalUnit, builder: (column) => column);
 
@@ -4179,6 +4929,11 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<String> get reminderTime => $composableBuilder(
     column: $table.reminderTime,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get reminderIntervalMinutes => $composableBuilder(
+    column: $table.reminderIntervalMinutes,
     builder: (column) => column,
   );
 
@@ -4207,6 +4962,9 @@ class $$HabitsTableAnnotationComposer
     column: $table.templateKey,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4280,6 +5038,33 @@ class $$HabitsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> habitSpendingBreakdownsRefs<T extends Object>(
+    Expression<T> Function($$HabitSpendingBreakdownsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$HabitSpendingBreakdownsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.habitSpendingBreakdowns,
+          getReferencedColumn: (t) => t.habitId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HabitSpendingBreakdownsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.habitSpendingBreakdowns,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$HabitsTableTableManager
@@ -4299,6 +5084,7 @@ class $$HabitsTableTableManager
             bool categoryId,
             bool habitLogsRefs,
             bool habitGroupLinksRefs,
+            bool habitSpendingBreakdownsRefs,
           })
         > {
   $$HabitsTableTableManager(_$AppDatabase db, $HabitsTable table)
@@ -4321,12 +5107,14 @@ class $$HabitsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 Value<String> goalPeriod = const Value.absent(),
                 Value<int> goalValue = const Value.absent(),
+                Value<int?> goalValueWeekend = const Value.absent(),
                 Value<String> goalUnit = const Value.absent(),
                 Value<String> goalDirection = const Value.absent(),
                 Value<String> taskDays = const Value.absent(),
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<String?> reminderTime = const Value.absent(),
+                Value<int?> reminderIntervalMinutes = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -4335,6 +5123,7 @@ class $$HabitsTableTableManager
                 Value<String?> nameId = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<String?> templateKey = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
               }) => HabitsCompanion(
                 id: id,
                 categoryId: categoryId,
@@ -4343,12 +5132,14 @@ class $$HabitsTableTableManager
                 icon: icon,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalValueWeekend: goalValueWeekend,
                 goalUnit: goalUnit,
                 goalDirection: goalDirection,
                 taskDays: taskDays,
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
                 reminderTime: reminderTime,
+                reminderIntervalMinutes: reminderIntervalMinutes,
                 startDate: startDate,
                 endDate: endDate,
                 isActive: isActive,
@@ -4357,6 +5148,7 @@ class $$HabitsTableTableManager
                 nameId: nameId,
                 isCustom: isCustom,
                 templateKey: templateKey,
+                currency: currency,
               ),
           createCompanionCallback:
               ({
@@ -4367,12 +5159,14 @@ class $$HabitsTableTableManager
                 Value<String?> icon = const Value.absent(),
                 required String goalPeriod,
                 Value<int> goalValue = const Value.absent(),
+                Value<int?> goalValueWeekend = const Value.absent(),
                 Value<String> goalUnit = const Value.absent(),
                 Value<String> goalDirection = const Value.absent(),
                 required String taskDays,
                 Value<String> timeRange = const Value.absent(),
                 Value<bool> reminderEnabled = const Value.absent(),
                 Value<String?> reminderTime = const Value.absent(),
+                Value<int?> reminderIntervalMinutes = const Value.absent(),
                 required DateTime startDate,
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
@@ -4381,6 +5175,7 @@ class $$HabitsTableTableManager
                 Value<String?> nameId = const Value.absent(),
                 Value<bool> isCustom = const Value.absent(),
                 Value<String?> templateKey = const Value.absent(),
+                Value<String?> currency = const Value.absent(),
               }) => HabitsCompanion.insert(
                 id: id,
                 categoryId: categoryId,
@@ -4389,12 +5184,14 @@ class $$HabitsTableTableManager
                 icon: icon,
                 goalPeriod: goalPeriod,
                 goalValue: goalValue,
+                goalValueWeekend: goalValueWeekend,
                 goalUnit: goalUnit,
                 goalDirection: goalDirection,
                 taskDays: taskDays,
                 timeRange: timeRange,
                 reminderEnabled: reminderEnabled,
                 reminderTime: reminderTime,
+                reminderIntervalMinutes: reminderIntervalMinutes,
                 startDate: startDate,
                 endDate: endDate,
                 isActive: isActive,
@@ -4403,6 +5200,7 @@ class $$HabitsTableTableManager
                 nameId: nameId,
                 isCustom: isCustom,
                 templateKey: templateKey,
+                currency: currency,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4415,12 +5213,14 @@ class $$HabitsTableTableManager
                 categoryId = false,
                 habitLogsRefs = false,
                 habitGroupLinksRefs = false,
+                habitSpendingBreakdownsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (habitLogsRefs) db.habitLogs,
                     if (habitGroupLinksRefs) db.habitGroupLinks,
+                    if (habitSpendingBreakdownsRefs) db.habitSpendingBreakdowns,
                   ],
                   addJoins:
                       <
@@ -4498,6 +5298,27 @@ class $$HabitsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (habitSpendingBreakdownsRefs)
+                        await $_getPrefetchedData<
+                          Habit,
+                          $HabitsTable,
+                          HabitSpendingBreakdown
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HabitsTableReferences
+                              ._habitSpendingBreakdownsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HabitsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).habitSpendingBreakdownsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.habitId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4522,6 +5343,7 @@ typedef $$HabitsTableProcessedTableManager =
         bool categoryId,
         bool habitLogsRefs,
         bool habitGroupLinksRefs,
+        bool habitSpendingBreakdownsRefs,
       })
     >;
 typedef $$HabitLogsTableCreateCompanionBuilder =
@@ -5609,6 +6431,380 @@ typedef $$HabitGroupLinksTableProcessedTableManager =
       HabitGroupLink,
       PrefetchHooks Function({bool habitId})
     >;
+typedef $$HabitSpendingBreakdownsTableCreateCompanionBuilder =
+    HabitSpendingBreakdownsCompanion Function({
+      Value<int> id,
+      required int habitId,
+      required DateTime date,
+      required String categoryKey,
+      Value<String?> label,
+      required int amount,
+      Value<DateTime> createdAt,
+    });
+typedef $$HabitSpendingBreakdownsTableUpdateCompanionBuilder =
+    HabitSpendingBreakdownsCompanion Function({
+      Value<int> id,
+      Value<int> habitId,
+      Value<DateTime> date,
+      Value<String> categoryKey,
+      Value<String?> label,
+      Value<int> amount,
+      Value<DateTime> createdAt,
+    });
+
+final class $$HabitSpendingBreakdownsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $HabitSpendingBreakdownsTable,
+          HabitSpendingBreakdown
+        > {
+  $$HabitSpendingBreakdownsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HabitsTable _habitIdTable(_$AppDatabase db) => db.habits.createAlias(
+    $_aliasNameGenerator(db.habitSpendingBreakdowns.habitId, db.habits.id),
+  );
+
+  $$HabitsTableProcessedTableManager get habitId {
+    final $_column = $_itemColumn<int>('habit_id')!;
+
+    final manager = $$HabitsTableTableManager(
+      $_db,
+      $_db.habits,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_habitIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$HabitSpendingBreakdownsTableFilterComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HabitsTableFilterComposer get habitId {
+    final $$HabitsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableFilterComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HabitsTableOrderingComposer get habitId {
+    final $$HabitsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableOrderingComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HabitSpendingBreakdownsTable> {
+  $$HabitSpendingBreakdownsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get categoryKey => $composableBuilder(
+    column: $table.categoryKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<int> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$HabitsTableAnnotationComposer get habitId {
+    final $$HabitsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.habitId,
+      referencedTable: $db.habits,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HabitsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.habits,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HabitSpendingBreakdownsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HabitSpendingBreakdownsTable,
+          HabitSpendingBreakdown,
+          $$HabitSpendingBreakdownsTableFilterComposer,
+          $$HabitSpendingBreakdownsTableOrderingComposer,
+          $$HabitSpendingBreakdownsTableAnnotationComposer,
+          $$HabitSpendingBreakdownsTableCreateCompanionBuilder,
+          $$HabitSpendingBreakdownsTableUpdateCompanionBuilder,
+          (HabitSpendingBreakdown, $$HabitSpendingBreakdownsTableReferences),
+          HabitSpendingBreakdown,
+          PrefetchHooks Function({bool habitId})
+        > {
+  $$HabitSpendingBreakdownsTableTableManager(
+    _$AppDatabase db,
+    $HabitSpendingBreakdownsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HabitSpendingBreakdownsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$HabitSpendingBreakdownsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HabitSpendingBreakdownsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> habitId = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> categoryKey = const Value.absent(),
+                Value<String?> label = const Value.absent(),
+                Value<int> amount = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitSpendingBreakdownsCompanion(
+                id: id,
+                habitId: habitId,
+                date: date,
+                categoryKey: categoryKey,
+                label: label,
+                amount: amount,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int habitId,
+                required DateTime date,
+                required String categoryKey,
+                Value<String?> label = const Value.absent(),
+                required int amount,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => HabitSpendingBreakdownsCompanion.insert(
+                id: id,
+                habitId: habitId,
+                date: date,
+                categoryKey: categoryKey,
+                label: label,
+                amount: amount,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HabitSpendingBreakdownsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({habitId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (habitId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.habitId,
+                                referencedTable:
+                                    $$HabitSpendingBreakdownsTableReferences
+                                        ._habitIdTable(db),
+                                referencedColumn:
+                                    $$HabitSpendingBreakdownsTableReferences
+                                        ._habitIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$HabitSpendingBreakdownsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HabitSpendingBreakdownsTable,
+      HabitSpendingBreakdown,
+      $$HabitSpendingBreakdownsTableFilterComposer,
+      $$HabitSpendingBreakdownsTableOrderingComposer,
+      $$HabitSpendingBreakdownsTableAnnotationComposer,
+      $$HabitSpendingBreakdownsTableCreateCompanionBuilder,
+      $$HabitSpendingBreakdownsTableUpdateCompanionBuilder,
+      (HabitSpendingBreakdown, $$HabitSpendingBreakdownsTableReferences),
+      HabitSpendingBreakdown,
+      PrefetchHooks Function({bool habitId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5625,4 +6821,9 @@ class $AppDatabaseManager {
       $$OnboardingResponsesTableTableManager(_db, _db.onboardingResponses);
   $$HabitGroupLinksTableTableManager get habitGroupLinks =>
       $$HabitGroupLinksTableTableManager(_db, _db.habitGroupLinks);
+  $$HabitSpendingBreakdownsTableTableManager get habitSpendingBreakdowns =>
+      $$HabitSpendingBreakdownsTableTableManager(
+        _db,
+        _db.habitSpendingBreakdowns,
+      );
 }

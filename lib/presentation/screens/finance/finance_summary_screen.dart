@@ -1,23 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../../domain/date_utils.dart';
 import '../../../domain/format_utils.dart';
 import '../../../domain/language.dart';
+import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
+import '../../../domain/models/habit.dart';
+import '../../../domain/models/habit_with_progress.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../providers/category_providers.dart';
 import '../../../providers/community_providers.dart';
+import '../../../providers/core_providers.dart';
 import '../../../providers/finance_providers.dart';
+import '../../../providers/habit_providers.dart';
+import '../../../providers/progress_providers.dart';
 import '../../../providers/settings_providers.dart';
+import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
+import '../../widgets/category_breakdown_list.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/finance_preview_mock.dart';
-import '../../widgets/habit_icon.dart';
+import '../../widgets/dashed_line.dart';
+import '../../widgets/habit_progress_card.dart';
 import '../../widgets/pro_feature_teaser.dart';
+import '../../widgets/quick_progress_sheet.dart';
 import '../../widgets/segmented_pill_toggle.dart';
+import '../../widgets/spending_distribution_pie_chart.dart';
+import '../add_habit/add_habit_flow_screen.dart';
 
 /// Finance Summary: total expenses, amount saved, and savings deposits
 /// from all rupiah-unit habits (across categories), per calendar month —
@@ -47,72 +62,275 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final anchor = period == FinancePeriod.monthly
         ? ref.watch(selectedFinanceMonthProvider)
         : ref.watch(selectedFinanceAnchorDateProvider);
-    final summaryAsync = ref.watch(financeSummaryForPeriodProvider(period, anchor));
+    final summaryAsync = ref.watch(
+      financeSummaryForPeriodProvider(period, anchor),
+    );
+    // Status On-Track/Overspending diambil dari scope paling parah di antara
+    // Daily/Weekly/Monthly, bukan cuma dari tab yang sedang dibuka — supaya
+    // tidak pernah terjadi satu tab bilang "On Track" sementara tab lain
+    // "Overspending" untuk data yang sama (feedback 6, slide 21).
+    final worstPaceStatus = ref.watch(worstBudgetPaceStatusTodayProvider).value;
     final isTablet = MediaQuery.sizeOf(context).width >= 600;
 
+    // Kategori Save Money cuma boleh 1 habit aktif — dicek di sini supaya
+    // FAB bisa jadi jalan pintas edit begitu sudah ada (lihat di bawah).
+    final categories =
+        ref.watch(categoriesProvider).value ?? const <Category>[];
+    int? financeCategoryId;
+    for (final c in categories) {
+      if (isFinanceCategory(c)) {
+        financeCategoryId = c.id;
+        break;
+      }
+    }
+    final activeHabits =
+        ref.watch(allActiveHabitsProvider).value ?? const <Habit>[];
+    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
+    Habit? existingFinanceHabit;
+    for (final h in activeHabits) {
+      if (pendingDeleteIds.contains(h.id)) continue;
+      if (h.categoryId == financeCategoryId) {
+        existingFinanceHabit = h;
+        break;
+      }
+    }
+
     return Scaffold(
+      // Kategori Save Money cuma boleh 1 habit aktif — begitu sudah ada,
+      // FAB ini jadi jalan pintas edit yang sudah ada alih-alih membuka
+      // form tambah baru (yang toh akan diblokir oleh singleton guard).
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => existingFinanceHabit == null
+            ? _openAddSpendingLimitHabit(context, ref)
+            // Open the edit form pre-converted to whichever Daily/Weekly/
+            // Monthly tab is active here, not the habit's raw stored period
+            // — editing while on the Monthly tab used to always land on the
+            // habit's actual stored period (often Daily), which read as
+            // "wrong form opened" (feedback 7, slide 37).
+            : openEditHabitFlow(
+                context,
+                existingFinanceHabit,
+                initialGoalPeriodOverride: GoalPeriod.values.byName(period.name),
+              ),
+        icon: Icon(
+          existingFinanceHabit == null ? Icons.add_rounded : Icons.edit_rounded,
+        ),
+        label: Text(
+          existingFinanceHabit == null
+              ? l10n.financeAddSpendingLimit
+              : l10n.financeEditSpendingLimit,
+        ),
+      ),
       body: FadeSlideIn(
         child: ListView(
-        padding: EdgeInsets.fromLTRB(isTablet ? 32 : 16, isTablet ? 32 : 20, isTablet ? 32 : 16, 24),
-        children: [
-          SegmentedPillToggle<FinancePeriod>(
-            segments: [
-              PillSegment(value: FinancePeriod.daily, label: l10n.financePeriodDaily),
-              PillSegment(value: FinancePeriod.weekly, label: l10n.financePeriodWeekly),
-              PillSegment(value: FinancePeriod.monthly, label: l10n.financePeriodMonthly),
+          // Extra bottom padding clears the "Add Spending Limit" FAB (#27) so
+          // it doesn't sit on top of the last card in the list.
+          padding: EdgeInsets.fromLTRB(
+            isTablet ? 32 : 16,
+            isTablet ? 32 : 20,
+            isTablet ? 32 : 16,
+            96,
+          ),
+          children: [
+            SegmentedPillToggle<FinancePeriod>(
+              segments: [
+                PillSegment(
+                  value: FinancePeriod.daily,
+                  label: l10n.financePeriodDaily,
+                ),
+                PillSegment(
+                  value: FinancePeriod.weekly,
+                  label: l10n.financePeriodWeekly,
+                ),
+                PillSegment(
+                  value: FinancePeriod.monthly,
+                  label: l10n.financePeriodMonthly,
+                ),
+              ],
+              selected: period,
+              onChanged: (p) =>
+                  ref.read(selectedFinancePeriodProvider.notifier).state = p,
+            ),
+            const SizedBox(height: 14),
+            _PeriodNav(
+              period: period,
+              anchor: anchor,
+              onChangeAnchor: (d) {
+                if (period == FinancePeriod.monthly) {
+                  ref.read(selectedFinanceMonthProvider.notifier).state = d;
+                } else {
+                  ref.read(selectedFinanceAnchorDateProvider.notifier).state =
+                      d;
+                }
+              },
+            ),
+            if (existingFinanceHabit != null) ...[
+              const SizedBox(height: 16),
+              _TodayProgressCard(habit: existingFinanceHabit),
             ],
-            selected: period,
-            onChanged: (p) => ref.read(selectedFinancePeriodProvider.notifier).state = p,
-          ),
-          const SizedBox(height: 14),
-          _PeriodNav(
-            period: period,
-            anchor: anchor,
-            onChangeAnchor: (d) {
-              if (period == FinancePeriod.monthly) {
-                ref.read(selectedFinanceMonthProvider.notifier).state = d;
-              } else {
-                ref.read(selectedFinanceAnchorDateProvider.notifier).state = d;
-              }
-            },
-          ),
-          const SizedBox(height: 20),
-          summaryAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, st) => Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(l10n.financeFailedToLoad('$e')),
-            ),
-            data: (summary) {
-              if (!summary.hasData) return const _EmptyFinance();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _TotalsSection(summary: summary),
-                  if (summary.dailyTrend.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            summaryAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(40),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, st) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(l10n.financeFailedToLoad('$e')),
+              ),
+              data: (summary) {
+                if (!summary.hasData) return const _EmptyFinance();
+                // Per active tab: that period's budget up to today minus
+                // its spending — e.g. on the 14th, Monthly only counts the
+                // 1st-14th, Daily only today (feedback 7, slide 28).
+                final totalSaved = summary.totalSaved;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TotalsSection(
+                      summary: summary,
+                      totalSaved: totalSaved,
+                      worstStatus: worstPaceStatus,
+                    ),
+                    if (summary.categoryBreakdown.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      SpendingDistributionPieChart(
+                        items: [
+                          for (final stat in summary.categoryBreakdown)
+                            CategoryBreakdownItem(
+                              category: stat.category,
+                              label: stat.label,
+                              amount: stat.totalAmount,
+                            ),
+                        ],
+                        currencyPrefix: summary.currencyPrefix,
+                      ),
+                    ],
+                    if (summary.dailyTrend.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      // Keyed by `period` so switching Daily/Weekly/Monthly
+                      // remounts this card (fresh State -> `initState` runs
+                      // again) instead of reusing one State/AnimationController
+                      // across tabs, which only ever animated in for
+                      // whichever tab was active first (feedback 7, slide 38b).
+                      _SpendingTrendCard(key: ValueKey(period), summary: summary, period: period),
+                    ],
                     const SizedBox(height: 20),
-                    _SpendingTrendCard(summary: summary),
+                    _HabitBreakdownCard(summary: summary, period: period, anchor: anchor),
                   ],
-                  const SizedBox(height: 20),
-                  _HabitBreakdownCard(summary: summary),
-                ],
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  /// Jumps straight to the Spending Money singleton form — daily/weekly/
+  /// monthly + goalValue, no template picker (kategori Save Money cuma
+  /// pernah punya 1 jenis habit sekarang). Logging today's progress against
+  /// it is now also available inline via [_TodayProgressCard] above.
+  Future<void> _openAddSpendingLimitHabit(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await openBudgetTrackerFlow(context);
+  }
+}
+
+/// Lets the Budget Tracker habit's progress for *today* be logged right from
+/// the Finance page — previously the only way to add today's spending/saving
+/// was to go back to Home and tap the card there. Mirrors Home's own
+/// tap-to-log flow (`_onTapCard` in home_screen.dart) exactly, just scoped to
+/// this one habit.
+class _TodayProgressCard extends ConsumerWidget {
+  const _TodayProgressCard({required this.habit});
+
+  final Habit habit;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(habitsWithProgressForDateProvider(today()));
+    HabitWithProgress? item;
+    for (final i in items) {
+      if (i.habit.id == habit.id) {
+        item = i;
+        break;
+      }
+    }
+    // Not active today (e.g. outside its schedule/date range) — nothing to
+    // log for "today" specifically.
+    if (item == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final indonesian = ref.watch(appLanguageProvider) == AppLang.id;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          indonesian ? 'Progres Hari Ini' : "Today's Progress",
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        HabitProgressCard(
+          item: item,
+          accentColor: theme.colorScheme.primary,
+          isEditMode: false,
+          onTap: () => _logTodayProgress(context, ref, item!),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _logTodayProgress(
+    BuildContext context,
+    WidgetRef ref,
+    HabitWithProgress item,
+  ) async {
+    final repo = ref.read(habitLogRepositoryProvider);
+    try {
+      final result = await showQuickProgressSheet(context, item);
+      if (result == null) return;
+      await repo.applyPeriodAwareEdit(
+        habit: item.habit,
+        date: item.date,
+        previousPeriodTotal: item.progressValue,
+        newPeriodTotal: result.value,
+      );
+      if (result.breakdownItems.isNotEmpty) {
+        await ref.read(spendingBreakdownRepositoryProvider).addEntries(
+              habitId: item.habit.id,
+              date: item.date,
+              entries: result.breakdownItems,
+            );
+      }
+      ref.invalidate(dashboardSummaryProvider);
+      ref.invalidate(monthSummariesProvider);
+      ref.invalidate(daySummaryProvider);
+      ref.invalidate(financeSummaryProvider);
+      ref.invalidate(financeSummaryForPeriodProvider);
+      ref.invalidate(financeMonthToDateSummaryProvider);
+      ref.invalidate(habitsWithProgressForDateProvider(item.date));
+      unawaited(syncCommunityHabit(ref, item.habit.id, item.date));
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context)!.homeFailedToSaveProgress('$e'))),
+        );
+      }
+    }
   }
 }
 
 /// Prev/next navigator whose step size and label follow the selected
 /// [FinancePeriod] — a day, a week, or a calendar month at a time.
 class _PeriodNav extends ConsumerWidget {
-  const _PeriodNav({required this.period, required this.anchor, required this.onChangeAnchor});
+  const _PeriodNav({
+    required this.period,
+    required this.anchor,
+    required this.onChangeAnchor,
+  });
 
   final FinancePeriod period;
   final DateTime anchor;
@@ -125,7 +343,9 @@ class _PeriodNav extends ConsumerWidget {
       case FinancePeriod.weekly:
         final (start, end) = financePeriodRange(FinancePeriod.weekly, anchor);
         final sameMonth = start.month == end.month;
-        final startLabel = sameMonth ? '${start.day}' : '${start.day} ${monthFullName(start.month, lang)}';
+        final startLabel = sameMonth
+            ? '${start.day}'
+            : '${start.day} ${monthFullName(start.month, lang)}';
         return '$startLabel–${end.day} ${monthFullName(end.month, lang)} ${end.year}';
       case FinancePeriod.monthly:
         return '${monthFullName(anchor.month, lang)} ${anchor.year}';
@@ -150,9 +370,53 @@ class _PeriodNav extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _NavCircleButton(icon: Icons.chevron_left_rounded, onTap: () => onChangeAnchor(_step(-1))),
-        Text(_label(lang), style: theme.textTheme.titleLarge),
-        _NavCircleButton(icon: Icons.chevron_right_rounded, onTap: () => onChangeAnchor(_step(1))),
+        _NavCircleButton(
+          icon: Icons.chevron_left_rounded,
+          onTap: () => onChangeAnchor(_step(-1)),
+        ),
+        Expanded(
+          // The weekly label ("31 Agustus–6 September 2026") can run long
+          // enough at titleLarge to get clipped by maxLines:1 ellipsis —
+          // FittedBox scales the whole label down to fit instead of cutting
+          // it off, so the full date range always stays readable.
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _label(lang),
+                    style: theme.textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                  ),
+                  if (period == FinancePeriod.daily) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: anchor,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) onChangeAnchor(picked);
+                      },
+                      child: Icon(Icons.calendar_today_rounded, size: 18, color: theme.colorScheme.primary),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        _NavCircleButton(
+          icon: Icons.chevron_right_rounded,
+          onTap: () => onChangeAnchor(_step(1)),
+        ),
       ],
     );
   }
@@ -209,15 +473,28 @@ class _EmptyFinance extends StatelessWidget {
 }
 
 class _TotalsSection extends StatelessWidget {
-  const _TotalsSection({required this.summary});
+  const _TotalsSection({
+    required this.summary,
+    required this.totalSaved,
+    this.worstStatus,
+  });
 
   final FinanceSummary summary;
+
+  /// The active tab's budget up to today minus its spending.
+  final int totalSaved;
+
+  /// Status pace paling parah lintas Daily/Weekly/Monthly (lihat
+  /// `worstBudgetPaceStatusTodayProvider`) — dipakai menggantikan status
+  /// milik tab ini sendiri supaya indikator konsisten di semua tab. Null
+  /// selagi provider-nya masih loading; saat itu status tab ini yang dipakai.
+  final BudgetPaceStatus? worstStatus;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final saved = summary.totalSaved;
+    final saved = totalSaved;
     final isOverBudget = saved < 0;
     final hasBudget = summary.totalBudget > 0;
 
@@ -231,92 +508,104 @@ class _TotalsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(l10n.financeTotalSpending, style: theme.textTheme.bodyMedium),
-                    if (hasBudget) _BudgetPaceChip(pace: summary.paceAt(DateTime.now())),
+                    Expanded(
+                      child: Text(
+                        l10n.financeTotalSpending,
+                        style: theme.textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (hasBudget) ...[
+                      const SizedBox(width: 8),
+                      _BudgetPaceChip(
+                        pace: summary.paceAt(DateTime.now()),
+                        statusOverride: worstStatus,
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(formatRupiah(summary.totalExpense), style: theme.textTheme.headlineMedium),
+                Text(
+                  formatCurrency(summary.totalExpense, summary.currencyPrefix),
+                  style: theme.textTheme.headlineMedium,
+                ),
                 if (hasBudget) ...[
                   const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(999),
                     child: LinearProgressIndicator(
-                      value: (summary.totalExpense / summary.totalBudget).clamp(0, 1).toDouble(),
+                      value: (summary.totalExpense / summary.totalBudget)
+                          .clamp(0, 1)
+                          .toDouble(),
                       minHeight: 8,
                       backgroundColor: theme.brightness == Brightness.light
                           ? AppColors.lightSurfaceAlt
                           : AppColors.darkSurfaceAlt,
                       valueColor: AlwaysStoppedAnimation(
-                        isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
+                        isOverBudget
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.primary,
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    l10n.financeOfBudget(formatRupiah(summary.totalBudget)),
-                    style: theme.textTheme.bodySmall,
+                    l10n.financeOfBudget(formatCurrency(summary.totalBudget, summary.currencyPrefix)),
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
               ],
             ),
           ),
         ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: _StatChip(
+            label: isOverBudget
+                ? l10n.financeOverBudget
+                : l10n.financeTotalSaved,
+            value: formatCurrency(saved.abs(), summary.currencyPrefix),
+            color: isOverBudget
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
+            icon: isOverBudget
+                ? Icons.trending_up_rounded
+                : Icons.savings_rounded,
+          ),
+        ),
+        // Saving/deposit info kept much smaller than spending above — this
+        // page is primarily for tracking spending, not savings (see #24).
         if (summary.totalSavingsTarget > 0) ...[
-          const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l10n.financeSaveMoneyGoal, style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${formatRupiah(summary.totalSavingsDeposit)} / ${formatRupiah(summary.totalSavingsTarget)}',
-                    style: theme.textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: (summary.totalSavingsDeposit / summary.totalSavingsTarget).clamp(0, 1).toDouble(),
-                      minHeight: 8,
-                      backgroundColor: theme.brightness == Brightness.light
-                          ? AppColors.lightSurfaceAlt
-                          : AppColors.darkSurfaceAlt,
-                      valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.savings_outlined,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${l10n.financeSaveMoneyGoal}: '
+                    '${formatCurrency(summary.totalSavingsDeposit, summary.currencyPrefix)} / '
+                    '${formatCurrency(summary.totalSavingsTarget, summary.currencyPrefix)}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
-        const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: _StatChip(
-                label: isOverBudget ? l10n.financeOverBudget : l10n.financeTotalSaved,
-                value: formatRupiah(saved.abs()),
-                color: isOverBudget ? theme.colorScheme.error : theme.colorScheme.primary,
-                icon: isOverBudget ? Icons.trending_up_rounded : Icons.savings_rounded,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatChip(
-                label: l10n.financeTotalDeposited,
-                value: formatRupiah(summary.totalSavingsDeposit),
-                color: theme.colorScheme.primary,
-                icon: Icons.account_balance_wallet_rounded,
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -327,28 +616,60 @@ class _TotalsSection extends StatelessWidget {
 /// (see [FinanceSummary.paceAt]). Hidden when pacing isn't meaningful (e.g.
 /// viewing a past/future period).
 class _BudgetPaceChip extends StatelessWidget {
-  const _BudgetPaceChip({required this.pace});
+  const _BudgetPaceChip({required this.pace, this.statusOverride});
 
   final BudgetPace? pace;
+
+  /// Status paling parah lintas Daily/Weekly/Monthly, menggantikan status
+  /// milik periode ini sendiri supaya semua tab menampilkan indikator yang
+  /// sama (feedback 6, slide 21). [pace] tetap dipakai untuk menentukan
+  /// apakah chip ini relevan sama sekali (null = periode lampau/mendatang,
+  /// chip disembunyikan).
+  final BudgetPaceStatus? statusOverride;
 
   @override
   Widget build(BuildContext context) {
     final pace = this.pace;
     if (pace == null) return const SizedBox.shrink();
-    final color = pace.onTrack ? const Color(0xFF3E9B5C) : const Color(0xFFD1544A);
+    final l10n = AppLocalizations.of(context)!;
+    final (color, icon, label) = switch (statusOverride ?? pace.status) {
+      BudgetPaceStatus.onTrack => (
+        const Color(0xFF3E9B5C),
+        // A downward trend arrow read as "getting worse" next to the "On
+        // Track" label even though it meant spending pace is healthy — a
+        // check mark reads as unambiguously positive instead.
+        Icons.check_circle_rounded,
+        l10n.financeOnTrack,
+      ),
+      BudgetPaceStatus.warning => (
+        const Color(0xFFD9A441),
+        Icons.trending_flat_rounded,
+        l10n.financeApproachingLimit,
+      ),
+      BudgetPaceStatus.overBudget => (
+        const Color(0xFFD1544A),
+        Icons.trending_up_rounded,
+        l10n.financeOverspending,
+      ),
+    };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(pace.onTrack ? Icons.trending_down_rounded : Icons.trending_up_rounded, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
           Text(
-            pace.onTrack
-                ? AppLocalizations.of(context)!.financeOnTrack
-                : AppLocalizations.of(context)!.financeOverspending,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11),
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
           ),
         ],
       ),
@@ -372,41 +693,76 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(height: 10),
-            Text(label, style: theme.textTheme.labelSmall),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0.05)],
         ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.18), shape: BoxShape.circle),
+            child: Icon(icon, size: 24, color: color),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _SpendingTrendCard extends StatefulWidget {
-  const _SpendingTrendCard({required this.summary});
+  const _SpendingTrendCard({super.key, required this.summary, required this.period});
 
   final FinanceSummary summary;
+  final FinancePeriod period;
 
   @override
   State<_SpendingTrendCard> createState() => _SpendingTrendCardState();
 }
 
-class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTickerProviderStateMixin {
+class _SpendingTrendCardState extends State<_SpendingTrendCard>
+    with SingleTickerProviderStateMixin {
+  static const _chartHeight = 150.0;
+  static const _axisWidth = 40.0;
+
   late final AnimationController _controller;
   late final Animation<double> _grow;
+
+  /// Index (into `widget.summary.dailyTrend`) of the bar last tapped, so its
+  /// exact rupiah value can be read off instead of just eyeballed against
+  /// the axis — same pattern as the Dashboard trend chart's tap-to-reveal
+  /// (feedback 6, slide 15), now mirrored here too (feedback 7, slide 40).
+  int? _selectedIndex;
 
   @override
   void initState() {
@@ -414,11 +770,33 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
     // Same treatment as HabitCurveChart: start after the page transition has
     // settled, and slow enough (1600ms) to actually read as motion instead
     // of finishing before the bars are even visible.
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+    //
+    // The Daily/Weekly/Monthly tabs all share this one widget type, so
+    // switching tabs used to just rebuild this same State (not remount it)
+    // — `initState` (and this animation) only ever ran once, for whichever
+    // tab happened to be selected first (Monthly, the default), leaving
+    // Daily/Weekly's bars appearing instantly with no entrance animation
+    // (feedback 7, slide 38b). The call site now keys this widget by
+    // `period` so each tab gets its own State/mount and this always runs.
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
     _grow = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _controller.forward();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SpendingTrendCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Navigating to a different day/week/month (same tab, so same State)
+    // brings in a whole new set of points — drop any tapped-bar selection
+    // from the old data instead of highlighting a now-unrelated index.
+    if (oldWidget.summary.dailyTrend != widget.summary.dailyTrend) {
+      _selectedIndex = null;
+    }
   }
 
   @override
@@ -427,11 +805,41 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
     super.dispose();
   }
 
+  String _trendTitle(AppLocalizations l10n) => switch (widget.period) {
+    FinancePeriod.daily => l10n.financeDailySpendingTrend,
+    FinancePeriod.weekly => l10n.financeWeeklySpendingTrend,
+    FinancePeriod.monthly => l10n.financeMonthlySpendingTrend,
+  };
+
+  /// Abbreviated Y-axis tick label so the axis column stays narrow even for
+  /// large rupiah amounts — e.g. 1.500.000 -> "1,5jt", 250.000 -> "250rb".
+  ///
+  /// [value] is in stored units, so a cent-based currency is brought back to
+  /// whole units first (SGD 4500 cents -> "45").
+  String _axisLabel(int value) {
+    final major = value / currencyMinorFactor(widget.summary.currencyPrefix);
+    if (major >= 1000000) return '${(major / 1000000).toStringAsFixed(major % 1000000 == 0 ? 0 : 1)}jt';
+    if (major >= 1000) return '${(major / 1000).round()}rb';
+    return major == major.roundToDouble() ? '${major.round()}' : major.toStringAsFixed(1).replaceAll('.', ',');
+  }
+
+  /// X-axis label for one trend point — the day number (Daily), the week's
+  /// start date (Weekly, e.g. "28/9") or the month name (Monthly).
+  String _pointLabel(FinanceDayPoint point, AppLang lang) => switch (widget.period) {
+    FinancePeriod.daily => '${point.date.day}',
+    FinancePeriod.weekly => '${point.date.day}/${point.date.month}',
+    FinancePeriod.monthly => monthShortName(point.date.month, lang),
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final points = widget.summary.dailyTrend;
-    final maxValue = points.fold<int>(0, (m, p) => p.totalExpense > m ? p.totalExpense : m);
+    final maxValue = points.fold<int>(
+      0,
+      (m, p) => p.totalExpense > m ? p.totalExpense : m,
+    );
 
     return Card(
       child: Padding(
@@ -439,60 +847,184 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context)!.financeDailySpendingTrend, style: theme.textTheme.titleMedium),
+            Text(
+              _trendTitle(l10n),
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 20),
             SizedBox(
-              height: 140,
+              height: 220,
               child: maxValue == 0
                   ? Center(
                       child: Text(
-                        AppLocalizations.of(context)!.financeNoDataYet,
+                        l10n.financeNoDataYet,
                         style: theme.textTheme.bodySmall,
                       ),
                     )
-                  : AnimatedBuilder(
-                      animation: _grow,
-                      builder: (context, _) => SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            for (final point in points)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    SizedBox(
-                                      height: 100,
-                                      child: Align(
-                                        alignment: Alignment.bottomCenter,
-                                        child: FractionallySizedBox(
-                                          heightFactor: ((point.totalExpense / maxValue).clamp(0.04, 1) * _grow.value)
-                                              .clamp(0.001, 1)
-                                              .toDouble(),
-                                          child: Container(
-                                            width: 20,
-                                            decoration: BoxDecoration(
-                                              color: theme.colorScheme.primary,
-                                              borderRadius: const BorderRadius.only(
-                                                topLeft: Radius.circular(4),
-                                                topRight: Radius.circular(4),
-                                              ),
-                                            ),
-                                          ),
+                  // Top padding leaves room for the tapped-value badge above
+                  // the tallest bar — it used to render above the scroll
+                  // view's edge and get clipped away (feedback 7, slide 40).
+                  : Padding(
+                    padding: const EdgeInsets.only(top: 28),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Y-axis: max/mid/0 ticks, each vertically centered
+                        // exactly on its corresponding gridline via
+                        // `_FinanceAxisTick` (`Positioned` + fractional
+                        // translation) instead of two independently laid-out
+                        // columns (labels via `spaceBetween` vs. the
+                        // gridlines below via their own `spaceBetween`) that
+                        // drifted apart whenever a label's own height
+                        // differed from the gridline it was meant to sit on
+                        // — same class of bug, same fix, as the Dashboard
+                        // chart's axis (feedback 6, slide 14; feedback 7,
+                        // slide 38a).
+                        SizedBox(
+                          width: _axisWidth,
+                          height: _chartHeight,
+                          child: Stack(
+                            // Top/bottom labels are centered on their
+                            // gridline, so half of each sits outside this box
+                            // — the default hard clip cut them in half.
+                            clipBehavior: Clip.none,
+                            children: [
+                              _FinanceAxisTick(text: _axisLabel(maxValue), topFraction: 0, chartHeight: _chartHeight),
+                              _FinanceAxisTick(
+                                text: _axisLabel(maxValue ~/ 2),
+                                topFraction: 0.5,
+                                chartHeight: _chartHeight,
+                              ),
+                              _FinanceAxisTick(text: '0', topFraction: 1, chartHeight: _chartHeight),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AnimatedBuilder(
+                            animation: _grow,
+                            builder: (context, _) => LayoutBuilder(
+                              builder: (context, constraints) => SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                                  // This lives inside a horizontally-scrolling
+                                  // child, so the incoming width constraint
+                                  // is unbounded (maxWidth: infinity) — the
+                                  // gridlines' `DashedLine` wants to stretch
+                                  // to fill that width, but resolving
+                                  // `width: double.infinity` against a truly
+                                  // infinite constraint crashes layout
+                                  // ("BoxConstraints forces an infinite
+                                  // width"), which silently blanked out this
+                                  // whole chart. `IntrinsicWidth` resolves a
+                                  // concrete width first (from the bars
+                                  // Row's own intrinsic content width) and
+                                  // hands that bounded width down instead.
+                                  child: IntrinsicWidth(
+                                    child: Stack(
+                                    children: [
+                                      // Gridlines at the 0/50/100% ticks so bar
+                                      // heights can be read against the Y-axis.
+                                      SizedBox(
+                                        height: _chartHeight,
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: const [
+                                            DashedLine(),
+                                            DashedLine(),
+                                            DashedLine(),
+                                          ],
                                         ),
                                       ),
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          for (final (index, point) in points.indexed)
+                                            Padding(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 4,
+                                              ),
+                                              child: GestureDetector(
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: () => setState(
+                                                  () => _selectedIndex = _selectedIndex == index ? null : index,
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    SizedBox(
+                                                      height: _chartHeight,
+                                                      child: Stack(
+                                                        clipBehavior: Clip.none,
+                                                        alignment: Alignment.bottomCenter,
+                                                        children: [
+                                                          if (_selectedIndex == index)
+                                                            Positioned(
+                                                              bottom: _chartHeight *
+                                                                      ((point.totalExpense / maxValue)
+                                                                          .clamp(0.04, 1)) +
+                                                                  6,
+                                                              child: _FinanceValueBadge(
+                                                                text: formatCurrency(
+                                                                  point.totalExpense,
+                                                                  widget.summary.currencyPrefix,
+                                                                ),
+                                                                color: theme.colorScheme.primary,
+                                                              ),
+                                                            ),
+                                                          FractionallySizedBox(
+                                                            heightFactor:
+                                                                ((point.totalExpense / maxValue)
+                                                                            .clamp(0.04, 1) *
+                                                                        _grow.value)
+                                                                    .clamp(0.001, 1)
+                                                                    .toDouble(),
+                                                            child: Container(
+                                                              width: 24,
+                                                              decoration: BoxDecoration(
+                                                                color: theme.colorScheme.primary,
+                                                                borderRadius:
+                                                                    const BorderRadius.only(
+                                                                      topLeft: Radius.circular(4),
+                                                                      topRight: Radius.circular(
+                                                                        4,
+                                                                      ),
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      _pointLabel(
+                                                        point,
+                                                        Localizations.localeOf(context).languageCode == 'id'
+                                                            ? AppLang.id
+                                                            : AppLang.en,
+                                                      ),
+                                                      style: theme.textTheme.labelSmall,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    Text('${point.date.day}', style: theme.textTheme.labelSmall),
-                                  ],
+                                  ),
                                 ),
                               ),
-                          ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
             ),
           ],
         ),
@@ -501,27 +1033,138 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard> with SingleTicke
   }
 }
 
-class _HabitBreakdownCard extends StatelessWidget {
-  const _HabitBreakdownCard({required this.summary});
+/// One Y-axis label for [_SpendingTrendCard], vertically centered exactly on
+/// the gridline at [topFraction] of [chartHeight] — mirrors the Dashboard
+/// chart's `_AxisTick` (feedback 6, slide 14 / feedback 7, slide 38a).
+class _FinanceAxisTick extends StatelessWidget {
+  const _FinanceAxisTick({required this.text, required this.topFraction, required this.chartHeight});
 
-  final FinanceSummary summary;
+  final String text;
+  final double topFraction;
+  final double chartHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: chartHeight * topFraction,
+      right: 0,
+      left: 0,
+      child: FractionalTranslation(
+        translation: const Offset(0, -0.5),
+        child: Text(
+          text,
+          textAlign: TextAlign.right,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill showing a tapped bar's exact rupiah value (feedback 7, slide
+/// 40) — floats just above that bar's current height, same pattern as the
+/// Dashboard chart's `_PercentBadge` (feedback 6, slide 15).
+class _FinanceValueBadge extends StatelessWidget {
+  const _FinanceValueBadge({required this.text, required this.color});
+
+  final String text;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// Spending consolidated by category (§CategoryBreakdownList) across ALL
+/// Budget Tracker habits in this window — supersedes the old per-habit "By
+/// Habit" list, since with a single Budget Tracker habit "by habit" carried
+/// no information the totals card didn't already show.
+/// "Spending by Category" — consolidated across ALL Budget Tracker habits in
+/// the active Daily/Weekly/Monthly window. When the Monthly tab is showing
+/// the current, still-in-progress calendar month, this data IS the "Month to
+/// Date" figure (same category-consolidated totals, just scoped by the
+/// active period instead of a separate calendar-month query) — a small
+/// badge marks that explicitly instead of duplicating the same numbers in a
+/// second section, which is what the standalone "Month to Date" card used to
+/// do before it was merged in here. A finished past month gets a "Monthly
+/// Total" badge instead, since that data is final. Daily/Weekly tabs show no
+/// badge — MTD/Monthly-Total framing only applies to calendar-month scope.
+class _HabitBreakdownCard extends StatelessWidget {
+  const _HabitBreakdownCard({required this.summary, required this.period, required this.anchor});
+
+  final FinanceSummary summary;
+  final FinancePeriod period;
+  final DateTime anchor;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    if (summary.categoryBreakdown.isEmpty) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final isCurrentMonth = anchor.year == now.year && anchor.month == now.month;
+    final monthBadgeLabel =
+        period != FinancePeriod.monthly ? null : (isCurrentMonth ? l10n.financeMonthToDate : l10n.financeMonthlyTotal);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context)!.commonByHabit, style: theme.textTheme.titleMedium),
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Text(
+                  l10n.financeSpendingByCategory,
+                  style: theme.textTheme.titleMedium,
+                ),
+                if (monthBadgeLabel != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      monthBadgeLabel,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             const SizedBox(height: 16),
-            for (final stat in summary.habitStats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _HabitFinanceRow(stat: stat),
-              ),
+            CategoryBreakdownList(
+              items: [
+                for (final stat in summary.categoryBreakdown)
+                  CategoryBreakdownItem(category: stat.category, label: stat.label, amount: stat.totalAmount),
+              ],
+              currencyPrefix: summary.currencyPrefix,
+            ),
           ],
         ),
       ),
@@ -529,62 +1172,3 @@ class _HabitBreakdownCard extends StatelessWidget {
   }
 }
 
-class _HabitFinanceRow extends ConsumerWidget {
-  const _HabitFinanceRow({required this.stat});
-
-  final FinanceHabitStat stat;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final lang = ref.watch(appLanguageProvider);
-    final habit = stat.habit;
-    final isAtMost = habit.goalDirection == GoalDirection.atMost;
-    final overBudget = isAtMost && stat.totalValue > stat.totalTarget;
-    final ratio = isAtMost
-        ? (stat.totalTarget == 0 ? 0.0 : (stat.totalValue / stat.totalTarget).clamp(0, 1).toDouble())
-        : (stat.loggedPeriods == 0 ? 0.0 : stat.achievedPeriods / stat.loggedPeriods);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
-              child: Center(child: HabitIcon(icon: habit.icon, size: 13, color: Colors.white)),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                habit.displayName(lang),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-            Text(
-              isAtMost
-                  ? '${formatRupiah(stat.totalValue)} / ${formatRupiah(stat.totalTarget)}'
-                  : formatRupiah(stat.totalValue),
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(999),
-          child: LinearProgressIndicator(
-            value: ratio,
-            minHeight: 8,
-            backgroundColor:
-                theme.brightness == Brightness.light ? AppColors.lightSurfaceAlt : AppColors.darkSurfaceAlt,
-            valueColor: AlwaysStoppedAnimation(overBudget ? theme.colorScheme.error : theme.colorScheme.primary),
-          ),
-        ),
-      ],
-    );
-  }
-}

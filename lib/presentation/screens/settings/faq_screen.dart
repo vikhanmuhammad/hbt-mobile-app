@@ -1,22 +1,36 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../providers/community_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
 
 /// Frequently asked questions about the offline principle & data security. CLAUDE.md v3 §8.
-class FaqScreen extends StatelessWidget {
+class FaqScreen extends ConsumerWidget {
   const FaqScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
+    final isPro = ref.watch(isProProvider);
     final faqs = [
       (q: l10n.faqQ1, a: l10n.faqA1),
       (q: l10n.faqQ2, a: l10n.faqA2),
       (q: l10n.faqQ3, a: l10n.faqA3),
       (q: l10n.faqQ4, a: l10n.faqA4),
+      (q: l10n.faqQ5, a: l10n.faqA5),
+      (q: l10n.faqQ6, a: l10n.faqA6),
+      (q: l10n.faqQ7, a: l10n.faqA7),
+      (q: l10n.faqQ8, a: l10n.faqA8),
+      // Extra Q&A only relevant once a user actually has Pro — showing
+      // "how do I use Community/Budget Tracker" before they can even open
+      // those screens is just noise (feedback 7, slide 49).
+      if (isPro) ...[
+        (q: l10n.faqQ9, a: l10n.faqA9),
+        (q: l10n.faqQ10, a: l10n.faqA10),
+      ],
     ];
     return Scaffold(
       appBar: AppBar(title: Text(l10n.faqTitle)),

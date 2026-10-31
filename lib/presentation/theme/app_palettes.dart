@@ -23,7 +23,7 @@ class AppPalettes {
   static const sunnyGold = AppPalette(
     key: 'sunny_gold',
     label: 'Sunny Gold',
-    accent: Color(0xFFD9A441),
+    accent: Color(0xFFFFB951),
   );
   static const blushPink = AppPalette(
     key: 'blush_pink',

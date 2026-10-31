@@ -9,6 +9,7 @@ import 'daos/category_dao.dart';
 import 'daos/habit_dao.dart';
 import 'daos/habit_group_link_dao.dart';
 import 'daos/habit_log_dao.dart';
+import 'daos/habit_spending_breakdown_dao.dart';
 import 'daos/profile_dao.dart';
 import 'tables.dart';
 
@@ -22,8 +23,16 @@ part 'app_database.g.dart';
     UserProfile,
     OnboardingResponses,
     HabitGroupLinks,
+    HabitSpendingBreakdowns,
   ],
-  daos: [CategoryDao, HabitDao, HabitLogDao, ProfileDao, HabitGroupLinkDao],
+  daos: [
+    CategoryDao,
+    HabitDao,
+    HabitLogDao,
+    ProfileDao,
+    HabitGroupLinkDao,
+    HabitSpendingBreakdownDao,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
@@ -31,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -87,8 +96,105 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(habits, habits.isCustom);
             await m.addColumn(habits, habits.templateKey);
           }
+          if (from < 8) {
+            // v8: reminderIntervalMinutes — repeat a reminder every N minutes
+            // starting at reminderTime, instead of just once/day. Nullable,
+            // defaults to null (single reminder, unchanged behavior).
+            await m.addColumn(habits, habits.reminderIntervalMinutes);
+          }
+          if (from < 9) {
+            // v9: HabitGroupLinks.uniqueKeys now includes `uid`, not just
+            // (habitId, groupHabitId) — the old constraint meant only ONE
+            // account could ever link a given local habit to a given Group
+            // Habit on this device; a second account trying to link that
+            // exact same pair hit a UNIQUE constraint crash instead of
+            // getting its own link row. Link rows are just re-creatable
+            // pointers (tap "Link" again), not valuable historical data, so
+            // recreate the table with the corrected constraint rather than a
+            // more complex in-place migration.
+            await m.deleteTable('habit_group_links');
+            await m.createTable(habitGroupLinks);
+          }
+          if (from < 10) {
+            // v10: HabitSpendingBreakdowns — rincian opsional (kategori +
+            // jumlah) dari progress habit pengeluaran, mis. Rp50.000 dipecah
+            // Rp30.000 "Kebutuhan Harian" + Rp20.000 kustom "Bensin". Tabel
+            // baru, tidak ada data lama untuk dimigrasikan.
+            await m.createTable(habitSpendingBreakdowns);
+          }
+          if (from < 11) {
+            // v11: goalValueWeekend — override goalValue khusus Sabtu-Minggu
+            // untuk habit daily (mis. batas pengeluaran lebih longgar di
+            // weekend). Nullable, default null = sama setiap hari (perilaku
+            // lama tidak berubah untuk habit yang sudah ada).
+            await m.addColumn(habits, habits.goalValueWeekend);
+          }
+          if (from < 12) {
+            // v12: Budget Tracker rename (dulu "Spending Money"). Kolom
+            // currency baru untuk form Budget Tracker (label/prefix saja,
+            // nullable → null diperlakukan sebagai IDR di kode). Habit lama
+            // yang templateKey-nya masih key lama 'limit_daily_spending'
+            // di-update ke key baru 'budget_tracker' supaya deteksi habit
+            // singleton Budget Tracker tetap jalan tanpa perlu app
+            // menoleransi dua key sekaligus.
+            await m.addColumn(habits, habits.currency);
+            await customStatement(
+              "UPDATE habits SET template_key = 'budget_tracker' WHERE template_key = 'limit_daily_spending'",
+            );
+          }
+          if (from < 13) {
+            // v13: v12 only renamed template_key, not the habit row's own
+            // displayed name/name_id — devices that already ran v12 are
+            // stuck showing "Spending Money" forever otherwise. Matched
+            // against the old default text so a hypothetically renamed
+            // habit (locked from editing in the UI, but not enforced at the
+            // DB level) isn't silently overwritten. Covers both: a device
+            // landing on v13 directly (template_key already 'budget_tracker'
+            // from the v12 step just above) and one that ran v12 earlier in
+            // a prior session (template_key already 'budget_tracker' then
+            // too — the rename is idempotent either way).
+            await customStatement(
+              "UPDATE habits SET name = 'Budget Tracker', name_id = 'Pelacak Anggaran' "
+              "WHERE template_key = 'budget_tracker' AND name = 'Spending Money'",
+            );
+          }
+          if (from < 14) {
+            // v14: amounts in a cent-based currency (USD/SGD/MYR/EUR) are
+            // now stored in cents so they can have decimals, e.g. SGD 5,50
+            // (feedback 8, slide 8). Existing ones were whole units —
+            // multiplied by 100 so they keep their face value. IDR (and a
+            // null currency, which means IDR) is unchanged.
+            const nonIdr = "SELECT id FROM habits WHERE goal_unit = 'rupiah' "
+                "AND currency IS NOT NULL AND currency <> 'IDR'";
+            await customStatement(
+              'UPDATE habit_logs SET progress_value = progress_value * 100 WHERE habit_id IN ($nonIdr)',
+            );
+            await customStatement(
+              'UPDATE habit_spending_breakdowns SET amount = amount * 100 WHERE habit_id IN ($nonIdr)',
+            );
+            await customStatement(
+              "UPDATE habits SET goal_value = goal_value * 100, goal_value_weekend = goal_value_weekend * 100 "
+              "WHERE goal_unit = 'rupiah' AND currency IS NOT NULL AND currency <> 'IDR'",
+            );
+          }
         },
       );
+
+  /// See `HabitRepository.rescaleAmounts`.
+  Future<void> rescaleHabitAmounts(int habitId, {required int multiplier, required int divisor}) {
+    return transaction(() async {
+      await customUpdate(
+        'UPDATE habit_logs SET progress_value = CAST(ROUND(progress_value * ? / ?) AS INTEGER) WHERE habit_id = ?',
+        variables: [Variable.withReal(multiplier.toDouble()), Variable.withInt(divisor), Variable.withInt(habitId)],
+        updates: {habitLogs},
+      );
+      await customUpdate(
+        'UPDATE habit_spending_breakdowns SET amount = CAST(ROUND(amount * ? / ?) AS INTEGER) WHERE habit_id = ?',
+        variables: [Variable.withReal(multiplier.toDouble()), Variable.withInt(divisor), Variable.withInt(habitId)],
+        updates: {habitSpendingBreakdowns},
+      );
+    });
+  }
 
   /// Hapus semua kategori, habit, riwayat progress, profil, dan jawaban
   /// kuesioner — dipakai untuk "Lihat ulang alur onboarding (demo)" di
@@ -104,6 +210,7 @@ class AppDatabase extends _$AppDatabase {
       // could never re-link, and its progress would silently stop
       // reaching Firestore since no *current* habitId had a link anymore.
       await delete(habitGroupLinks).go();
+      await delete(habitSpendingBreakdowns).go();
       await delete(habitLogs).go();
       await delete(habits).go();
       await delete(categories).go();

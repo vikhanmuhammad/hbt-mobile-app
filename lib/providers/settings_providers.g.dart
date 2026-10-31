@@ -181,6 +181,12 @@ String _$userProfileStreamHash() => r'a9a837487179662dbb71b0e7f2fd1d1dbfff4524';
 /// Palet warna aktif (fitur Personalize, CLAUDE.md v3 §8). Default ke
 /// "Teal Sage" (gold) selama belum ada `UserProfile` (mis. saat masih di
 /// tengah onboarding) atau selama `themeKey` belum pernah diubah user.
+///
+/// `UserProfile` sendiri cuma tersedia async (Drift stream) — sebelum
+/// snapshot pertamanya datang, jatuh balik ke `themeKey` yang di-cache
+/// sinkron di SharedPreferences (lihat `SettingsRepository.cachedThemeKey`)
+/// alih-alih selalu ke gold, supaya splash screen/frame pertama app tidak
+/// sempat "kedip" ke warna default dulu baru pindah ke warna tema asli user.
 
 @ProviderFor(ActivePalette)
 final activePaletteProvider = ActivePaletteProvider._();
@@ -188,11 +194,23 @@ final activePaletteProvider = ActivePaletteProvider._();
 /// Palet warna aktif (fitur Personalize, CLAUDE.md v3 §8). Default ke
 /// "Teal Sage" (gold) selama belum ada `UserProfile` (mis. saat masih di
 /// tengah onboarding) atau selama `themeKey` belum pernah diubah user.
+///
+/// `UserProfile` sendiri cuma tersedia async (Drift stream) — sebelum
+/// snapshot pertamanya datang, jatuh balik ke `themeKey` yang di-cache
+/// sinkron di SharedPreferences (lihat `SettingsRepository.cachedThemeKey`)
+/// alih-alih selalu ke gold, supaya splash screen/frame pertama app tidak
+/// sempat "kedip" ke warna default dulu baru pindah ke warna tema asli user.
 final class ActivePaletteProvider
     extends $NotifierProvider<ActivePalette, AppPalette> {
   /// Palet warna aktif (fitur Personalize, CLAUDE.md v3 §8). Default ke
   /// "Teal Sage" (gold) selama belum ada `UserProfile` (mis. saat masih di
   /// tengah onboarding) atau selama `themeKey` belum pernah diubah user.
+  ///
+  /// `UserProfile` sendiri cuma tersedia async (Drift stream) — sebelum
+  /// snapshot pertamanya datang, jatuh balik ke `themeKey` yang di-cache
+  /// sinkron di SharedPreferences (lihat `SettingsRepository.cachedThemeKey`)
+  /// alih-alih selalu ke gold, supaya splash screen/frame pertama app tidak
+  /// sempat "kedip" ke warna default dulu baru pindah ke warna tema asli user.
   ActivePaletteProvider._()
     : super(
         from: null,
@@ -220,11 +238,17 @@ final class ActivePaletteProvider
   }
 }
 
-String _$activePaletteHash() => r'67b4190238222b4e2a896a1477dae3c313854394';
+String _$activePaletteHash() => r'20f9a23e89af8fb700c8e4dd9d1ea08c2635507f';
 
 /// Palet warna aktif (fitur Personalize, CLAUDE.md v3 §8). Default ke
 /// "Teal Sage" (gold) selama belum ada `UserProfile` (mis. saat masih di
 /// tengah onboarding) atau selama `themeKey` belum pernah diubah user.
+///
+/// `UserProfile` sendiri cuma tersedia async (Drift stream) — sebelum
+/// snapshot pertamanya datang, jatuh balik ke `themeKey` yang di-cache
+/// sinkron di SharedPreferences (lihat `SettingsRepository.cachedThemeKey`)
+/// alih-alih selalu ke gold, supaya splash screen/frame pertama app tidak
+/// sempat "kedip" ke warna default dulu baru pindah ke warna tema asli user.
 
 abstract class _$ActivePalette extends $Notifier<AppPalette> {
   AppPalette build();

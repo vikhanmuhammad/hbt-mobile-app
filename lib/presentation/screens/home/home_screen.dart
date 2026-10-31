@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,7 +19,6 @@ import '../../../providers/stats_providers.dart';
 import '../../../providers/ui_state_providers.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
-import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/empty_state_illustration.dart';
 import '../../widgets/habit_progress_card.dart';
@@ -42,8 +42,6 @@ class HomeScreen extends ConsumerWidget {
     final month = DateTime(selectedDate.year, selectedDate.month);
     final isEditMode = ref.watch(homeEditModeProvider);
 
-    final items = [...ref.watch(habitsWithProgressForDateProvider(selectedDate))]
-      ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
     final categoriesAsync = ref.watch(categoriesProvider);
     final categories = categoriesAsync.value ?? [];
     final categoryById = {for (final c in categories) c.id: c};
@@ -67,14 +65,14 @@ class HomeScreen extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                        color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
                         '${monthFullName(month.month, lang)} ${month.year}',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
+                          color: theme.colorScheme.onPrimary,
                         ),
                       ),
                     ),
@@ -84,15 +82,47 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: () => _shiftMonth(ref, month, 1),
                   icon: const Icon(Icons.chevron_right_rounded),
                 ),
+                IconButton(
+                  tooltip: l10n.homeJumpToDate,
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) {
+                      ref.read(selectedHomeDateProvider.notifier).state = picked;
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_month_rounded),
+                ),
                 if (isEditMode)
                   TextButton(
                     onPressed: () => ref.read(homeEditModeProvider.notifier).state = false,
                     child: Text(l10n.homeDone),
                   )
                 else
-                  TextButton(
-                    onPressed: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
-                    child: Text(l10n.homeToday),
+                  Material(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: () => ref.read(selectedHomeDateProvider.notifier).state = today(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        child: Text(
+                          l10n.homeToday,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -110,18 +140,19 @@ class HomeScreen extends ConsumerWidget {
           const Divider(height: 1),
           const SizedBox(height: 8),
           Expanded(
-            child: items.isEmpty
-                ? const _EmptyState()
-                : _HabitList(
-                    items: items,
-                    categoryById: categoryById,
-                    categories: categories,
-                    isEditMode: isEditMode,
-                    isWide: isWide,
-                    isTablet: isTablet,
-                    selectedDate: selectedDate,
-                    linkedHabitIds: ref.watch(linkedHabitIdsProvider).value ?? const <int>{},
-                  ),
+            child: _DateSwipeView(
+              selectedDate: selectedDate,
+              enabled: !isEditMode,
+              onDateChanged: (d) => ref.read(selectedHomeDateProvider.notifier).state = d,
+              pageBuilder: (date) => _DayPage(
+                date: date,
+                categoryById: categoryById,
+                categories: categories,
+                isEditMode: isEditMode,
+                isWide: isWide,
+                isTablet: isTablet,
+              ),
+            ),
           ),
         ],
         ),
@@ -132,6 +163,182 @@ class HomeScreen extends ConsumerWidget {
   void _shiftMonth(WidgetRef ref, DateTime month, int delta) {
     final next = DateTime(month.year, month.month + delta, 1);
     ref.read(selectedHomeDateProvider.notifier).state = next;
+  }
+}
+
+/// Real `PageView`-backed day swiper — replaces an earlier hand-rolled
+/// `GestureDetector` + `AnimatedSwitcher` attempt (#30/#31): that only
+/// reacted *after* the drag gesture ended and played a fixed-duration
+/// transition unrelated to the drag itself, so it never actually tracked
+/// the finger and felt stiff. A real `PageView` gives native per-frame
+/// finger-tracking, velocity-based fling, and edge resistance for free —
+/// the same mechanism a native calendar-style day swiper would use. Each
+/// page index maps to a real calendar day via [_pageForDate]/[_dateForPage]; disabled (page
+/// becomes un-swipeable, but still shown) in Edit Mode since that's
+/// reorder-by-drag territory (ReorderableListView already owns
+/// horizontal-ish gestures there).
+class _DateSwipeView extends StatefulWidget {
+  const _DateSwipeView({
+    required this.selectedDate,
+    required this.enabled,
+    required this.onDateChanged,
+    required this.pageBuilder,
+  });
+
+  final DateTime selectedDate;
+  final bool enabled;
+  final ValueChanged<DateTime> onDateChanged;
+  final Widget Function(DateTime date) pageBuilder;
+
+  @override
+  State<_DateSwipeView> createState() => _DateSwipeViewState();
+}
+
+class _DateSwipeViewState extends State<_DateSwipeView> {
+  // Page index = days since 1970-01-01. Range covers through ~2244 — far
+  // more than this app will ever need; PageView.builder only ever builds
+  // pages near the viewport, so the large itemCount itself costs nothing.
+  static const int _pageCount = 100000;
+
+  late final PageController _controller = PageController(initialPage: _pageForDate(widget.selectedDate));
+
+  // Guards against a feedback loop: `PageView.onPageChanged` fires for
+  // every intermediate page a driven `animateToPage` animation passes
+  // through, not just its destination (worse the farther the jump — e.g.
+  // `_TodayResync` catching up a date left stale for weeks). Left
+  // unguarded, each intermediate callback wrote straight back into
+  // `selectedHomeDateProvider`, which re-entered `didUpdateWidget` mid-
+  // animation and kicked off a fresh `animateToPage` from wherever the
+  // controller currently was — a self-sustaining chase that made the
+  // date (and the whole page) spiral further and further before ever
+  // settling (observed as a runaway backward scroll on a Xiaomi device).
+  // While this flag is set, we already know the destination (it's
+  // `widget.selectedDate`, which is what triggered the animation) so
+  // there's nothing new to report back.
+  bool _isAnimatingProgrammatically = false;
+
+  // Must be exact inverses: when they weren't (local-time epoch), date D
+  // mapped to the page of D-1 in zones whose offset changed since 1970, so
+  // the header and the list disagreed by a day — progress landed on the
+  // wrong day, a habit added today "wasn't there", and syncing the date back
+  // from the page walked it backwards on its own (feedback 7, video_7).
+  int _pageForDate(DateTime date) => dayIndex(date);
+
+  DateTime _dateForPage(int page) => dateFromDayIndex(page);
+
+  @override
+  void didUpdateWidget(_DateSwipeView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (isSameDay(oldWidget.selectedDate, widget.selectedDate)) return;
+    if (!_controller.hasClients) return;
+    final targetPage = _pageForDate(widget.selectedDate);
+    // If the controller's current page already matches, this update came
+    // from our own `onPageChanged` (the user physically swiped) — nothing
+    // to animate, PageView already did it natively. Only DateStrip taps,
+    // the month-nav arrows, and "Today" reach this branch.
+    if ((_controller.page ?? targetPage.toDouble()).round() == targetPage) return;
+    _isAnimatingProgrammatically = true;
+    _controller
+        .animateToPage(
+          targetPage,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        )
+        .whenComplete(() => _isAnimatingProgrammatically = false);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Once the pager comes to rest, the page on screen is the truth: if a
+  /// programmatic jump was cut short by a touch (its intermediate
+  /// `onPageChanged` calls were suppressed above), the header/date strip
+  /// could keep pointing at a different day than the list being shown — and
+  /// progress entered there was saved to the day on screen, not the one
+  /// highlighted (feedback 7, slide 12 & 13).
+  bool _onScrollEnd(ScrollEndNotification notification) {
+    if (notification.depth != 0 || !_controller.hasClients) return false;
+    _isAnimatingProgrammatically = false;
+    final page = (_controller.page ?? _pageForDate(widget.selectedDate).toDouble()).round();
+    final pageDate = _dateForPage(page);
+    if (!isSameDay(pageDate, widget.selectedDate)) widget.onDateChanged(pageDate);
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: _onScrollEnd,
+      child: _buildPager(),
+    );
+  }
+
+  Widget _buildPager() {
+    return PageView.builder(
+      controller: _controller,
+      itemCount: _pageCount,
+      // `DragStartBehavior.down` (rather than the default `.start`) tracks
+      // the drag from the initial touch-down point instead of from the
+      // first detected movement — on some devices (reported on Samsung,
+      // feedback 6 slide 8) the default behavior combined with the vertical
+      // habit list nested inside each page made the gesture arena treat the
+      // first swipe as ambiguous, requiring a second swipe to actually
+      // change date. This makes the very first movement decisive.
+      dragStartBehavior: DragStartBehavior.down,
+      physics: widget.enabled ? const PageScrollPhysics() : const NeverScrollableScrollPhysics(),
+      onPageChanged: (page) {
+        if (_isAnimatingProgrammatically) return;
+        widget.onDateChanged(_dateForPage(page));
+      },
+      itemBuilder: (context, index) => widget.pageBuilder(_dateForPage(index)),
+    );
+  }
+}
+
+/// One page of [_DateSwipeView] — independently watches its own [date]'s
+/// habit progress (rather than [HomeScreen] computing just the single
+/// selected day's `items`), since `PageView.builder` builds the current
+/// page's immediate neighbors too (both are visible mid-drag).
+class _DayPage extends ConsumerWidget {
+  const _DayPage({
+    required this.date,
+    required this.categoryById,
+    required this.categories,
+    required this.isEditMode,
+    required this.isWide,
+    required this.isTablet,
+  });
+
+  final DateTime date;
+  final Map<int, Category> categoryById;
+  final List<Category> categories;
+  final bool isEditMode;
+  final bool isWide;
+  final bool isTablet;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingDeleteIds = ref.watch(pendingDeleteHabitIdsProvider);
+    final items = [...ref.watch(habitsWithProgressForDateProvider(date))]
+      ..removeWhere((item) => pendingDeleteIds.contains(item.habit.id))
+      ..sort((a, b) => a.habit.sortOrder.compareTo(b.habit.sortOrder));
+    final linkedHabitIds = ref.watch(linkedHabitIdsProvider).value ?? const <int>{};
+
+    return items.isEmpty
+        ? const _EmptyState()
+        : _HabitList(
+            items: items,
+            categoryById: categoryById,
+            categories: categories,
+            isEditMode: isEditMode,
+            isWide: isWide,
+            isTablet: isTablet,
+            selectedDate: date,
+            linkedHabitIds: linkedHabitIds,
+          );
   }
 }
 
@@ -156,8 +363,7 @@ class _HabitList extends ConsumerWidget {
   final DateTime selectedDate;
 
   /// Habits published/linked to a community group — drives the "My Habits"
-  /// vs "Community" split below. Ignored in Edit Mode, where reordering
-  /// needs one flat, unambiguous index order across every habit.
+  /// vs "Community" split below, in both normal and Edit Mode.
   final Set<int> linkedHabitIds;
 
   Color _accentFor(int categoryId) {
@@ -169,22 +375,165 @@ class _HabitList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Kategori Save Money (singleton, lihat add_habit_flow_screen.dart) tidak
+    // ikut list/reorder utama — ditampilkan di section sendiri di atas,
+    // supaya jelas beda alurnya dari habit lain. Update progress-nya tetap
+    // lewat card ini juga (tap sama seperti habit biasa), cuma tempatnya beda.
+    final financeItems = <HabitWithProgress>[];
+    final restItems = <HabitWithProgress>[];
+    for (final item in items) {
+      final category = categoryById[item.habit.categoryId];
+      if (category != null && isFinanceCategory(category)) {
+        financeItems.add(item);
+      } else {
+        restItems.add(item);
+      }
+    }
+    if (financeItems.isEmpty) {
+      return _buildList(context, ref, items);
+    }
+    final theme = Theme.of(context);
+    final horizontalPadding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 12, isTablet ? 32 : 16, 0);
+    // A single scrollable (CustomScrollView) instead of a fixed header +
+    // Expanded(list) Column — the Budget Tracker section used to sit outside
+    // the scroll area entirely, always pinned at the top regardless of how
+    // far the habit list below it was scrolled. Putting it in a leading
+    // sliver lets it scroll away with everything else.
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: horizontalPadding,
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HomeSectionLabel(AppLocalizations.of(context)!.homeSpendingMoney),
+                const SizedBox(height: 8),
+                for (final item in financeItems)
+                  Padding(
+                    key: ValueKey(item.habit.id),
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildFinanceCard(context, ref, item),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        // Garis pemisah + jarak lebih lebar dari list habit biasa di bawahnya
+        // — tanpa ini section Spending Money kelihatan menyatu dengan card
+        // habit lain, padahal alurnya sengaja dipisah (singleton, bukan
+        // bagian dari reorder list biasa).
+        if (restItems.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isTablet ? 32 : 16),
+                  child: Divider(height: 1, color: theme.dividerColor),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: _buildList(context, ref, restItems, shrinkWrap: true),
+        ),
+      ],
+    );
+  }
+
+  /// Card kategori Save Money di section sendiri — sama seperti card biasa
+  /// (tap untuk update progress tetap dari Home), tapi tidak ikut
+  /// ReorderableListView Edit Mode (cuma 1 item, tidak ada urutan yang perlu
+  /// diatur); edit/hapus tetap tersedia lewat card ini saat Edit Mode aktif.
+  Widget _buildFinanceCard(BuildContext context, WidgetRef ref, HabitWithProgress item) {
+    if (!isEditMode) return _buildCard(context, ref, item, 0);
+    return HabitProgressCard(
+      item: item,
+      accentColor: _accentFor(item.habit.categoryId),
+      isEditMode: true,
+      onTap: null,
+      onEdit: () async {
+        final saved = await openEditHabitFlow(
+          context,
+          item.habit,
+          lockGoalFields: linkedHabitIds.contains(item.habit.id),
+        );
+        if (saved) {
+          ref.read(homeEditModeProvider.notifier).state = false;
+        }
+      },
+      onDelete: () => _confirmDeactivate(context, ref, item),
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    WidgetRef ref,
+    List<HabitWithProgress> items, {
+    bool shrinkWrap = false,
+  }) {
     final padding = EdgeInsets.fromLTRB(isTablet ? 32 : 16, 0, isTablet ? 32 : 16, 110);
     final crossAxisCount = isWide ? 2 : 1;
+    final outerPhysics = shrinkWrap ? const NeverScrollableScrollPhysics() : null;
 
-    if (!isEditMode) {
-      // Separate "My Habits" (local-only) from "Community" (published/
-      // linked to a group) — only worth the extra headers when there's
-      // actually a mix; a user with zero community habits (the common
-      // case) still just sees one plain list.
-      final communityItems = items.where((i) => linkedHabitIds.contains(i.habit.id)).toList();
-      final localItems = items.where((i) => !linkedHabitIds.contains(i.habit.id)).toList();
-      final showSections = communityItems.isNotEmpty && localItems.isNotEmpty;
+    // Separate "My Habits" (local-only) from "Community" (published/linked
+    // to a group) — only worth the extra headers when there's actually a
+    // mix; a user with zero community habits (the common case) still just
+    // sees one plain list. Applies in both normal and Edit Mode so the
+    // grouping stays consistent regardless of mode (#edit-mode-split).
+    final communityItems = items.where((i) => linkedHabitIds.contains(i.habit.id)).toList();
+    final localItems = items.where((i) => !linkedHabitIds.contains(i.habit.id)).toList();
+    final showSections = communityItems.isNotEmpty && localItems.isNotEmpty;
 
+    if (isEditMode) {
       if (!showSections) {
-        if (crossAxisCount == 1) {
+        return _buildReorderableSection(
+          context,
+          ref,
+          items,
+          padding: padding,
+          shrinkWrap: shrinkWrap,
+          onReorder: (oldIndex, newIndex) => _onReorderSection(ref, items, oldIndex, newIndex),
+        );
+      }
+      return ListView(
+        padding: padding,
+        shrinkWrap: shrinkWrap,
+        physics: outerPhysics,
+        children: [
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
+          const SizedBox(height: 8),
+          _buildReorderableSection(
+            context,
+            ref,
+            communityItems,
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, communityItems, oldIndex, newIndex),
+          ),
+          const SizedBox(height: 20),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+          const SizedBox(height: 8),
+          _buildReorderableSection(
+            context,
+            ref,
+            localItems,
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            onReorder: (oldIndex, newIndex) => _onReorderSection(ref, localItems, oldIndex, newIndex),
+          ),
+        ],
+      );
+    }
+
+    if (!showSections) {
+      if (crossAxisCount == 1) {
           return ListView.separated(
             padding: padding,
+            shrinkWrap: shrinkWrap,
+            physics: outerPhysics,
             itemCount: items.length,
             separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) => _buildCard(context, ref, items[index], index),
@@ -192,6 +541,8 @@ class _HabitList extends ConsumerWidget {
         }
         return GridView.builder(
           padding: padding,
+          shrinkWrap: shrinkWrap,
+          physics: outerPhysics,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 10,
@@ -206,21 +557,23 @@ class _HabitList extends ConsumerWidget {
       if (crossAxisCount == 1) {
         return ListView(
           padding: padding,
+          shrinkWrap: shrinkWrap,
+          physics: outerPhysics,
           children: [
-            _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
-            const SizedBox(height: 8),
-            for (var i = 0; i < localItems.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _buildCard(context, ref, localItems[i], i),
-              ),
-            const SizedBox(height: 20),
             _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
             const SizedBox(height: 8),
             for (var i = 0; i < communityItems.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _buildCard(context, ref, communityItems[i], localItems.length + i),
+                child: _buildCard(context, ref, communityItems[i], i),
+              ),
+            const SizedBox(height: 20),
+            _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+            const SizedBox(height: 8),
+            for (var i = 0; i < localItems.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildCard(context, ref, localItems[i], communityItems.length + i),
               ),
           ],
         );
@@ -244,24 +597,41 @@ class _HabitList extends ConsumerWidget {
 
       return ListView(
         padding: padding,
+        shrinkWrap: shrinkWrap,
+        physics: outerPhysics,
         children: [
-          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
-          const SizedBox(height: 8),
-          sectionGrid(localItems, 0),
-          const SizedBox(height: 20),
           _HomeSectionLabel(AppLocalizations.of(context)!.homeCommunity),
           const SizedBox(height: 8),
-          sectionGrid(communityItems, localItems.length),
+          sectionGrid(communityItems, 0),
+          const SizedBox(height: 20),
+          _HomeSectionLabel(AppLocalizations.of(context)!.homeMyHabits),
+          const SizedBox(height: 8),
+          sectionGrid(localItems, communityItems.length),
         ],
       );
-    }
+  }
 
+  /// Edit-mode reorderable list for one section (all items, or just the
+  /// local/community half of a split view). `shrinkWrap`+non-scrollable
+  /// physics let two of these live inside an outer `ListView` when the
+  /// sections are shown side by side (#edit-mode-split); the unsplit case
+  /// passes `shrinkWrap: false` to keep the original full-scroll behavior.
+  Widget _buildReorderableSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<HabitWithProgress> sectionItems, {
+    required EdgeInsets padding,
+    required bool shrinkWrap,
+    required void Function(int oldIndex, int newIndex) onReorder,
+  }) {
     return ReorderableListView.builder(
       padding: padding,
-      itemCount: items.length,
-      onReorder: (oldIndex, newIndex) => _onReorder(ref, oldIndex, newIndex),
+      shrinkWrap: shrinkWrap,
+      physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
+      itemCount: sectionItems.length,
+      onReorder: onReorder,
       itemBuilder: (context, index) {
-        final item = items[index];
+        final item = sectionItems[index];
         return Padding(
           key: ValueKey(item.habit.id),
           padding: const EdgeInsets.only(bottom: 10),
@@ -270,11 +640,18 @@ class _HabitList extends ConsumerWidget {
             accentColor: _accentFor(item.habit.categoryId),
             isEditMode: true,
             onTap: null,
-            onEdit: () => openEditHabitFlow(
-              context,
-              item.habit,
-              lockGoalFields: linkedHabitIds.contains(item.habit.id),
-            ),
+            onEdit: () async {
+              final saved = await openEditHabitFlow(
+                context,
+                item.habit,
+                lockGoalFields: linkedHabitIds.contains(item.habit.id),
+              );
+              // Only leave edit mode on an actual save — backing out of the
+              // edit form without saving should keep editing the list (#9).
+              if (saved) {
+                ref.read(homeEditModeProvider.notifier).state = false;
+              }
+            },
             onDelete: () => _confirmDeactivate(context, ref, item),
             dragHandle: ReorderableDragStartListener(
               index: index,
@@ -286,22 +663,37 @@ class _HabitList extends ConsumerWidget {
     );
   }
 
+  // Deliberately no per-card FadeSlideIn/stagger here (unlike other list
+  // screens) — `_SwipeableDateBody` now wraps the whole list in its own
+  // page-level slide+fade on every date change, and since that forces a
+  // full remount of every card underneath it (new `KeyedSubtree` per date),
+  // a per-card entrance animation would re-trigger on every single swipe
+  // too — a cascading staggered fade-in on top of the page slide, which
+  // visually drowned out the slide and just read as "everything fading in"
+  // instead of "the page sliding" (#30).
   Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item, int index) {
-    return FadeSlideIn(
-      delay: staggeredDelay(index),
-      child: TapScale(
-        child: HabitProgressCard(
-          key: ValueKey(item.habit.id),
-          item: item,
-          accentColor: _accentFor(item.habit.categoryId),
-          isEditMode: false,
-          onTap: () => _onTapCard(context, ref, item),
-        ),
+    final card = TapScale(
+      child: HabitProgressCard(
+        key: ValueKey(item.habit.id),
+        item: item,
+        accentColor: _accentFor(item.habit.categoryId),
+        isEditMode: false,
+        onTap: () => _onTapCard(context, ref, item),
       ),
     );
+    // Dimmed so a day that hasn't come yet reads as not-yet-checkable.
+    return selectedDate.isAfter(today()) ? Opacity(opacity: 0.55, child: card) : card;
   }
 
   Future<void> _onTapCard(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    // Progress can't be logged ahead of time — a future day stays empty
+    // until it actually arrives (feedback 8, slide 4).
+    if (selectedDate.isAfter(today())) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.homeFutureDayLocked)));
+      return;
+    }
     final habit = item.habit;
     final isSimple = habit.goalValue <= 1 &&
         habit.goalUnit == 'x' &&
@@ -311,9 +703,21 @@ class _HabitList extends ConsumerWidget {
       if (isSimple) {
         await repo.toggleDone(habit: habit, date: selectedDate, currentlyDone: item.isDone);
       } else {
-        final value = await showQuickProgressSheet(context, item);
-        if (value == null) return;
-        await repo.setProgress(habit: habit, date: selectedDate, progressValue: value);
+        final result = await showQuickProgressSheet(context, item);
+        if (result == null) return;
+        await repo.applyPeriodAwareEdit(
+          habit: habit,
+          date: selectedDate,
+          previousPeriodTotal: item.progressValue,
+          newPeriodTotal: result.value,
+        );
+        if (result.breakdownItems.isNotEmpty) {
+          await ref.read(spendingBreakdownRepositoryProvider).addEntries(
+                habitId: habit.id,
+                date: selectedDate,
+                entries: result.breakdownItems,
+              );
+        }
       }
       _invalidateSummaries(ref);
       unawaited(syncCommunityHabit(ref, habit.id, selectedDate));
@@ -341,8 +745,53 @@ class _HabitList extends ConsumerWidget {
       ),
     );
     if (confirmed != true) return;
+    final habit = item.habit;
+    final habitId = habit.id;
+
+    // Deferred delete (#12): hide immediately via `pendingDeleteHabitIdsProvider`
+    // (filtered out of `items` in build()), but only actually touch the
+    // database once the snackbar below is gone. Undo just un-hides it — no
+    // row is ever deleted if the user undoes in time, so unlike a real
+    // delete+recreate, the habit keeps its original id and any Community
+    // link stays intact.
+    ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s, habitId});
+
+    if (!context.mounted) return;
+    // Clear any snackbar still animating out from a previous action first —
+    // otherwise this one queues behind it instead of showing right away.
+    ScaffoldMessenger.of(context).clearSnackBars();
+    final controller = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.homeHabitDeleted(habit.displayName(lang))),
+        // Effectively "no auto-dismiss from SnackBar itself" — its built-in
+        // duration-based timer turned out not to reliably fire in this app
+        // (reports of it staying open 10s+), so instead of trusting it we
+        // close the snackbar ourselves below via a plain `Timer`, which
+        // isn't tied to any animation/ticker machinery that could be the
+        // culprit.
+        duration: const Duration(days: 1),
+        action: SnackBarAction(
+          label: l10n.commonUndo,
+          onPressed: () {
+            ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
+          },
+        ),
+      ),
+    );
+    final undoTimer = Timer(const Duration(seconds: 5), controller.close);
+
+    // The permanent delete below is driven by the snackbar's own `.closed`
+    // future instead of a separately-ticking `Future.delayed` timer, so the
+    // two can never drift apart: whatever actually keeps the snackbar (and
+    // its Undo button) visible also delays the real delete by exactly that
+    // long — tapping Undo any time before the snackbar closes always works,
+    // and there's no window where Undo is still on screen but too late.
+    final closedReason = await controller.closed;
+    undoTimer.cancel();
+    if (closedReason == SnackBarClosedReason.action) return;
+
     try {
-      await ref.read(notificationServiceProvider).cancelForHabit(item.habit.id);
+      await ref.read(reminderSyncCoordinatorProvider).removeForHabit(habitId);
     } catch (_) {
       // Notification cancellation failed (e.g. platform not supported) —
       // don't fail the habit deletion because of this.
@@ -352,12 +801,24 @@ class _HabitList extends ConsumerWidget {
     // dashboardSummaryProvider/monthSummariesProvider/daySummaryProvider
     // being Future-backed (not reactive DB streams), which is why they also
     // need an explicit invalidate below.
-    await ref.read(habitRepositoryProvider).deleteHabit(item.habit.id);
+    await ref.read(habitRepositoryProvider).deleteHabit(habitId);
+    ref.read(pendingDeleteHabitIdsProvider.notifier).update((s) => {...s}..remove(habitId));
     _invalidateSummaries(ref);
   }
 
-  void _onReorder(WidgetRef ref, int oldIndex, int newIndex) {
-    final reordered = [...items];
+  /// Reorders within a single section (local-only, community-only, or the
+  /// flat unsplit list) so dragging in one section never moves an item into
+  /// the other (#edit-mode-split). `sortOrder` values are only used for
+  /// ordering, and which section a habit belongs to is decided by
+  /// `linkedHabitIds`, not by any `sortOrder` range — so overlapping
+  /// `sortOrder` values between the two sections are harmless.
+  void _onReorderSection(
+    WidgetRef ref,
+    List<HabitWithProgress> sectionItems,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final reordered = [...sectionItems];
     if (newIndex > oldIndex) newIndex -= 1;
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(newIndex, moved);
@@ -381,6 +842,7 @@ class _HabitList extends ConsumerWidget {
     // Finance screen until some unrelated action (e.g. changing day)
     // happened to trigger a rebuild.
     ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
   }
 }
 

@@ -4,17 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
+import '../../domain/language.dart';
+import '../../domain/models/enums.dart';
 import '../../domain/models/habit_with_progress.dart';
+import '../../domain/models/spending_breakdown.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../../providers/core_providers.dart';
+import '../../providers/finance_providers.dart';
+import '../../providers/progress_providers.dart';
 import '../../providers/settings_providers.dart';
+import '../../providers/stats_providers.dart';
+import 'category_breakdown_list.dart';
+import 'currency_amount_field.dart';
+import 'segmented_pill_toggle.dart';
+
+/// Result of the quick progress sheet: the new period-total value, plus any
+/// spending-breakdown items the user built up the amount from this save
+/// (see `_EntryModeToggle`/`_BreakdownEditor`) — empty when the user typed
+/// the total directly instead.
+class QuickProgressResult {
+  const QuickProgressResult({required this.value, required this.breakdownItems});
+
+  final int value;
+  final List<SpendingBreakdownDraft> breakdownItems;
+}
 
 /// Quick progress input bottom sheet for habits with goalValue > 1 or a
 /// unit — +/- stepper plus direct number input. For time-unit habits
 /// (minute/hour) a timer is added so it can be run directly from the app —
 /// but manual input is still available for activities done outside the
-/// app. CLAUDE.md v3 §6.2.
-Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item) {
-  return showModalBottomSheet<int>(
+/// app. CLAUDE.md v3 §6.2. For a spending-limit habit (rupiah, `atMost`),
+/// the user picks between typing the total directly or building it up from
+/// categorized breakdown items — mutually exclusive, so the total being
+/// saved is always exactly one or the other, never both.
+Future<QuickProgressResult?> showQuickProgressSheet(BuildContext context, HabitWithProgress item) {
+  return showModalBottomSheet<QuickProgressResult>(
     context: context,
     isScrollControlled: true,
     shape: const RoundedRectangleBorder(
@@ -25,15 +49,134 @@ Future<int?> showQuickProgressSheet(BuildContext context, HabitWithProgress item
 }
 
 class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
-  late int _value = widget.item.progressValue;
-  late final _controller = TextEditingController(text: '$_value');
+  /// For the Budget Tracker this is the amount being ADDED to today's
+  /// spending, not the new total — typing a new expense used to replace
+  /// the day's total, so adding Rp50.000 on top of Rp155.000 made Total
+  /// Spending drop (feedback 7, slide 34). Every other habit still edits the
+  /// total directly.
+  late int _value = _isBudgetTracker ? 0 : widget.item.progressValue;
+  late final _controller = TextEditingController(text: _isBudgetTracker ? '' : '$_value');
+  final List<SpendingBreakdownDraft> _breakdownItems = [];
+
+  /// Running copy of today's logged total, starting from
+  /// `widget.item.progressValue` (a snapshot from when the sheet opened) but
+  /// kept current across this session by `_adjustLoggedTotal` — needed
+  /// because editing/deleting an *existing* breakdown entry now writes
+  /// straight to the DB mid-session (see `_adjustLoggedTotal`), and the
+  /// final Save must build on top of that, not the stale snapshot
+  /// (feedback 7, slide 31/34/35/36).
+  late int _persistedTotal = widget.item.progressValue;
+
+  /// Rincian yang sudah tersimpan untuk habit+tanggal ini dari sesi
+  /// sebelumnya — dimuat di [initState] supaya tetap kelihatan saat sheet
+  /// dibuka lagi, bukan seolah hilang padahal totalnya tetap terhitung.
+  /// Read-only di sini (bukan bagian dari [_breakdownItems]/[_breakdownTotal]
+  /// yang baru ditambahkan sesi ini) — total yang disimpan tetap dihitung
+  /// sebagai delta di atas `widget.item.progressValue` seperti sebelumnya.
+  List<SpendingBreakdownEntry> _existingBreakdownEntries = [];
+
+  /// The draft auto-created (once per sheet session) when the user switches
+  /// from "Enter total" to "Break down by category" while today's progress
+  /// already has an un-categorized direct-entry amount — without this, that
+  /// amount would keep counting toward the saved total (via
+  /// `widget.item.progressValue`) while being invisible in the breakdown
+  /// list/category totals, silently under-representing spending by category.
+  /// Tracked by reference so it can be excluded from the total-being-saved
+  /// again if the user deletes it from the list (see [_migratedAmountStillIncluded]).
+  SpendingBreakdownDraft? _migratedItem;
+
+  /// Which of the two mutually exclusive ways to log this save the user
+  /// picked — only relevant when [_supportsBreakdown]. `false` = type the
+  /// total directly (the stepper/text field, existing behavior). `true` =
+  /// build the amount up from categorized items instead; the total is then
+  /// *derived* as their sum, never entered separately, so there's no way
+  /// for the breakdown to disagree with the total being saved.
+  bool _useBreakdownMode = false;
 
   final _stopwatch = Stopwatch();
   Timer? _tickTimer;
   Duration _elapsed = Duration.zero;
 
+  /// Only spending-limit habits (rupiah, `atMost`) get the choice between
+  /// entering the total directly or building it up from breakdown items —
+  /// a savings deposit or a plain counted habit has nothing meaningful to
+  /// categorize.
+  bool get _supportsBreakdown =>
+      widget.item.habit.isRupiah && widget.item.habit.goalDirection == GoalDirection.atMost;
+
+  /// Same predicate as [_supportsBreakdown] — every habit that supports the
+  /// breakdown feature IS the Budget Tracker habit (the app's one rupiah +
+  /// atMost habit), so this is where Budget-Tracker-only UI (no steppers,
+  /// no Mark Achieved, thousand-separator input) gets gated.
+  bool get _isBudgetTracker => _supportsBreakdown;
+
+  int get _breakdownTotal => _breakdownItems.fold<int>(0, (sum, i) => sum + i.amount);
+
+  /// [_migratedItem]'s amount if it's still in [_breakdownItems] (the user
+  /// hasn't deleted it since), else 0 — see [_migrateDirectAmountIfNeeded].
+  int get _migratedAmountStillIncluded {
+    final migrated = _migratedItem;
+    if (migrated == null) return 0;
+    return _breakdownItems.any((i) => identical(i, migrated)) ? migrated.amount : 0;
+  }
+
+  /// Folds today's existing un-categorized direct-entry progress into the
+  /// breakdown list as a single editable item, the moment the user switches
+  /// into breakdown mode — runs at most once per sheet session. Skipped when
+  /// [_existingBreakdownEntries] already has data, since in that case
+  /// today's total is already (at least partly) categorized and guessing
+  /// would risk double-counting instead of filling a real gap.
+  void _migrateDirectAmountIfNeeded() {
+    if (_migratedItem != null) return;
+    final itemized = _existingBreakdownEntries.fold<int>(0, (sum, e) => sum + e.amount);
+    final amount = _persistedTotal - itemized;
+    if (amount <= 0) return;
+    final lang = ref.read(appLanguageProvider);
+    final draft = SpendingBreakdownDraft(
+      category: SpendingBreakdownCategory.dailyNeeds,
+      label: lang == AppLang.id ? 'Input sebelumnya (catat langsung)' : 'Previous direct entry',
+      amount: amount,
+    );
+    _migratedItem = draft;
+    _breakdownItems.add(draft);
+  }
+
+  bool get _isBreakdownEntry => _supportsBreakdown && _useBreakdownMode;
+
+  /// In breakdown mode, at least one item must be added — an empty
+  /// breakdown has nothing to add to today's total, so Save stays disabled
+  /// instead of silently saving a zero delta. Same for a Budget Tracker
+  /// quick-add with no amount typed.
+  bool get _canSave => _isBreakdownEntry
+      ? _breakdownItems.isNotEmpty
+      : (!_isBudgetTracker || _value > 0);
+
+  /// Budget Tracker quick-add: the typed amount becomes its own spending
+  /// item (plus any older un-itemized amount, see
+  /// [_migrateDirectAmountIfNeeded]), so every expense can later be deleted
+  /// on its own and the deletion reaches every total (feedback 7, slide 31
+  /// & 35). Returned value is relative to `widget.item.progressValue`, which
+  /// the caller diffs against.
+  QuickProgressResult _budgetQuickAddResult() {
+    _migrateDirectAmountIfNeeded();
+    final lang = ref.read(appLanguageProvider);
+    final items = [
+      ..._breakdownItems,
+      SpendingBreakdownDraft(
+        category: SpendingBreakdownCategory.dailyNeeds,
+        label: lang == AppLang.id ? 'Catat langsung' : 'Quick entry',
+        amount: _value,
+      ),
+    ];
+    final added = items.fold<int>(0, (sum, i) => sum + i.amount);
+    return QuickProgressResult(
+      value: widget.item.progressValue - _migratedAmountStillIncluded + added,
+      breakdownItems: items,
+    );
+  }
+
   int get _step {
-    final goal = widget.item.habit.goalValue;
+    final goal = widget.item.habit.goalValueFor(widget.item.date);
     if (widget.item.habit.isRupiah) {
       if (goal >= 100000) return 5000;
       if (goal >= 10000) return 1000;
@@ -47,6 +190,96 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   bool get _isTimeUnit => const {'minute', 'hour'}.contains(widget.item.habit.goalUnit);
 
   int get _secondsPerUnit => widget.item.habit.goalUnit == 'hour' ? 3600 : 60;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_supportsBreakdown) _loadExistingBreakdownEntries();
+  }
+
+  Future<void> _loadExistingBreakdownEntries() async {
+    final entries = await ref
+        .read(spendingBreakdownRepositoryProvider)
+        .getEntriesForHabitAndDate(widget.item.habit.id, widget.item.date);
+    if (mounted) setState(() => _existingBreakdownEntries = entries);
+  }
+
+  /// Opens the add/edit sheet pre-filled with [entry] and, on confirm,
+  /// writes the change straight to the DB (unlike [_breakdownItems], which
+  /// are only persisted when the whole quick-progress sheet is saved) then
+  /// reloads so the list reflects it.
+  Future<void> _editExistingEntry(SpendingBreakdownEntry entry) async {
+    final draft = await showModalBottomSheet<SpendingBreakdownDraft>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _AddBreakdownItemSheet(
+        currencyPrefix: widget.item.habit.currencyPrefix,
+        initial: SpendingBreakdownDraft(category: entry.category, label: entry.label, amount: entry.amount),
+      ),
+    );
+    if (draft == null || !mounted) return;
+    await ref.read(spendingBreakdownRepositoryProvider).updateEntry(
+          id: entry.id,
+          category: draft.category,
+          label: draft.label,
+          amount: draft.amount,
+        );
+    // Keep the day's logged total (habit_logs.progressValue, which drives
+    // Total Spending everywhere) moving together with the breakdown item it
+    // was built from — previously only the breakdown row itself was
+    // updated, so an edited amount silently drifted away from what
+    // Daily/Weekly/Monthly totals showed (feedback 7, slide 31/35/36).
+    await _adjustLoggedTotal(draft.amount - entry.amount);
+    await _loadExistingBreakdownEntries();
+  }
+
+  Future<void> _deleteExistingEntry(SpendingBreakdownEntry entry) async {
+    await ref.read(spendingBreakdownRepositoryProvider).deleteEntry(entry.id);
+    // Same reasoning as `_editExistingEntry` above: deleting a breakdown
+    // entry must also remove its amount from the day's logged total, or the
+    // deleted amount keeps being counted in Total Spending indefinitely —
+    // including in Weekly/Monthly windows that cover this date days later,
+    // since it lives on the underlying habit_logs row, not just here
+    // (feedback 7, slide 31: "Rp5.000 di Weekend Budget" tetap terhitung
+    // walau sudah dihapus; slide 35: hari berikutnya masih ikut di total
+    // Weekly/Monthly juga).
+    await _adjustLoggedTotal(-entry.amount);
+    await _loadExistingBreakdownEntries();
+  }
+
+  /// Applies [delta] directly onto today's stored `habit_logs.progressValue`
+  /// for this habit+date, then invalidates every provider that reads it —
+  /// mirrors what `applyPeriodAwareEdit` + the call sites' own invalidation
+  /// normally do together on Save, needed here too because edit/delete of an
+  /// *already-persisted* breakdown entry writes straight to the DB instead
+  /// of going through the sheet's own Save button (feedback 7, slide 36:
+  /// "Total Spending" updated but the Budget Tracker figure elsewhere on the
+  /// page didn't, because nothing told those providers to refetch).
+  Future<void> _adjustLoggedTotal(int delta) async {
+    if (delta == 0) return;
+    final habit = widget.item.habit;
+    final date = widget.item.date;
+    final logRepo = ref.read(habitLogRepositoryProvider);
+    final current = await logRepo.getLog(habit.id, date);
+    final newValue = (current?.progressValue ?? 0) + delta;
+    await logRepo.setProgress(habit: habit, date: date, progressValue: newValue);
+    // Keeps this sheet's own running total (used by the Save button's
+    // breakdown-mode calculation below) in sync with the direct DB write
+    // above, since `widget.item.progressValue` is a snapshot from when the
+    // sheet was opened and never updates on its own.
+    _persistedTotal += delta;
+    if (!mounted) return;
+    ref.invalidate(dashboardSummaryProvider);
+    ref.invalidate(monthSummariesProvider);
+    ref.invalidate(daySummaryProvider);
+    ref.invalidate(financeSummaryProvider);
+    ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
+    ref.invalidate(habitsWithProgressForDateProvider(date));
+  }
 
   @override
   void dispose() {
@@ -119,7 +352,16 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
         children: [
           Text(habit.displayName(lang), style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          Text(l10n.quickProgressTarget(habit.goalValueLabel), style: theme.textTheme.bodySmall),
+          Text(
+            l10n.quickProgressTarget(
+              // Same daily-prorated limit the Budget Tracker card shows,
+              // not the raw weekly/monthly amount (feedback 7, slide 29).
+              _isBudgetTracker
+                  ? 'Maks. ${formatCurrency(habit.dailyRateFor(widget.item.date).round(), habit.currencyPrefix)}'
+                  : habit.goalValueLabelForDate(widget.item.date),
+            ),
+            style: theme.textTheme.bodySmall,
+          ),
           if (_isTimeUnit) ...[
             const SizedBox(height: 20),
             _TimerCard(
@@ -144,63 +386,128 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
               ],
             ),
           ],
+          if (_supportsBreakdown) ...[
+            const SizedBox(height: 16),
+            _EntryModeToggle(
+                useBreakdown: _useBreakdownMode,
+                onChanged: (v) => setState(() {
+                  _useBreakdownMode = v;
+                  if (v) _migrateDirectAmountIfNeeded();
+                }),
+              ),
+          ],
           const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _StepButton(
-                icon: Icons.remove_rounded,
-                onTap: _value > 0 ? () => _setValue(_value - _step) : null,
+          if (_isBudgetTracker && !_isBreakdownEntry) ...[
+            Center(
+              child: Text(
+                l10n.quickProgressRecordedToday(formatCurrency(_persistedTotal, habit.currencyPrefix)),
+                style: theme.textTheme.bodySmall,
               ),
-              const SizedBox(width: 24),
-              Column(
-                children: [
-                  SizedBox(
-                    width: habit.isRupiah ? 140 : 90,
-                    child: TextField(
-                      controller: _controller,
-                      textAlign: TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      style: theme.textTheme.headlineMedium,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        filled: false,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.zero,
-                        prefixText: habit.isRupiah ? 'Rp ' : null,
-                      ),
-                      onChanged: (text) {
-                        final parsed = int.tryParse(text);
-                        if (parsed != null) setState(() => _value = parsed.clamp(0, 1 << 30));
-                      },
-                    ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (!_isBreakdownEntry)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (!_isBudgetTracker)
+                  _StepButton(
+                    icon: Icons.remove_rounded,
+                    onTap: _value > 0 ? () => _setValue(_value - _step) : null,
                   ),
-                  if (habit.isRupiah)
-                    Text(formatRupiah(_value), style: theme.textTheme.bodySmall)
-                  else if (unit.isNotEmpty)
-                    Text(unit, style: theme.textTheme.bodySmall),
-                ],
+                if (!_isBudgetTracker) const SizedBox(width: 24),
+                Column(
+                  children: [
+                    if (_isBudgetTracker)
+                      CurrencyAmountField(
+                        controller: _controller,
+                        currencyPrefix: habit.currencyPrefix,
+                        width: 220,
+                        onChanged: (v) => setState(() => _value = v.clamp(0, 1 << 30)),
+                      )
+                    else
+                      SizedBox(
+                        width: 90,
+                        child: TextField(
+                          controller: _controller,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          style: theme.textTheme.headlineMedium,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            filled: false,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          onChanged: (text) {
+                            final parsed = int.tryParse(text);
+                            if (parsed != null) setState(() => _value = parsed.clamp(0, 1 << 30));
+                          },
+                        ),
+                      ),
+                    if (!_isBudgetTracker && unit.isNotEmpty)
+                      Text(unit, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+                if (!_isBudgetTracker) const SizedBox(width: 24),
+                if (!_isBudgetTracker)
+                  _StepButton(
+                    icon: Icons.add_rounded,
+                    onTap: () => _setValue(_value + _step),
+                  ),
+              ],
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: SingleChildScrollView(
+                child: _BreakdownEditor(
+                  total: _breakdownTotal,
+                  items: _breakdownItems,
+                  existingEntries: _existingBreakdownEntries,
+                  lang: lang,
+                  currencyPrefix: habit.currencyPrefix,
+                  onAdd: (draft) => setState(() => _breakdownItems.add(draft)),
+                  onRemove: (index) => setState(() => _breakdownItems.removeAt(index)),
+                  onEditExisting: _editExistingEntry,
+                  onDeleteExisting: _deleteExistingEntry,
+                ),
               ),
-              const SizedBox(width: 24),
-              _StepButton(
-                icon: Icons.add_rounded,
-                onTap: () => _setValue(_value + _step),
-              ),
-            ],
-          ),
+            ),
           const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _setValue(habit.goalValue),
-                  child: Text(l10n.quickProgressMarkAchieved),
+              if (!_isBreakdownEntry && !_isBudgetTracker) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _setValue(habit.goalValueFor(widget.item.date)),
+                    child: Text(l10n.quickProgressMarkAchieved),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
+                const SizedBox(width: 12),
+              ],
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(_value),
+                  onPressed: _canSave
+                      ? () => Navigator.of(context).pop(
+                            _isBreakdownEntry
+                                ? QuickProgressResult(
+                                    // Subtract back out the direct-entry
+                                    // amount that got folded into
+                                    // `_breakdownItems` (see
+                                    // `_migrateDirectAmountIfNeeded`) — it's
+                                    // now counted via `_breakdownTotal`
+                                    // instead, so adding both would double it.
+                                    value: widget.item.progressValue -
+                                        _migratedAmountStillIncluded +
+                                        _breakdownTotal,
+                                    breakdownItems: _breakdownItems,
+                                  )
+                                : _isBudgetTracker
+                                    ? _budgetQuickAddResult()
+                                    : QuickProgressResult(value: _value, breakdownItems: const []),
+                          )
+                      : null,
                   child: Text(l10n.commonSave),
                 ),
               ),
@@ -272,6 +579,247 @@ class _TimerCard extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Segmented control choosing how this save's amount is determined — typed
+/// directly, or built up from breakdown items — shown only for
+/// spending-limit habits (`_QuickProgressSheetState._supportsBreakdown`).
+class _EntryModeToggle extends StatelessWidget {
+  const _EntryModeToggle({required this.useBreakdown, required this.onChanged});
+
+  final bool useBreakdown;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return SegmentedPillToggle<bool>(
+      segments: [
+        PillSegment(value: false, label: l10n.quickProgressEntryModeDirect),
+        PillSegment(value: true, label: l10n.quickProgressEntryModeBreakdown),
+      ],
+      selected: useBreakdown,
+      onChanged: onChanged,
+    );
+  }
+}
+
+/// Builds the amount being saved up from individually categorized items —
+/// the total shown here is always the *sum* of [items] + already-persisted
+/// [existingEntries], never a separately typed number, so it can never
+/// disagree with what the breakdown actually adds up to
+/// (#no-redundant-total). Already-persisted entries are editable/deletable
+/// in place (writes straight to the DB via [onEditExisting]/
+/// [onDeleteExisting]); this-session drafts are only removable from memory
+/// via [onRemove] until the whole sheet is saved.
+class _BreakdownEditor extends StatelessWidget {
+  const _BreakdownEditor({
+    required this.total,
+    required this.items,
+    required this.existingEntries,
+    required this.lang,
+    required this.currencyPrefix,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onEditExisting,
+    required this.onDeleteExisting,
+  });
+
+  final int total;
+  final List<SpendingBreakdownDraft> items;
+  final List<SpendingBreakdownEntry> existingEntries;
+  final AppLang lang;
+  final String currencyPrefix;
+  final ValueChanged<SpendingBreakdownDraft> onAdd;
+  final ValueChanged<int> onRemove;
+  final ValueChanged<SpendingBreakdownEntry> onEditExisting;
+  final ValueChanged<SpendingBreakdownEntry> onDeleteExisting;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+
+    final combinedItems = <CategoryBreakdownItem>[
+      for (final entry in existingEntries)
+        CategoryBreakdownItem(category: entry.category, label: entry.label, amount: entry.amount, id: entry),
+      for (var i = 0; i < items.length; i++)
+        CategoryBreakdownItem(category: items[i].category, label: items[i].label, amount: items[i].amount, id: i),
+    ];
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (combinedItems.isNotEmpty) ...[
+            CategoryBreakdownList(
+              items: combinedItems,
+              editable: true,
+              currencyPrefix: currencyPrefix,
+              onEdit: (item) async {
+                final id = item.id;
+                if (id is SpendingBreakdownEntry) {
+                  onEditExisting(id);
+                  return;
+                }
+                if (id is int) {
+                  final updated = await showModalBottomSheet<SpendingBreakdownDraft>(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (context) => _AddBreakdownItemSheet(
+                      currencyPrefix: currencyPrefix,
+                      initial: items[id],
+                    ),
+                  );
+                  if (updated != null) {
+                    onRemove(id);
+                    onAdd(updated);
+                  }
+                }
+              },
+              onDelete: (item) {
+                final id = item.id;
+                if (id is SpendingBreakdownEntry) {
+                  onDeleteExisting(id);
+                } else if (id is int) {
+                  onRemove(id);
+                }
+              },
+            ),
+            const SizedBox(height: 14),
+          ],
+          OutlinedButton.icon(
+            onPressed: () async {
+              final draft = await showModalBottomSheet<SpendingBreakdownDraft>(
+                context: context,
+                isScrollControlled: true,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => _AddBreakdownItemSheet(currencyPrefix: currencyPrefix),
+              );
+              if (draft != null) onAdd(draft);
+            },
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(l10n.spendingBreakdownAddItem),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Form to add (or edit, when [initial] is set) one breakdown item: pick a
+/// category chip, enter an amount (no +/- stepper, live thousand-separator
+/// formatting), and an optional free-text sub-category detail — shown after
+/// any category is picked, not just one special "custom" bucket.
+class _AddBreakdownItemSheet extends ConsumerStatefulWidget {
+  const _AddBreakdownItemSheet({required this.currencyPrefix, this.initial});
+
+  final String currencyPrefix;
+
+  /// When set, pre-fills the form for editing an existing item instead of
+  /// adding a new one (caption/button text stays the same either way; only
+  /// the initial field values differ).
+  final SpendingBreakdownDraft? initial;
+
+  @override
+  ConsumerState<_AddBreakdownItemSheet> createState() => _AddBreakdownItemSheetState();
+}
+
+class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> {
+  late SpendingBreakdownCategory _category = widget.initial?.category ?? SpendingBreakdownCategory.dailyNeeds;
+  late int _amount = widget.initial?.amount ?? 0;
+  late final _amountController = TextEditingController(
+    text: formatAmountInput(_amount, widget.currencyPrefix),
+  );
+  late final _labelController = TextEditingController(text: widget.initial?.label ?? '');
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _labelController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final lang = ref.watch(appLanguageProvider);
+    final canSave = _amount > 0;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.viewInsetsOf(context).bottom + 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.initial != null ? l10n.spendingBreakdownEditItem : l10n.spendingBreakdownAddItem,
+            style: theme.textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final category in SpendingBreakdownCategory.values)
+                ChoiceChip(
+                  label: Text(category.label(lang)),
+                  selected: _category == category,
+                  onSelected: (_) => setState(() => _category = category),
+                ),
+            ],
+          ),
+          if (_category.hint(lang) != null) ...[
+            const SizedBox(height: 6),
+            Text(_category.hint(lang)!, style: theme.textTheme.bodySmall),
+          ],
+          const SizedBox(height: 20),
+          Center(
+            child: CurrencyAmountField(
+              controller: _amountController,
+              currencyPrefix: widget.currencyPrefix,
+              width: 220,
+              onChanged: (v) => setState(() => _amount = v),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _labelController,
+            decoration: InputDecoration(labelText: l10n.spendingBreakdownSubcategoryHint),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: canSave
+                  ? () => Navigator.of(context).pop(
+                        SpendingBreakdownDraft(
+                          category: _category,
+                          label: _labelController.text.trim().isEmpty ? null : _labelController.text.trim(),
+                          amount: _amount,
+                        ),
+                      )
+                  : null,
+              child: Text(l10n.commonAdd),
+            ),
           ),
         ],
       ),

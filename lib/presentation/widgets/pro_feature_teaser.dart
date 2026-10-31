@@ -23,6 +23,7 @@ class ProFeatureTeaser extends ConsumerWidget {
     required this.description,
     required this.benefits,
     this.previewBuilder,
+    this.showBackButton,
   });
 
   final IconData icon;
@@ -35,9 +36,19 @@ class ProFeatureTeaser extends ConsumerWidget {
   /// unlock. Falls back to a plain icon backdrop when omitted.
   final WidgetBuilder? previewBuilder;
 
+  /// Overrides whether the top-left back button/tap-to-dismiss backdrop are
+  /// shown. `null` (default) falls back to `Navigator.of(context).canPop()`
+  /// — correct for the Finance/Community tab-root usages, which are never
+  /// pushed onto a navigator stack and have nothing to pop back to. Callers
+  /// that push this via `Navigator.push` (e.g. the onboarding "Save Money"
+  /// paywall) pass `true` explicitly so the back button is always there
+  /// regardless of how deep the stack happens to be at that point.
+  final bool? showBackButton;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final showBack = showBackButton ?? Navigator.of(context).canPop();
     ref.listen(purchaseErrorsProvider, (previous, next) {
       final message = next.asData?.value;
       if (message != null && context.mounted) {
@@ -54,12 +65,65 @@ class ProFeatureTeaser extends ConsumerWidget {
           ),
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-              child: Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.35)),
+              // Toned back down from an earlier pass that went too far —
+              // sigma 16 + alpha 0.58 wiped the preview out into a flat gray
+              // with no silhouette left at all. This keeps a "frosted glass"
+              // look: shapes/colors of the preview still read faintly
+              // through it, just clearly darker/less legible than before.
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(color: Colors.black.withValues(alpha: 0.45)),
             ),
           ),
+          // Tapping anywhere on the dimmed backdrop also goes back, not just
+          // the small corner icon below — matches how a modal over content
+          // is expected to dismiss.
+          if (showBack)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.of(context).pop(),
+              ),
+            ),
+          if (showBack)
+            // `Positioned` (not a bare non-positioned child) — the parent
+            // Stack uses `fit: StackFit.expand`, which forces every
+            // *non*-positioned child to stretch to the Stack's full size.
+            // A bare `SafeArea(...)` here was silently stretching all the
+            // way down through Padding/Material/IconButton to fill the
+            // entire screen, centering the actual arrow glyph in the
+            // middle of the screen (hidden behind the card) instead of
+            // pinning a small chip to the corner — exactly the "no back
+            // button, but a big circle behind the dialog" bug (#28).
+            // `Positioned` children are exempt from that stretching, so
+            // this now sizes to its own content and sits at the corner.
+            Positioned(
+              top: 0,
+              left: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Material(
+                    // Explicit white-on-dark chip instead of the default
+                    // (theme-colored, often dark-on-dark) IconButton — that
+                    // was nearly invisible against the darkened backdrop.
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: const CircleBorder(),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Center(
-            child: SingleChildScrollView(
+            // Absorbs taps on the dialog itself so they don't fall through
+            // to the full-backdrop dismiss layer behind it — only tapping
+            // outside this card should count as "tap outside to go back".
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              child: SingleChildScrollView(
               padding: const EdgeInsets.all(32),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
@@ -116,6 +180,7 @@ class ProFeatureTeaser extends ConsumerWidget {
                   ),
                 ),
               ),
+            ),
             ),
           ),
         ],

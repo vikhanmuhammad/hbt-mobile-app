@@ -68,6 +68,9 @@ class Habits extends Table {
   TextColumn get icon => text().nullable()(); // Font Awesome icon key
   TextColumn get goalPeriod => text()();
   IntColumn get goalValue => integer().withDefault(const Constant(1))();
+  /// Override goalValue khusus Sabtu-Minggu untuk habit `daily` — null berarti
+  /// nilai sama setiap hari (goalValue dipakai apa adanya, perilaku lama).
+  IntColumn get goalValueWeekend => integer().nullable()();
   TextColumn get goalUnit => text().withDefault(const Constant('x'))();
   // 'atLeast' (standar, progress >= goalValue) atau 'atMost' (progress <=
   // goalValue, mis. batas pengeluaran harian).
@@ -79,6 +82,10 @@ class Habits extends Table {
   BoolColumn get reminderEnabled =>
       boolean().withDefault(const Constant(false))();
   TextColumn get reminderTime => text().nullable()();
+  /// Minutes between repeats starting at [reminderTime], e.g. every 30
+  /// minutes — null means a single reminder at [reminderTime] (the
+  /// pre-existing behavior). No end time: repeats until end of day.
+  IntColumn get reminderIntervalMinutes => integer().nullable()();
   DateTimeColumn get startDate => dateTime()();
   DateTimeColumn get endDate => dateTime().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
@@ -102,6 +109,12 @@ class Habits extends Table {
   /// Key stabil ke entri habit di `habit_templates.json` (mis.
   /// 'drink_water'). Null untuk habit custom buatan user.
   TextColumn get templateKey => text().nullable()();
+
+  /// Kode mata uang (IDR/USD/SGD/MYR/EUR) untuk habit Budget Tracker —
+  /// label/prefix tampilan saja, tidak mengubah cara angka diformat. Null
+  /// untuk habit non-finance, dan default ke 'IDR' di kode saat null untuk
+  /// habit finance lama yang dibuat sebelum kolom ini ada.
+  TextColumn get currency => text().nullable()();
 }
 
 @TableIndex(name: 'idx_habit_logs_date', columns: {#date})
@@ -118,6 +131,33 @@ class HabitLogs extends Table {
   List<Set<Column>> get uniqueKeys => [
         {habitId, date},
       ];
+}
+
+/// Rincian opsional dari satu progress habit pengeluaran (rupiah, `atMost`)
+/// pada satu tanggal — mis. dari Rp50.000 yang di-log, Rp30.000 ditandai
+/// "Kebutuhan Harian" dan Rp20.000 "Kustom: Bensin". Murni informasional,
+/// tidak wajib totalnya sama dengan `HabitLogs.progressValue` hari itu.
+/// Satu (habitId, date) bisa punya banyak baris — tiap kali user
+/// menyimpan quick progress sheet dengan rincian, baris baru ditambahkan
+/// (bukan replace), supaya beberapa kali input di hari yang sama (mis.
+/// makan siang lalu isi bensin) tetap tercatat terpisah.
+@TableIndex(name: 'idx_habit_spending_breakdowns_habit_date', columns: {#habitId, #date})
+class HabitSpendingBreakdowns extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get habitId =>
+      integer().references(Habits, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get date => dateTime()();
+  // dailyNeeds / dailyWants / unexpectedNeeds / fixedSpending — lihat
+  // SpendingBreakdownCategory. Baris lama bisa juga berisi nilai legacy
+  // (urgent/health/custom) dari sebelum kategori diubah; nilai legacy
+  // sengaja tidak dimigrasikan dan disaring (tidak ditampilkan) di UI baru.
+  TextColumn get categoryKey => text()();
+  /// Teks bebas sub-kategori/detail, opsional untuk kategori manapun (mis.
+  /// "Bensin" di bawah kategori Fixed Spending).
+  TextColumn get label => text().nullable()();
+  IntColumn get amount => integer()();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime)();
 }
 
 /// Relasi habit lokal ke Group Habit di Firestore (fitur Community, Pro-only)
@@ -142,8 +182,14 @@ class HabitGroupLinks extends Table {
   /// versa. Nullable only for rows written before this column existed.
   TextColumn get uid => text().nullable()();
 
+  // Scoped by `uid` too, not just (habitId, groupHabitId) — otherwise only
+  // ONE account could ever link a given local habit to a given Group Habit
+  // on this device; a second account signing in and linking that exact same
+  // pair (a real scenario: same local habit, same already-published Group
+  // Habit, different account) hit a UNIQUE constraint violation instead of
+  // getting its own link row.
   @override
   List<Set<Column>> get uniqueKeys => [
-        {habitId, groupHabitId},
+        {habitId, groupHabitId, uid},
       ];
 }

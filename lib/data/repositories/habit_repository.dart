@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit.dart';
+import '../../domain/models/habit_draft.dart';
 import '../../domain/models/habit_template.dart';
 import '../../domain/models/task_days.dart';
 import '../database/app_database.dart' as db;
@@ -47,41 +48,75 @@ class HabitRepository {
     String? icon,
     required GoalPeriod goalPeriod,
     required int goalValue,
+    int? goalValueWeekend,
     String goalUnit = 'x',
     GoalDirection goalDirection = GoalDirection.atLeast,
     required List<String> taskDays,
     required TimeRange timeRange,
     required bool reminderEnabled,
     String? reminderTime,
+    int? reminderIntervalMinutes,
     required DateTime startDate,
     DateTime? endDate,
     int sortOrder = 0,
     bool isCustom = true,
     String? templateKey,
+    String? currency,
   }) {
-    return _db.habitDao.insertHabit(
-      db.HabitsCompanion.insert(
-        categoryId: categoryId,
-        name: name,
-        nameId: Value(nameId),
-        description: Value(description),
-        icon: Value(icon),
-        goalPeriod: goalPeriod.name,
-        goalValue: Value(goalValue),
-        goalUnit: Value(goalUnit),
-        goalDirection: Value(goalDirection.name),
-        taskDays: TaskDays.encode(taskDays),
-        timeRange: Value(timeRange.name),
-        reminderEnabled: Value(reminderEnabled),
-        reminderTime: Value(reminderTime),
-        startDate: startDate,
-        endDate: Value(endDate),
-        sortOrder: Value(sortOrder),
-        isCustom: Value(isCustom),
-        templateKey: Value(templateKey),
-      ),
-    );
+    return _db.habitDao.insertHabit(_companionFor(HabitDraft(
+      categoryId: categoryId,
+      name: name,
+      nameId: nameId,
+      description: description,
+      icon: icon,
+      goalPeriod: goalPeriod,
+      goalValue: goalValue,
+      goalValueWeekend: goalValueWeekend,
+      goalUnit: goalUnit,
+      goalDirection: goalDirection,
+      taskDays: taskDays,
+      timeRange: timeRange,
+      reminderEnabled: reminderEnabled,
+      reminderTime: reminderTime,
+      reminderIntervalMinutes: reminderIntervalMinutes,
+      startDate: startDate,
+      endDate: endDate,
+      sortOrder: sortOrder,
+      isCustom: isCustom,
+      templateKey: templateKey,
+      currency: currency,
+    )));
   }
+
+  /// Bulk version of [createHabit] — see `HabitDao.insertHabits` for why
+  /// this matters (one batch/transaction instead of N separate commits).
+  Future<void> createHabitsBatch(List<HabitDraft> drafts) {
+    return _db.habitDao.insertHabits(drafts.map(_companionFor).toList());
+  }
+
+  db.HabitsCompanion _companionFor(HabitDraft d) => db.HabitsCompanion.insert(
+        categoryId: d.categoryId,
+        name: d.name,
+        nameId: Value(d.nameId),
+        description: Value(d.description),
+        icon: Value(d.icon),
+        goalPeriod: d.goalPeriod.name,
+        goalValue: Value(d.goalValue),
+        goalValueWeekend: Value(d.goalValueWeekend),
+        goalUnit: Value(d.goalUnit),
+        goalDirection: Value(d.goalDirection.name),
+        taskDays: TaskDays.encode(d.taskDays),
+        timeRange: Value(d.timeRange.name),
+        reminderEnabled: Value(d.reminderEnabled),
+        reminderTime: Value(d.reminderTime),
+        reminderIntervalMinutes: Value(d.reminderIntervalMinutes),
+        startDate: d.startDate,
+        endDate: Value(d.endDate),
+        sortOrder: Value(d.sortOrder),
+        isCustom: Value(d.isCustom),
+        templateKey: Value(d.templateKey),
+        currency: Value(d.currency),
+      );
 
   Future<void> updateHabit(Habit habit) async {
     await _db.habitDao.updateHabit(
@@ -94,12 +129,14 @@ class HabitRepository {
         icon: Value(habit.icon),
         goalPeriod: Value(habit.goalPeriod.name),
         goalValue: Value(habit.goalValue),
+        goalValueWeekend: Value(habit.goalValueWeekend),
         goalUnit: Value(habit.goalUnit),
         goalDirection: Value(habit.goalDirection.name),
         taskDays: Value(TaskDays.encode(habit.taskDays)),
         timeRange: Value(habit.timeRange.name),
         reminderEnabled: Value(habit.reminderEnabled),
         reminderTime: Value(habit.reminderTime),
+        reminderIntervalMinutes: Value(habit.reminderIntervalMinutes),
         startDate: Value(habit.startDate),
         endDate: Value(habit.endDate),
         isActive: Value(habit.isActive),
@@ -107,6 +144,7 @@ class HabitRepository {
         createdAt: Value(habit.createdAt),
         isCustom: Value(habit.isCustom),
         templateKey: Value(habit.templateKey),
+        currency: Value(habit.currency),
       ),
     );
   }
@@ -145,6 +183,13 @@ class HabitRepository {
 
   Future<void> setSortOrder(int habitId, int sortOrder) =>
       _db.habitDao.setSortOrder(habitId, sortOrder);
+
+  /// Rescales every stored amount of [habitId] (logs + spending breakdown)
+  /// by [multiplier]/[divisor] — used when a Budget Tracker switches between
+  /// IDR (whole rupiah) and a cent-based currency, so amounts keep their
+  /// face value (see `currencyHasDecimals`).
+  Future<void> rescaleAmounts(int habitId, {required int multiplier, required int divisor}) =>
+      _db.rescaleHabitAmounts(habitId, multiplier: multiplier, divisor: divisor);
 
   Future<void> deleteHabit(int habitId) async {
     await _db.habitLogDao.deleteLogsForHabit(habitId);

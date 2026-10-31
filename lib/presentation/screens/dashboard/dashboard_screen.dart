@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../domain/date_utils.dart';
 import '../../../domain/language.dart';
+import '../../../domain/models/category.dart';
 import '../../../domain/models/dashboard_summary.dart';
 import '../../../domain/models/habit_with_progress.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -21,6 +22,7 @@ import '../../theme/app_colors.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/tap_scale.dart';
 import '../../widgets/daily_progress_ring.dart';
+import '../../widgets/dashed_line.dart';
 import '../../widgets/habit_icon.dart';
 import '../../widgets/monthly_calendar_grid.dart';
 
@@ -243,8 +245,15 @@ class _HabitFilterRowState extends ConsumerState<_HabitFilterRow> {
     final l10n = AppLocalizations.of(context)!;
     final hintColor = _scrollHintColor(theme);
     final lang = ref.watch(appLanguageProvider);
-    final habits = ref.watch(allActiveHabitsProvider).value ?? const [];
+    final allHabits = ref.watch(allActiveHabitsProvider).value ?? const [];
     final categories = ref.watch(categoriesProvider).value ?? const [];
+    final categoryById = {for (final c in categories) c.id: c};
+    // Habit finance dikecualikan dari Dashboard — cuma relevan di halaman
+    // Keuangan supaya tidak membingungkan dicampur dengan habit lain.
+    final habits = allHabits.where((h) {
+      final category = categoryById[h.categoryId];
+      return category == null || !isFinanceCategory(category);
+    }).toList();
     final selected = ref.watch(selectedDashboardHabitIdsProvider);
 
     if (habits.isEmpty) return const SizedBox.shrink();
@@ -602,6 +611,12 @@ class _DayDetailSheet extends ConsumerWidget {
     WidgetRef ref,
     HabitWithProgress item,
   ) async {
+    if (date.isAfter(today())) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.homeFutureDayLocked)));
+      return;
+    }
     try {
       final repo = ref.read(habitLogRepositoryProvider);
       await repo.toggleDone(
@@ -614,6 +629,7 @@ class _DayDetailSheet extends ConsumerWidget {
       ref.invalidate(daySummaryProvider);
       ref.invalidate(financeSummaryProvider);
       ref.invalidate(financeSummaryForPeriodProvider);
+      ref.invalidate(financeMonthToDateSummaryProvider);
       unawaited(syncCommunityHabit(ref, item.habit.id, date));
     } catch (e) {
       if (context.mounted) {
@@ -756,22 +772,84 @@ class _CategoryBreakdown extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(AppLocalizations.of(context)!.commonByCategory, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 16),
-            for (final stat in summary.categoryStats)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ProgressRow(
-                  label: stat.category.displayName(lang),
-                  ratio: stat.successRate,
-                  color: AppColors.categoryColorFromHex(
-                    stat.category.colorHex,
-                    indexById[stat.category.id] ?? 0,
+            const SizedBox(height: 20),
+            // Horizontally scrollable instead of wrapping — with many
+            // categories, a Wrap would keep growing the card's height
+            // (and this section's rings out of alignment with the ones in
+            // `_HabitBreakdown` below it); scrolling keeps every ring the
+            // same size and the card height fixed regardless of count.
+            //
+            // Fixed height + clamped text scaling: on some devices (large
+            // system font size / MIUI scaling) the ring + 2-line label grew
+            // taller than the Row's intrinsic height and got clipped by the
+            // card below it — pin the height and cap how much the label can
+            // grow so the ring itself is never cut off.
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: SizedBox(
+                height: 118,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      for (final stat in summary.categoryStats)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 18),
+                          child: _CategoryProgressRing(
+                            label: stat.category.displayName(lang),
+                            ratio: stat.successRate,
+                            color: AppColors.categoryColorFromHex(
+                              stat.category.colorHex,
+                              indexById[stat.category.id] ?? 0,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  showDot: true,
                 ),
               ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CategoryProgressRing extends StatelessWidget {
+  const _CategoryProgressRing({required this.label, required this.ratio, required this.color});
+
+  final String label;
+  final double ratio;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final percent = (ratio.clamp(0, 1) * 100).round();
+    return SizedBox(
+      width: 84,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DailyProgressRing(
+            done: percent,
+            total: 100,
+            size: 64,
+            strokeWidth: 7,
+            color: color,
+            centerLabel: '$percent%',
+            centerLabelStyle: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -786,6 +864,21 @@ class _HabitBreakdown extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final lang = ref.watch(appLanguageProvider);
+    final categories = ref.watch(categoriesProvider).value ?? [];
+    final categoryById = {for (final c in categories) c.id: c};
+    final indexById = {
+      for (var i = 0; i < categories.length; i++) categories[i].id: i,
+    };
+
+    // Same accent-color logic as Home's `_accentFor` (home_screen.dart) —
+    // keeps a habit's color consistent between its Home card and its row
+    // here, instead of every row using one flat theme color.
+    Color habitColor(int categoryId) {
+      final category = categoryById[categoryId];
+      if (category == null) return AppColors.gold;
+      return AppColors.categoryColorFromHex(category.colorHex, indexById[categoryId] ?? 0);
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(22),
@@ -800,7 +893,7 @@ class _HabitBreakdown extends ConsumerWidget {
                 child: _ProgressRow(
                   label: stat.habit.displayName(lang),
                   ratio: stat.successRate,
-                  color: theme.colorScheme.primary,
+                  color: habitColor(stat.habit.categoryId),
                 ),
               ),
           ],
@@ -810,18 +903,38 @@ class _HabitBreakdown extends ConsumerWidget {
   }
 }
 
-class _MonthlyTrend extends ConsumerWidget {
+class _MonthlyTrend extends ConsumerStatefulWidget {
   const _MonthlyTrend({required this.summary});
 
   final DashboardSummary summary;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_MonthlyTrend> createState() => _MonthlyTrendState();
+}
+
+class _MonthlyTrendState extends ConsumerState<_MonthlyTrend> {
+  static const _chartHeight = 140.0;
+  // 40 was too tight for "100%" in labelSmall once the OS text scale factor
+  // is even slightly above 1x — the glyphs then overflowed the tick's own
+  // width and got clipped by the axis Stack's default hardEdge clip, which
+  // read as the scale being "unaligned"/truncated (feedback 7, slide 22 &
+  // 23; the earlier feedback 6, slide 14 fix only stopped wrapping, it
+  // didn't reserve enough width).
+  static const _axisWidth = 46.0;
+
+  /// Index (into the currently displayed `points`) of the bar last tapped,
+  /// showing its exact percentage — before this, a user had no way to read
+  /// an exact value off the chart, only eyeball it against the axis
+  /// (feedback 6, slide 15).
+  int? _selectedIndex;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final lang = ref.watch(appLanguageProvider);
-    final points = summary.monthlyStats.length > 6
-        ? summary.monthlyStats.sublist(summary.monthlyStats.length - 6)
-        : summary.monthlyStats;
+    final points = widget.summary.monthlyStats.length > 6
+        ? widget.summary.monthlyStats.sublist(widget.summary.monthlyStats.length - 6)
+        : widget.summary.monthlyStats;
 
     return Card(
       child: Padding(
@@ -831,63 +944,203 @@ class _MonthlyTrend extends ConsumerWidget {
           children: [
             Text(AppLocalizations.of(context)!.dashboardMonthlyTrend, style: theme.textTheme.titleMedium),
             const SizedBox(height: 20),
-            SizedBox(
-              height: 160,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final point in points)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Column(
-                          children: [
-                            // Expanded gives this slot a bounded/tight height
-                            // so FractionallySizedBox has something to size
-                            // its heightFactor against — a bare Column doesn't
-                            // bound non-flex children, which crashes it.
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: FractionallySizedBox(
-                                  heightFactor: point.successRate.clamp(
-                                    0.03,
-                                    1,
-                                  ),
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 44,
+                  // Y-axis: 100/50/0% ticks, each vertically centered exactly
+                  // on its corresponding gridline (via `_AxisTick`) instead of
+                  // two independently-laid-out columns (labels vs. lines)
+                  // that drifted apart once label/line heights differed —
+                  // and `softWrap: false` so "100%" can no longer wrap its
+                  // "%" onto a second line (feedback 6, slide 14).
+                  //
+                  // `_AxisTick` deliberately centers itself ON the gridline
+                  // (top tick centered on y=0, bottom tick centered on
+                  // y=chartHeight), so the top/bottom labels' boxes extend a
+                  // few px above/below this SizedBox by design. `Stack`'s
+                  // default `clipBehavior` is `Clip.hardEdge`, which was
+                  // cropping exactly that overflow — the top of "100%" and
+                  // the bottom of "0%" — making the scale look misaligned
+                  // with its gridlines, and clipping "100%" horizontally too
+                  // whenever it didn't fit `_axisWidth` (feedback 7, slide
+                  // 22 & 23). The labels were already correctly centered;
+                  // only the clip was wrong.
+                  SizedBox(
+                    width: _axisWidth,
+                    height: _chartHeight,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _AxisTick(text: '100%', topFraction: 0, chartHeight: _chartHeight),
+                        _AxisTick(text: '50%', topFraction: 0.5, chartHeight: _chartHeight),
+                        _AxisTick(text: '0%', topFraction: 1, chartHeight: _chartHeight),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        // Gridlines behind the bars at the 0/50/100% ticks so
+                        // each bar's height can be read against a scale.
+                        SizedBox(
+                          height: _chartHeight,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: const [
+                              DashedLine(),
+                              DashedLine(),
+                              DashedLine(),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: _chartHeight,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              for (final (index, point) in points.indexed)
+                                Expanded(
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () => setState(
+                                      () => _selectedIndex = _selectedIndex == index ? null : index,
                                     ),
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primary,
-                                        borderRadius: const BorderRadius.only(
-                                          topLeft: Radius.circular(10),
-                                          topRight: Radius.circular(10),
-                                          bottomLeft: Radius.circular(4),
-                                          bottomRight: Radius.circular(4),
-                                        ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Expanded gives this slot a bounded/tight height
+                                          // so FractionallySizedBox has something to size
+                                          // its heightFactor against — a bare Column doesn't
+                                          // bound non-flex children, which crashes it.
+                                          Expanded(
+                                            child: Stack(
+                                              clipBehavior: Clip.none,
+                                              alignment: Alignment.bottomCenter,
+                                              children: [
+                                                if (_selectedIndex == index)
+                                                  Positioned(
+                                                    bottom: _chartHeight * point.successRate.clamp(0.03, 1) + 6,
+                                                    child: _PercentBadge(
+                                                      percent: point.successRate,
+                                                      color: theme.colorScheme.primary,
+                                                    ),
+                                                  ),
+                                                FractionallySizedBox(
+                                                  heightFactor: point.successRate.clamp(
+                                                    0.03,
+                                                    1,
+                                                  ),
+                                                  child: ConstrainedBox(
+                                                    constraints: const BoxConstraints(
+                                                      maxWidth: 44,
+                                                    ),
+                                                    child: Container(
+                                                      decoration: BoxDecoration(
+                                                        color: theme.colorScheme.primary,
+                                                        borderRadius: const BorderRadius.only(
+                                                          topLeft: Radius.circular(10),
+                                                          topRight: Radius.circular(10),
+                                                          bottomLeft: Radius.circular(4),
+                                                          bottomRight: Radius.circular(4),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              monthShortName(point.month.month, lang),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
                 ],
               ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                SizedBox(width: _axisWidth),
+                for (final point in points)
+                  Expanded(
+                    child: Text(
+                      monthShortName(point.month.month, lang),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One Y-axis percentage label, vertically centered exactly on the gridline
+/// at [topFraction] of [chartHeight] — matches where `DashedLine` (laid out
+/// with the same `spaceBetween` 3-tick pattern) actually draws, instead of
+/// each being positioned independently and drifting apart at different text
+/// sizes (feedback 6, slide 14).
+class _AxisTick extends StatelessWidget {
+  const _AxisTick({required this.text, required this.topFraction, required this.chartHeight});
+
+  final String text;
+  final double topFraction;
+  final double chartHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: chartHeight * topFraction,
+      right: 0,
+      left: 0,
+      child: FractionalTranslation(
+        translation: const Offset(0, -0.5),
+        child: Text(
+          text,
+          textAlign: TextAlign.right,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill showing a tapped bar's exact percentage (feedback 6, slide 15)
+/// — floats just above that bar's current height.
+class _PercentBadge extends StatelessWidget {
+  const _PercentBadge({required this.percent, required this.color});
+
+  final double percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '${(percent * 100).round()}%',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -899,13 +1152,11 @@ class _ProgressRow extends StatelessWidget {
     required this.label,
     required this.ratio,
     required this.color,
-    this.showDot = false,
   });
 
   final String label;
   final double ratio;
   final Color color;
-  final bool showDot;
 
   @override
   Widget build(BuildContext context) {
@@ -919,17 +1170,6 @@ class _ProgressRow extends StatelessWidget {
             Expanded(
               child: Row(
                 children: [
-                  if (showDot) ...[
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
                   Flexible(
                     child: Text(
                       label,

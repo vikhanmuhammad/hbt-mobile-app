@@ -1,15 +1,14 @@
-import 'dart:io' show Platform;
-
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:device_calendar/device_calendar.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-/// Wraps `device_calendar` (calendar read/write) and a native Android
-/// "set alarm" intent — point 10. iOS has no public API to programmatically
-/// create Clock alarms, so [createAlarm] is a no-op returning false there;
-/// the Settings UI should explain that limitation rather than silently fail.
+/// Wraps `device_calendar` (calendar read/write) — point 10. Phone alarms
+/// are rung by the app itself now (see `NotificationService.alarmStyle`).
 class CalendarAlarmService {
-  CalendarAlarmService() : _plugin = DeviceCalendarPlugin();
+  // shouldInitTimezone: false — the plugin's default re-runs
+  // `tz.initializeTimeZones()`, which resets `tz.local` back to UTC after
+  // NotificationService set it to the device zone, so every reminder saved
+  // afterwards was scheduled hours off (feedback 7, slide 46 & 48).
+  CalendarAlarmService() : _plugin = DeviceCalendarPlugin(shouldInitTimezone: false);
 
   final DeviceCalendarPlugin _plugin;
 
@@ -35,18 +34,21 @@ class CalendarAlarmService {
     }
   }
 
-  /// Creates/updates a recurring calendar event mirroring a habit's daily
-  /// reminder time — [existingEventId] lets a repeat call update the same
-  /// event instead of creating duplicates. Returns the event id on success,
-  /// null on failure/no permission.
-  Future<String?> upsertReminderEvent({
+  /// Creates, or updates in place when [existingEventId] is given, a
+  /// recurring calendar event for a habit's reminder — every day, or weekly
+  /// on [isoWeekdays] only. Carries an at-start-time alert so the calendar
+  /// itself notifies too. Returns (calendarId, eventId), null on failure/no
+  /// permission.
+  Future<(String, String)?> upsertReminderEvent({
     required String habitName,
     required DateTime firstOccurrence,
+    List<int>? isoWeekdays,
+    String? existingCalendarId,
     String? existingEventId,
   }) async {
     try {
       if (!await requestPermissions()) return null;
-      final calendarId = await _defaultWritableCalendarId();
+      final calendarId = existingCalendarId ?? await _defaultWritableCalendarId();
       if (calendarId == null) return null;
 
       final event = Event(
@@ -58,10 +60,17 @@ class CalendarAlarmService {
         // elsewhere in this app) rather than a plain DateTime.
         start: tz.TZDateTime.from(firstOccurrence, tz.local),
         end: tz.TZDateTime.from(firstOccurrence.add(const Duration(minutes: 15)), tz.local),
-        recurrenceRule: RecurrenceRule(RecurrenceFrequency.Daily),
+        recurrenceRule: isoWeekdays == null
+            ? RecurrenceRule(RecurrenceFrequency.Daily)
+            : RecurrenceRule(
+                RecurrenceFrequency.Weekly,
+                daysOfWeek: [for (final d in isoWeekdays) DayOfWeek.values[d - 1]],
+              ),
+        reminders: [Reminder(minutes: 0)],
       );
       final result = await _plugin.createOrUpdateEvent(event);
-      return (result?.isSuccess ?? false) ? result?.data : null;
+      final eventId = (result?.isSuccess ?? false) ? result?.data : null;
+      return eventId == null ? null : (calendarId, eventId);
     } catch (_) {
       return null;
     }
@@ -97,30 +106,6 @@ class CalendarAlarmService {
       return events;
     } catch (_) {
       return const [];
-    }
-  }
-
-  /// Opens the native "set alarm" screen pre-filled with the given time
-  /// (Android only — `AlarmClock.ACTION_SET_ALARM` has no iOS equivalent
-  /// since Apple doesn't expose a public Clock/alarm API). Returns false on
-  /// iOS or on any platform error; true once the intent was successfully
-  /// launched (the user still has to confirm saving the alarm themselves).
-  Future<bool> createAlarm({required String label, required int hour, required int minute}) async {
-    if (!Platform.isAndroid) return false;
-    try {
-      final intent = AndroidIntent(
-        action: 'android.intent.action.SET_ALARM',
-        arguments: <String, dynamic>{
-          'android.intent.extra.alarm.HOUR': hour,
-          'android.intent.extra.alarm.MINUTES': minute,
-          'android.intent.extra.alarm.MESSAGE': label,
-          'android.intent.extra.alarm.SKIP_UI': false,
-        },
-      );
-      await intent.launch();
-      return true;
-    } catch (_) {
-      return false;
     }
   }
 }

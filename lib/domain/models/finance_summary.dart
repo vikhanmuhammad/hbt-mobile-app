@@ -1,17 +1,51 @@
+import 'enums.dart';
 import 'habit.dart';
+
+/// Granularitas titik pada `FinanceSummary.dailyTrend` — dipilih oleh
+/// caller (`FinanceRepository.computeSummary`) berdasarkan tab Finance yang
+/// aktif: Daily pakai [day] (satu bar per hari), Weekly pakai [week] (satu
+/// bar per minggu kalender), Monthly pakai [month] (satu bar per bulan) —
+/// tiap tab menampilkan tren di satuannya sendiri (feedback 8, slide 7).
+enum FinanceTrendBucket { day, week, month }
+
+/// Status traffic light 3 warna dari [BudgetPace] — turunan dari selisih
+/// [BudgetPace.actualRatio] terhadap [BudgetPace.expectedRatio], lihat
+/// [FinanceSummary.paceAt].
+enum BudgetPaceStatus { onTrack, warning, overBudget }
 
 /// Result of comparing "how far through the period we are" against "how
 /// much of the budget is already spent" — see [FinanceSummary.paceAt].
 class BudgetPace {
   const BudgetPace({
-    required this.onTrack,
+    required this.status,
     required this.expectedRatio,
     required this.actualRatio,
   });
 
-  final bool onTrack;
+  final BudgetPaceStatus status;
   final double expectedRatio;
   final double actualRatio;
+
+  bool get onTrack => status == BudgetPaceStatus.onTrack;
+}
+
+/// Total pada satu kategori rincian pengeluaran (lihat
+/// `SpendingBreakdownCategory`), diagregasi lintas semua entri
+/// `SpendingBreakdownEntry` sebuah habit dalam satu window Finance. Untuk
+/// `category == custom`, [label] adalah teks bebas yang diisi user (baris
+/// custom dengan label berbeda diagregasi terpisah); untuk kategori
+/// template, [label] selalu null dan nama tampilan diambil dari
+/// `category.label(lang)`.
+class FinanceSpendingCategoryStat {
+  const FinanceSpendingCategoryStat({
+    required this.category,
+    required this.label,
+    required this.totalAmount,
+  });
+
+  final SpendingBreakdownCategory category;
+  final String? label;
+  final int totalAmount;
 }
 
 /// Agregat satu habit keuangan (bersatuan rupiah) dalam suatu window Finance
@@ -29,6 +63,7 @@ class FinanceHabitStat {
     required this.totalTarget,
     required this.loggedPeriods,
     required this.achievedPeriods,
+    this.breakdown = const [],
   });
 
   final Habit habit;
@@ -43,15 +78,32 @@ class FinanceHabitStat {
   /// dari total progress dalam periode itu, bukan dari satu log harian).
   final int achievedPeriods;
 
+  /// Rincian opsional (lihat `SpendingBreakdownEntry`) yang user isi untuk
+  /// habit ini di window ini — kosong kalau user tidak pernah mengisi
+  /// rincian, yang jadi kasus umum.
+  final List<FinanceSpendingCategoryStat> breakdown;
+
   double get successRate => loggedPeriods == 0 ? 0 : achievedPeriods / loggedPeriods;
 }
 
-/// Total pengeluaran (habit `atMost`) pada satu tanggal — dasar tren harian.
+/// Total pengeluaran (habit `atMost`) pada satu titik tren — [date] adalah
+/// awal bucket-nya. Untuk tab Daily, satu bucket = satu hari
+/// ([bucketEndInclusive] == [date]); Weekly = satu minggu kalender
+/// (Senin-Minggu); Monthly = satu bulan kalender — dipakai UI untuk label
+/// sumbu-X.
 class FinanceDayPoint {
-  const FinanceDayPoint({required this.date, required this.totalExpense});
+  const FinanceDayPoint({
+    required this.date,
+    required this.totalExpense,
+    DateTime? bucketEndInclusive,
+  }) : bucketEndInclusive = bucketEndInclusive ?? date;
 
   final DateTime date;
+  final DateTime bucketEndInclusive;
   final int totalExpense;
+
+  bool get isMultiDayBucket =>
+      bucketEndInclusive.difference(date).inDays > 0;
 }
 
 /// Rangkuman keuangan untuk satu periode (biasanya 1 bulan kalender),
@@ -64,11 +116,14 @@ class FinanceSummary {
     required this.periodEndInclusive,
     required this.totalExpense,
     required this.totalBudget,
+    int? totalBudgetElapsed,
     required this.totalSavingsDeposit,
     required this.totalSavingsTarget,
     required this.habitStats,
     required this.dailyTrend,
-  });
+    this.categoryBreakdown = const [],
+    this.currencyPrefix = 'Rp ',
+  }) : totalBudgetElapsed = totalBudgetElapsed ?? totalBudget;
 
   final DateTime periodStart;
   final DateTime periodEndInclusive;
@@ -76,9 +131,17 @@ class FinanceSummary {
   /// Jumlah yang dihabiskan (sum progressValue) dari habit `atMost`.
   final int totalExpense;
 
-  /// Jumlah batas/anggaran (sum goalValue*periodCount, lihat
-  /// [FinanceHabitStat.totalTarget]) dari habit `atMost`.
+  /// Jumlah batas/anggaran PENUH periode ini (sum goalValue*periodCount,
+  /// lihat [FinanceHabitStat.totalTarget]) dari habit `atMost` — dipakai
+  /// sebagai cap tetap untuk [FinanceSummary.paceAt], bukan untuk
+  /// [totalSaved] (lihat [totalBudgetElapsed]).
   final int totalBudget;
+
+  /// Sama seperti [totalBudget], tapi dipotong sampai hari berjalan saja
+  /// (bukan seluruh periode) — dasar [totalSaved], supaya "Total Saved" di
+  /// tanggal 14 September dari budget bulanan cuma membandingkan alokasi
+  /// s.d. 14 September, bukan alokasi 1 bulan penuh (feedback 6, slide 18).
+  final int totalBudgetElapsed;
 
   /// Jumlah yang disetor (sum progressValue) dari habit `atLeast` rupiah,
   /// mis. habit "Nabung" yang dibuat bersatuan rupiah.
@@ -92,8 +155,21 @@ class FinanceSummary {
   final List<FinanceHabitStat> habitStats;
   final List<FinanceDayPoint> dailyTrend;
 
-  /// Selisih budget - pengeluaran. Positif = hemat, negatif = kelebihan budget.
-  int get totalSaved => totalBudget - totalExpense;
+  /// Rincian kategori pengeluaran diagregasi lintas SEMUA habit `atMost`
+  /// rupiah dalam window ini (bukan per-habit seperti [FinanceHabitStat.breakdown])
+  /// — dasar section "Spending by Category" dan "Month to Date".
+  final List<FinanceSpendingCategoryStat> categoryBreakdown;
+
+  /// Prefix mata uang (mis. "Rp ", "USD ") dari habit Budget Tracker yang
+  /// datanya diagregasi di sini — label saja, bukan format angka per-currency
+  /// (lihat `Habit.currencyPrefix`). Default "Rp " kalau tidak ada habit
+  /// finance yang tercakup window ini.
+  final String currencyPrefix;
+
+  /// Selisih alokasi budget SAMPAI HARI BERJALAN (bukan budget 1 periode
+  /// penuh, lihat [totalBudgetElapsed]) dikurangi pengeluaran. Positif =
+  /// hemat, negatif = kelebihan budget.
+  int get totalSaved => totalBudgetElapsed - totalExpense;
 
   bool get hasData => habitStats.isNotEmpty;
 
@@ -111,13 +187,25 @@ class FinanceSummary {
     final today = DateTime(now.year, now.month, now.day);
     if (today.isBefore(start) || today.isAfter(endInclusive)) return null;
 
-    final totalDays = endInclusive.difference(start).inDays + 1;
-    final elapsedDays = today.difference(start).inDays + 1;
-    final expectedRatio = (elapsedDays / totalDays).clamp(0.0, 1.0);
+    // Share of the budget that should be used up by the end of today. Taken
+    // from the budget itself rather than calendar days, so a budget started
+    // mid-period or with a different weekend amount isn't judged against
+    // days it doesn't cover (feedback 7, slide 30 & 33).
+    final expectedRatio = (totalBudgetElapsed / totalBudget).clamp(0.0, 1.0);
     final actualRatio = (totalExpense / totalBudget).clamp(0.0, 10.0);
 
+    // Traffic light 3 warna: hijau kalau masih dalam buffer 5 poin persen di
+    // atas pace (ambang lama, dipertahankan); kuning kalau lewat itu tapi
+    // belum lewat 15 poin; merah kalau sudah lewat 15 poin di atas pace.
+    final over = actualRatio - expectedRatio;
+    final status = over <= 0.05
+        ? BudgetPaceStatus.onTrack
+        : over <= 0.15
+            ? BudgetPaceStatus.warning
+            : BudgetPaceStatus.overBudget;
+
     return BudgetPace(
-      onTrack: actualRatio <= expectedRatio + 0.05,
+      status: status,
       expectedRatio: expectedRatio,
       actualRatio: actualRatio,
     );

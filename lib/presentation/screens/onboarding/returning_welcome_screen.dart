@@ -55,8 +55,8 @@ class _ReturningWelcomeScreenState extends State<ReturningWelcomeScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const AppLogo(size: 72),
-                    const SizedBox(height: 20),
+                    const AppLogo(size: 108),
+                    const SizedBox(height: 2),
                     Text(
                       'Welcome Back,\n${widget.name}',
                       textAlign: TextAlign.center,

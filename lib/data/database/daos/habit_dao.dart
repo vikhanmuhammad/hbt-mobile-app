@@ -34,6 +34,15 @@ class HabitDao extends DatabaseAccessor<AppDatabase> with _$HabitDaoMixin {
     return into(habits).insert(entry);
   }
 
+  /// Inserts every entry as one Drift batch (one transaction, one round
+  /// trip) instead of N separate `insertHabit` calls — each of those was
+  /// its own SQLite commit, which is what made adding several habits at
+  /// once from the multi-select flow feel like N separate slow saves in a
+  /// row instead of one fast one.
+  Future<void> insertHabits(List<HabitsCompanion> entries) {
+    return batch((b) => b.insertAll(habits, entries));
+  }
+
   Future<bool> updateHabit(HabitsCompanion entry) {
     return update(habits).replace(entry);
   }

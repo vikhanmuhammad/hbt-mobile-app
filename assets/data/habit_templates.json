@@ -95,10 +95,7 @@
       "icon": "credit-card",
       "color": "#4A82B0",
       "habits": [
-        { "key": "track_expenses", "name": "Track expenses", "nameId": "Catat pengeluaran", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
-        { "key": "limit_daily_spending", "name": "Limit daily spending", "nameId": "Batasi pengeluaran harian", "icon": "receipt", "goalPeriod": "daily", "goalValue": 50000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" },
-        { "key": "save_money", "name": "Save money", "nameId": "Menabung", "icon": "piggy-bank", "goalPeriod": "weekly", "goalValue": 100000, "goalUnit": "rupiah", "timeRange": "anytime" },
-        { "key": "build_emergency_fund", "name": "Build an emergency fund", "nameId": "Bangun dana darurat", "icon": "sack-dollar", "goalPeriod": "monthly", "goalValue": 500000, "goalUnit": "rupiah", "timeRange": "anytime" }
+        { "key": "budget_tracker", "name": "Budget Tracker", "nameId": "Pelacak Anggaran", "icon": "credit-card", "goalPeriod": "daily", "goalValue": 50000, "goalValueWeekend": 100000, "goalUnit": "rupiah", "goalDirection": "atMost", "timeRange": "night" }
       ]
     },
     {

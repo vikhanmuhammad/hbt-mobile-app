@@ -3,13 +3,40 @@
          alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Lets reminders fire at the exact minute (user grants it in "Alarms &
+         reminders"); without it Android may delay them by up to an hour
+         (feedback 7, slide 46 & 48). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
+    <!-- Wajib di Android 13+ (API 33) supaya notifikasi (termasuk reminder
+         habit) bisa tampil sama sekali — tanpa ini, `requestNotificationsPermission()`
+         di NotificationService tidak pernah benar-benar bisa granted, dan
+         notifikasi gagal diam-diam tanpa error yang terlihat (feedback 6,
+         slide 29). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Profile photo upload (onboarding + Settings) — camera capture, and
+         legacy gallery access on API <33 (API 33+ uses image_picker's
+         system Photo Picker, which needs no runtime permission). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
+
     <!-- Point 10 — Health/Calendar/Alarm sync (opt-in via Settings). -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
     <uses-permission android:name="android.permission.health.WRITE_STEPS"/>
+    <!-- Workouts (walk/run/swim/cycle/yoga sessions) fill matching habits;
+         reading a workout also reads its distance and calories, so those
+         are needed too (feedback 8, slide 9). -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+    <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
-    <uses-permission android:name="android.permission.SET_ALARM"/>
+    <!-- Habit alarms ring full-screen over the lock screen with vibration
+         (feedback 8, slide 10). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="Daily Habits"
         android:name="${applicationName}"
@@ -21,6 +48,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:screenOrientation="portrait"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
@@ -43,6 +71,22 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Required by Health Connect so it can show its permissions-
+             rationale/"why does this app want access" screen — without this
+             alias, Health Connect's own permission request flow can fail or
+             behave inconsistently across devices/OS versions regardless of
+             what the app does, which matches "tried on 3 different devices,
+             none worked" (feedback 6, slide 28). -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".MainActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
         <!-- Diperlukan flutter_local_notifications untuk menjalankan reminder
              habit terjadwal (notifikasi lokal biasa via inexact alarm). -->
         <receiver android:exported="false"

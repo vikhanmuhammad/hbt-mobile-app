@@ -7,7 +7,6 @@ import '../../../providers/community_providers.dart';
 import '../../widgets/animations/fade_slide_in.dart';
 import '../../widgets/animations/staggered_entrance.dart';
 import '../../widgets/animations/tap_scale.dart';
-import '../../widgets/pill_button.dart';
 import '../../widgets/pro_feature_teaser.dart';
 import 'create_group_screen.dart';
 import 'group_detail_screen.dart';
@@ -26,6 +25,11 @@ class CommunityEntryScreen extends ConsumerWidget {
     final authAsync = ref.watch(authStateProvider);
     final user = authAsync.value;
     if (user == null) return const _CommunitySignInPrompt();
+
+    // Fire-and-forget: fans the local profile photo out to any groups the
+    // user is already in (see the provider's doc comment) — result isn't
+    // needed here, just needs to run once per session.
+    ref.watch(profilePhotoCommunitySyncProvider);
 
     return const _GroupListView();
   }
@@ -71,9 +75,10 @@ class _CommunityPreviewMock extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton(
+                    child: FilledButton.icon(
                       onPressed: null,
-                      child: Text(AppLocalizations.of(context)!.communityCreateGroup),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text(AppLocalizations.of(context)!.communityCreateGroup),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -228,21 +233,39 @@ class _GroupListView extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
+                    // Both buttons use the shared theme's button styles, but
+                    // Material 3's default ElevatedButton/OutlinedButton
+                    // still don't guarantee identical minimum heights on
+                    // their own — pinning an explicit height on both is what
+                    // actually forces them to render the same size.
                     Expanded(
-                      child: PrimaryPillButton(
-                        label: l10n.communityCreateGroup,
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
+                      child: SizedBox(
+                        height: 52,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            // Poppins' generous ascent leaves the glyphs
+                            // sitting low in their line box — nudge the
+                            // padding to actually land the label on center.
+                            padding: const EdgeInsets.fromLTRB(16, 13, 16, 19),
+                          ),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text(l10n.communityCreateGroup),
                         ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const JoinGroupScreen()),
+                      child: SizedBox(
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const JoinGroupScreen()),
+                          ),
+                          child: Text(l10n.communityJoinViaCode),
                         ),
-                        child: Text(l10n.communityJoinViaCode),
                       ),
                     ),
                   ],

@@ -56,6 +56,7 @@ class CommunityRepository {
     required String creatorUid,
     required String creatorDisplayName,
     String? creatorAvatarIcon,
+    String? creatorPhotoBase64,
   }) async {
     final groupRef = _groups.doc();
     final code = _generateInviteCode();
@@ -64,6 +65,7 @@ class CommunityRepository {
     final memberEntry = {
       'displayName': creatorDisplayName,
       'avatarIcon': creatorAvatarIcon,
+      'photoBase64': creatorPhotoBase64,
       'role': GroupRole.admin.name,
       'joinedAt': Timestamp.fromDate(now),
     };
@@ -99,6 +101,7 @@ class CommunityRepository {
           uid: creatorUid,
           displayName: creatorDisplayName,
           avatarIcon: creatorAvatarIcon,
+          photoBase64: creatorPhotoBase64,
           role: GroupRole.admin,
           joinedAt: now,
         ),
@@ -115,6 +118,7 @@ class CommunityRepository {
     required String uid,
     required String displayName,
     String? avatarIcon,
+    String? photoBase64,
   }) async {
     final inviteDoc = await _invites.doc(code.trim().toUpperCase()).get();
     if (!inviteDoc.exists) throw const InviteCodeNotFound();
@@ -133,6 +137,7 @@ class CommunityRepository {
       'members.$uid': {
         'displayName': displayName,
         'avatarIcon': avatarIcon,
+        'photoBase64': photoBase64,
         'role': GroupRole.member.name,
         'joinedAt': Timestamp.fromDate(DateTime.now()),
       },
@@ -140,6 +145,81 @@ class CommunityRepository {
     });
 
     return groupId;
+  }
+
+  /// Fans a changed profile photo out to every group the user belongs to —
+  /// there's no central `users/{uid}` profile doc that groups reference
+  /// (member data is denormalized per-group, matching `displayName`'s
+  /// existing pattern), so a photo change has to be pushed to each group's
+  /// `members.{uid}.photoBase64` individually. Called from Settings right
+  /// after a new photo is picked.
+  Future<void> updateMyPhotoAcrossGroups({
+    required String uid,
+    required String? photoBase64,
+  }) async {
+    final mine = await _groups.where('memberUids', arrayContains: uid).get();
+    if (mine.docs.isEmpty) return;
+    final batch = _firestore.batch();
+    for (final doc in mine.docs) {
+      batch.update(doc.reference, {'members.$uid.photoBase64': photoBase64});
+    }
+    await batch.commit();
+  }
+
+  /// Fans the local profile name out to every group the user belongs to —
+  /// same denormalized-per-group reasoning as [updateMyPhotoAcrossGroups].
+  /// Needed because `members.{uid}.displayName` is written once at
+  /// create/join time: without this, a member who joined before the app
+  /// started sourcing the name from the local profile (feedback 6, slide 24)
+  /// would keep showing their Google account/email name forever, and a later
+  /// rename in Settings would never reach Community either.
+  ///
+  /// feedback 7, slide 42: the slide-24 fix above only ever patched
+  /// `groups/{id}.members.{uid}.displayName` (what the Members tab reads).
+  /// Every Group Habit's `leaderboard/{uid}.displayName` is a SEPARATE
+  /// denormalized copy — written by `CommunitySyncService.syncHabit`/
+  /// `backfillOnLink`, not by this method — so a rename only reached the
+  /// Members tab; the Leaderboard tab kept showing the old (often
+  /// Google/email-sourced) name until the user's next tracked progress
+  /// happened to resync it, which is exactly what QA still saw. Now also
+  /// walks each group's `groupHabits` and repairs any existing
+  /// `leaderboard/{uid}` doc alongside the member entry.
+  Future<void> updateMyNameAcrossGroups({
+    required String uid,
+    required String displayName,
+  }) async {
+    final mine = await _groups.where('memberUids', arrayContains: uid).get();
+    if (mine.docs.isEmpty) return;
+    final batch = _firestore.batch();
+    var changed = 0;
+    for (final doc in mine.docs) {
+      final members = doc.data()['members'] as Map<String, dynamic>?;
+      final current = (members?[uid] as Map<String, dynamic>?)?['displayName'];
+      // Skip groups already carrying the right name so a session-start
+      // repair pass doesn't burn a write on every group every launch.
+      if (current != displayName) {
+        batch.update(doc.reference, {'members.$uid.displayName': displayName});
+        changed++;
+      }
+
+      // feedback 7, slide 42 — repair this uid's leaderboard entry (if any)
+      // in every Group Habit of this group. Existence is checked first
+      // (rather than a blind `update`) because most Group Habits in a group
+      // won't have a leaderboard entry for this particular uid at all (only
+      // the ones they've actually linked a local habit to), and `update()`
+      // on a missing doc throws.
+      final groupHabitsSnap = await doc.reference.collection('groupHabits').get();
+      for (final groupHabitDoc in groupHabitsSnap.docs) {
+        final entryRef = groupHabitDoc.reference.collection('leaderboard').doc(uid);
+        final entrySnap = await entryRef.get();
+        if (!entrySnap.exists) continue;
+        if (entrySnap.data()?['displayName'] == displayName) continue;
+        batch.update(entryRef, {'displayName': displayName});
+        changed++;
+      }
+    }
+    if (changed == 0) return;
+    await batch.commit();
   }
 
   Future<void> setMemberRole({
@@ -224,6 +304,7 @@ class CommunityRepository {
     required String goalPeriod,
     required String goalDirection,
   }) async {
+    if (goalValue < 1) goalValue = 1;
     final now = DateTime.now();
     final ref = _groups.doc(groupId).collection('groupHabits').doc();
     await ref.set({
@@ -336,7 +417,12 @@ class CommunityRepository {
         .collection('messages')
         .orderBy('sentAt', descending: true)
         .limit(limit)
-        .snapshots()
+        // Without this, the local-cache snapshot fired right after
+        // `sendMessage()`'s `.add()` (hasPendingWrites: true) never gets
+        // superseded by a fresh emission once the server confirms the
+        // write — the bubble would show "sending" forever until some
+        // unrelated data change happened to re-trigger the stream.
+        .snapshots(includeMetadataChanges: true)
         .map((snap) => snap.docs.map(_chatMessageFromDoc).toList());
   }
 
@@ -375,6 +461,7 @@ class CommunityRepository {
           uid: e.key,
           displayName: m['displayName'] as String? ?? '',
           avatarIcon: m['avatarIcon'] as String?,
+          photoBase64: m['photoBase64'] as String?,
           role: GroupRole.fromValue(m['role'] as String? ?? 'member'),
           joinedAt: (m['joinedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
@@ -424,6 +511,7 @@ class CommunityRepository {
       senderName: data['senderName'] as String? ?? '',
       text: data['text'] as String? ?? '',
       sentAt: (data['sentAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      pending: doc.metadata.hasPendingWrites,
     );
   }
 
