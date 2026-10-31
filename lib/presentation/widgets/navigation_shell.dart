@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../providers/community_providers.dart';
 import '../../providers/ui_state_providers.dart';
 import '../screens/add_habit/add_habit_flow_screen.dart';
 import '../screens/community/community_entry_screen.dart';
@@ -57,13 +58,16 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
   }
 
   // Community sits in the middle slot (index 2 of 5) so it's the centered
-  // destination in the bottom nav bar.
-  List<({IconData icon, String label})> _destinations(AppLocalizations l10n) => [
-        (icon: Icons.home_rounded, label: l10n.navHome),
-        (icon: Icons.bar_chart_rounded, label: l10n.navDashboard),
-        (icon: Icons.groups_rounded, label: l10n.navCommunity),
-        (icon: Icons.account_balance_wallet_rounded, label: l10n.navFinance),
-        (icon: Icons.settings_rounded, label: l10n.navSettings),
+  // destination in the bottom nav bar. `isPro` flags Finance/Community as
+  // Pro-only, so their nav entry can carry a small "PRO" badge for
+  // non-subscribers — those were previously indistinguishable from the free
+  // tabs until you actually tapped in and hit a paywall (feedback 7, slide 7).
+  List<({IconData icon, String label, bool isPro})> _destinations(AppLocalizations l10n) => [
+        (icon: Icons.home_rounded, label: l10n.navHome, isPro: false),
+        (icon: Icons.bar_chart_rounded, label: l10n.navDashboard, isPro: false),
+        (icon: Icons.groups_rounded, label: l10n.navCommunity, isPro: true),
+        (icon: Icons.account_balance_wallet_rounded, label: l10n.navFinance, isPro: true),
+        (icon: Icons.settings_rounded, label: l10n.navSettings, isPro: false),
       ];
 
   static final _screenBuilders = <Widget Function()>[
@@ -79,6 +83,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
     final l10n = AppLocalizations.of(context)!;
     final destinations = _destinations(l10n);
     final isWide = MediaQuery.sizeOf(context).width >= 900;
+    final isPro = ref.watch(isProProvider);
 
     final body = FadeTransition(
       opacity: CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
@@ -105,7 +110,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
                 destinations: [
                   for (final d in destinations)
                     NavigationRailDestination(
-                      icon: Icon(d.icon),
+                      icon: _NavIcon(icon: d.icon, showProBadge: d.isPro && !isPro),
                       label: FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(d.label, maxLines: 1),
@@ -132,6 +137,7 @@ class _NavigationShellState extends ConsumerState<NavigationShell>
         destinations: destinations,
         selectedIndex: _index,
         onDestinationSelected: _onDestinationSelected,
+        isPro: isPro,
       ),
       floatingActionButton: _index == 0 ? const _HomeFabRow() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -156,11 +162,13 @@ class _BottomNavBar extends StatelessWidget {
     required this.destinations,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    required this.isPro,
   });
 
-  final List<({IconData icon, String label})> destinations;
+  final List<({IconData icon, String label, bool isPro})> destinations;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final bool isPro;
 
   @override
   Widget build(BuildContext context) {
@@ -196,9 +204,10 @@ class _BottomNavBar extends StatelessWidget {
                               color: i == selectedIndex ? indicatorColor : null,
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Icon(
-                              destinations[i].icon,
+                            child: _NavIcon(
+                              icon: destinations[i].icon,
                               color: i == selectedIndex ? selectedColor : unselectedColor,
+                              showProBadge: destinations[i].isPro && !isPro,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -224,6 +233,50 @@ class _BottomNavBar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Nav icon with a small "PRO" dot badge overlaid on top when
+/// [showProBadge] is true — makes Finance/Community visibly Pro-gated
+/// straight from the nav bar/rail, instead of only finding out after
+/// tapping in and hitting a paywall (feedback 7, slide 7).
+class _NavIcon extends StatelessWidget {
+  const _NavIcon({required this.icon, this.color, required this.showProBadge});
+
+  final IconData icon;
+  final Color? color;
+  final bool showProBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconWidget = Icon(icon, color: color);
+    if (!showProBadge) return iconWidget;
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        iconWidget,
+        Positioned(
+          top: -4,
+          right: -8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: const Text(
+              'PRO',
+              style: TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -3,6 +3,11 @@
          alarm) terjadwal ulang otomatis setelah perangkat reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    <!-- Lets reminders fire at the exact minute (user grants it in "Alarms &
+         reminders"); without it Android may delay them by up to an hour
+         (feedback 7, slide 46 & 48). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
     <!-- Wajib di Android 13+ (API 33) supaya notifikasi (termasuk reminder
          habit) bisa tampil sama sekali — tanpa ini, `requestNotificationsPermission()`
          di NotificationService tidak pernah benar-benar bisa granted, dan
@@ -20,9 +25,18 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
     <uses-permission android:name="android.permission.health.WRITE_STEPS"/>
+    <!-- Workouts (walk/run/swim/cycle/yoga sessions) fill matching habits;
+         reading a workout also reads its distance and calories, so those
+         are needed too (feedback 8, slide 9). -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+    <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
-    <uses-permission android:name="android.permission.SET_ALARM"/>
+    <!-- Habit alarms ring full-screen over the lock screen with vibration
+         (feedback 8, slide 10). -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="Daily Habits"
         android:name="${applicationName}"

@@ -13,7 +13,9 @@ import '../data/repositories/profile_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/spending_breakdown_repository.dart';
 import '../data/repositories/stats_repository.dart';
+import '../services/calendar_alarm_service.dart';
 import '../services/notification_service.dart';
+import '../services/reminder_sync_coordinator.dart';
 
 part 'core_providers.g.dart';
 
@@ -76,4 +78,16 @@ SettingsRepository settingsRepository(Ref ref) {
 @riverpod
 ProfileRepository profileRepository(Ref ref) {
   return ProfileRepository(ref.watch(appDatabaseProvider));
+}
+
+/// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+/// Sync toggles (feedback 7, slide 46 & 48) — see
+/// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+@riverpod
+ReminderSyncCoordinator reminderSyncCoordinator(Ref ref) {
+  return ReminderSyncCoordinator(
+    notificationService: ref.watch(notificationServiceProvider),
+    calendarAlarmService: CalendarAlarmService(),
+    settingsRepository: ref.watch(settingsRepositoryProvider),
+  );
 }

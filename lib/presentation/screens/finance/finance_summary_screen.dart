@@ -7,6 +7,7 @@ import '../../../domain/date_utils.dart';
 import '../../../domain/format_utils.dart';
 import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
+import '../../../domain/models/enums.dart';
 import '../../../domain/models/finance_summary.dart';
 import '../../../domain/models/habit.dart';
 import '../../../domain/models/habit_with_progress.dart';
@@ -64,16 +65,6 @@ class FinanceSummaryScreen extends ConsumerWidget {
     final summaryAsync = ref.watch(
       financeSummaryForPeriodProvider(period, anchor),
     );
-    // "Total Saved" must always read as the running saved-so-far since the
-    // budget was set — from whichever day the budget habit started through
-    // today (clamped, never projected past today) — regardless of which
-    // Daily/Weekly/Monthly tab is active. Switching tabs re-slices
-    // totalExpense/totalBudget to a narrower window, which made "Total
-    // Saved" swing wildly instead of staying pinned to today's cumulative.
-    // Only navigating to a different month resets it.
-    final monthlySavedAsync = ref.watch(
-      financeMonthToDateSummaryProvider(DateTime(anchor.year, anchor.month)),
-    );
     // Status On-Track/Overspending diambil dari scope paling parah di antara
     // Daily/Weekly/Monthly, bukan cuma dari tab yang sedang dibuka — supaya
     // tidak pernah terjadi satu tab bilang "On Track" sementara tab lain
@@ -111,7 +102,16 @@ class FinanceSummaryScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => existingFinanceHabit == null
             ? _openAddSpendingLimitHabit(context, ref)
-            : openEditHabitFlow(context, existingFinanceHabit),
+            // Open the edit form pre-converted to whichever Daily/Weekly/
+            // Monthly tab is active here, not the habit's raw stored period
+            // — editing while on the Monthly tab used to always land on the
+            // habit's actual stored period (often Daily), which read as
+            // "wrong form opened" (feedback 7, slide 37).
+            : openEditHabitFlow(
+                context,
+                existingFinanceHabit,
+                initialGoalPeriodOverride: GoalPeriod.values.byName(period.name),
+              ),
         icon: Icon(
           existingFinanceHabit == null ? Icons.add_rounded : Icons.edit_rounded,
         ),
@@ -180,11 +180,10 @@ class FinanceSummaryScreen extends ConsumerWidget {
               ),
               data: (summary) {
                 if (!summary.hasData) return const _EmptyFinance();
-                // Falls back to the period summary's own totalSaved while
-                // the month summary is (re)loading, so the chip doesn't
-                // blank out momentarily on tab/anchor changes.
-                final totalSaved =
-                    monthlySavedAsync.value?.totalSaved ?? summary.totalSaved;
+                // Per active tab: that period's budget up to today minus
+                // its spending — e.g. on the 14th, Monthly only counts the
+                // 1st-14th, Daily only today (feedback 7, slide 28).
+                final totalSaved = summary.totalSaved;
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -209,7 +208,12 @@ class FinanceSummaryScreen extends ConsumerWidget {
                     ],
                     if (summary.dailyTrend.isNotEmpty) ...[
                       const SizedBox(height: 20),
-                      _SpendingTrendCard(summary: summary, period: period),
+                      // Keyed by `period` so switching Daily/Weekly/Monthly
+                      // remounts this card (fresh State -> `initState` runs
+                      // again) instead of reusing one State/AnimationController
+                      // across tabs, which only ever animated in for
+                      // whichever tab was active first (feedback 7, slide 38b).
+                      _SpendingTrendCard(key: ValueKey(period), summary: summary, period: period),
                     ],
                     const SizedBox(height: 20),
                     _HabitBreakdownCard(summary: summary, period: period, anchor: anchor),
@@ -477,10 +481,7 @@ class _TotalsSection extends StatelessWidget {
 
   final FinanceSummary summary;
 
-  /// Calendar month-to-date saved (budget minus expense from the 1st
-  /// through today) — always month-scoped regardless of the active
-  /// Daily/Weekly/Monthly tab. See the call site for why this isn't just
-  /// `summary.totalSaved`.
+  /// The active tab's budget up to today minus its spending.
   final int totalSaved;
 
   /// Status pace paling parah lintas Daily/Weekly/Monthly (lihat
@@ -740,7 +741,7 @@ class _StatChip extends StatelessWidget {
 }
 
 class _SpendingTrendCard extends StatefulWidget {
-  const _SpendingTrendCard({required this.summary, required this.period});
+  const _SpendingTrendCard({super.key, required this.summary, required this.period});
 
   final FinanceSummary summary;
   final FinancePeriod period;
@@ -751,8 +752,17 @@ class _SpendingTrendCard extends StatefulWidget {
 
 class _SpendingTrendCardState extends State<_SpendingTrendCard>
     with SingleTickerProviderStateMixin {
+  static const _chartHeight = 150.0;
+  static const _axisWidth = 40.0;
+
   late final AnimationController _controller;
   late final Animation<double> _grow;
+
+  /// Index (into `widget.summary.dailyTrend`) of the bar last tapped, so its
+  /// exact rupiah value can be read off instead of just eyeballed against
+  /// the axis — same pattern as the Dashboard trend chart's tap-to-reveal
+  /// (feedback 6, slide 15), now mirrored here too (feedback 7, slide 40).
+  int? _selectedIndex;
 
   @override
   void initState() {
@@ -760,6 +770,14 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
     // Same treatment as HabitCurveChart: start after the page transition has
     // settled, and slow enough (1600ms) to actually read as motion instead
     // of finishing before the bars are even visible.
+    //
+    // The Daily/Weekly/Monthly tabs all share this one widget type, so
+    // switching tabs used to just rebuild this same State (not remount it)
+    // — `initState` (and this animation) only ever ran once, for whichever
+    // tab happened to be selected first (Monthly, the default), leaving
+    // Daily/Weekly's bars appearing instantly with no entrance animation
+    // (feedback 7, slide 38b). The call site now keys this widget by
+    // `period` so each tab gets its own State/mount and this always runs.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1600),
@@ -768,6 +786,17 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _controller.forward();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant _SpendingTrendCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Navigating to a different day/week/month (same tab, so same State)
+    // brings in a whole new set of points — drop any tapped-bar selection
+    // from the old data instead of highlighting a now-unrelated index.
+    if (oldWidget.summary.dailyTrend != widget.summary.dailyTrend) {
+      _selectedIndex = null;
+    }
   }
 
   @override
@@ -784,18 +813,23 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
 
   /// Abbreviated Y-axis tick label so the axis column stays narrow even for
   /// large rupiah amounts — e.g. 1.500.000 -> "1,5jt", 250.000 -> "250rb".
+  ///
+  /// [value] is in stored units, so a cent-based currency is brought back to
+  /// whole units first (SGD 4500 cents -> "45").
   String _axisLabel(int value) {
-    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}jt';
-    if (value >= 1000) return '${(value / 1000).round()}rb';
-    return '$value';
+    final major = value / currencyMinorFactor(widget.summary.currencyPrefix);
+    if (major >= 1000000) return '${(major / 1000000).toStringAsFixed(major % 1000000 == 0 ? 0 : 1)}jt';
+    if (major >= 1000) return '${(major / 1000).round()}rb';
+    return major == major.roundToDouble() ? '${major.round()}' : major.toStringAsFixed(1).replaceAll('.', ',');
   }
 
-  /// X-axis label for one trend point — a single day number for day-bucketed
-  /// points, or a short date range for week-bucketed ones (Monthly tab).
-  String _pointLabel(FinanceDayPoint point) {
-    if (!point.isMultiDayBucket) return '${point.date.day}';
-    return '${point.date.day}-${point.bucketEndInclusive.day}';
-  }
+  /// X-axis label for one trend point — the day number (Daily), the week's
+  /// start date (Weekly, e.g. "28/9") or the month name (Monthly).
+  String _pointLabel(FinanceDayPoint point, AppLang lang) => switch (widget.period) {
+    FinancePeriod.daily => '${point.date.day}',
+    FinancePeriod.weekly => '${point.date.day}/${point.date.month}',
+    FinancePeriod.monthly => monthShortName(point.date.month, lang),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -827,21 +861,41 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                         style: theme.textTheme.bodySmall,
                       ),
                     )
-                  : Row(
+                  // Top padding leaves room for the tapped-value badge above
+                  // the tallest bar — it used to render above the scroll
+                  // view's edge and get clipped away (feedback 7, slide 40).
+                  : Padding(
+                    padding: const EdgeInsets.only(top: 28),
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Y-axis: max/mid/0 ticks aligned to the 150px-tall
-                        // bar area below (+ its bottom date-label row).
+                        // Y-axis: max/mid/0 ticks, each vertically centered
+                        // exactly on its corresponding gridline via
+                        // `_FinanceAxisTick` (`Positioned` + fractional
+                        // translation) instead of two independently laid-out
+                        // columns (labels via `spaceBetween` vs. the
+                        // gridlines below via their own `spaceBetween`) that
+                        // drifted apart whenever a label's own height
+                        // differed from the gridline it was meant to sit on
+                        // — same class of bug, same fix, as the Dashboard
+                        // chart's axis (feedback 6, slide 14; feedback 7,
+                        // slide 38a).
                         SizedBox(
-                          width: 40,
-                          height: 150,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                          width: _axisWidth,
+                          height: _chartHeight,
+                          child: Stack(
+                            // Top/bottom labels are centered on their
+                            // gridline, so half of each sits outside this box
+                            // — the default hard clip cut them in half.
+                            clipBehavior: Clip.none,
                             children: [
-                              Text(_axisLabel(maxValue), style: theme.textTheme.labelSmall),
-                              Text(_axisLabel(maxValue ~/ 2), style: theme.textTheme.labelSmall),
-                              Text('0', style: theme.textTheme.labelSmall),
+                              _FinanceAxisTick(text: _axisLabel(maxValue), topFraction: 0, chartHeight: _chartHeight),
+                              _FinanceAxisTick(
+                                text: _axisLabel(maxValue ~/ 2),
+                                topFraction: 0.5,
+                                chartHeight: _chartHeight,
+                              ),
+                              _FinanceAxisTick(text: '0', topFraction: 1, chartHeight: _chartHeight),
                             ],
                           ),
                         ),
@@ -873,7 +927,7 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                                       // Gridlines at the 0/50/100% ticks so bar
                                       // heights can be read against the Y-axis.
                                       SizedBox(
-                                        height: 150,
+                                        height: _chartHeight,
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: const [
@@ -887,47 +941,75 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                                         crossAxisAlignment: CrossAxisAlignment.end,
                                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                                         children: [
-                                          for (final point in points)
+                                          for (final (index, point) in points.indexed)
                                             Padding(
                                               padding: const EdgeInsets.symmetric(
                                                 horizontal: 4,
                                               ),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  SizedBox(
-                                                    height: 150,
-                                                    child: Align(
-                                                      alignment: Alignment.bottomCenter,
-                                                      child: FractionallySizedBox(
-                                                        heightFactor:
-                                                            ((point.totalExpense / maxValue)
-                                                                        .clamp(0.04, 1) *
-                                                                    _grow.value)
-                                                                .clamp(0.001, 1)
-                                                                .toDouble(),
-                                                        child: Container(
-                                                          width: 24,
-                                                          decoration: BoxDecoration(
-                                                            color: theme.colorScheme.primary,
-                                                            borderRadius:
-                                                                const BorderRadius.only(
-                                                                  topLeft: Radius.circular(4),
-                                                                  topRight: Radius.circular(
-                                                                    4,
-                                                                  ),
+                                              child: GestureDetector(
+                                                behavior: HitTestBehavior.opaque,
+                                                onTap: () => setState(
+                                                  () => _selectedIndex = _selectedIndex == index ? null : index,
+                                                ),
+                                                child: Column(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    SizedBox(
+                                                      height: _chartHeight,
+                                                      child: Stack(
+                                                        clipBehavior: Clip.none,
+                                                        alignment: Alignment.bottomCenter,
+                                                        children: [
+                                                          if (_selectedIndex == index)
+                                                            Positioned(
+                                                              bottom: _chartHeight *
+                                                                      ((point.totalExpense / maxValue)
+                                                                          .clamp(0.04, 1)) +
+                                                                  6,
+                                                              child: _FinanceValueBadge(
+                                                                text: formatCurrency(
+                                                                  point.totalExpense,
+                                                                  widget.summary.currencyPrefix,
                                                                 ),
+                                                                color: theme.colorScheme.primary,
+                                                              ),
+                                                            ),
+                                                          FractionallySizedBox(
+                                                            heightFactor:
+                                                                ((point.totalExpense / maxValue)
+                                                                            .clamp(0.04, 1) *
+                                                                        _grow.value)
+                                                                    .clamp(0.001, 1)
+                                                                    .toDouble(),
+                                                            child: Container(
+                                                              width: 24,
+                                                              decoration: BoxDecoration(
+                                                                color: theme.colorScheme.primary,
+                                                                borderRadius:
+                                                                    const BorderRadius.only(
+                                                                      topLeft: Radius.circular(4),
+                                                                      topRight: Radius.circular(
+                                                                        4,
+                                                                      ),
+                                                                    ),
+                                                              ),
+                                                            ),
                                                           ),
-                                                        ),
+                                                        ],
                                                       ),
                                                     ),
-                                                  ),
-                                                  const SizedBox(height: 6),
-                                                  Text(
-                                                    _pointLabel(point),
-                                                    style: theme.textTheme.labelSmall,
-                                                  ),
-                                                ],
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      _pointLabel(
+                                                        point,
+                                                        Localizations.localeOf(context).languageCode == 'id'
+                                                            ? AppLang.id
+                                                            : AppLang.en,
+                                                      ),
+                                                      style: theme.textTheme.labelSmall,
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                         ],
@@ -942,8 +1024,69 @@ class _SpendingTrendCardState extends State<_SpendingTrendCard>
                         ),
                       ],
                     ),
+                  ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One Y-axis label for [_SpendingTrendCard], vertically centered exactly on
+/// the gridline at [topFraction] of [chartHeight] — mirrors the Dashboard
+/// chart's `_AxisTick` (feedback 6, slide 14 / feedback 7, slide 38a).
+class _FinanceAxisTick extends StatelessWidget {
+  const _FinanceAxisTick({required this.text, required this.topFraction, required this.chartHeight});
+
+  final String text;
+  final double topFraction;
+  final double chartHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: chartHeight * topFraction,
+      right: 0,
+      left: 0,
+      child: FractionalTranslation(
+        translation: const Offset(0, -0.5),
+        child: Text(
+          text,
+          textAlign: TextAlign.right,
+          softWrap: false,
+          overflow: TextOverflow.visible,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill showing a tapped bar's exact rupiah value (feedback 7, slide
+/// 40) — floats just above that bar's current height, same pattern as the
+/// Dashboard chart's `_PercentBadge` (feedback 6, slide 15).
+class _FinanceValueBadge extends StatelessWidget {
+  const _FinanceValueBadge({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );

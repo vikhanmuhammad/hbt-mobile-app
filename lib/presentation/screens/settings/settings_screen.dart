@@ -398,12 +398,12 @@ class SettingsScreen extends ConsumerWidget {
     if (confirmed != true) return;
 
     final habitRepo = ref.read(habitRepositoryProvider);
-    final notif = ref.read(notificationServiceProvider);
+    final reminderSync = ref.read(reminderSyncCoordinatorProvider);
 
     final habits = await habitRepo.getAll();
     for (final h in habits) {
       try {
-        await notif.cancelForHabit(h.id);
+        await reminderSync.removeForHabit(h.id);
       } catch (_) {
         // Notification platform not available — proceed with data deletion.
       }

@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'domain/date_utils.dart';
 import 'domain/language.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'presentation/screens/alarm/alarm_ring_screen.dart';
 import 'presentation/screens/onboarding/onboarding_flow.dart';
 import 'presentation/screens/onboarding/returning_welcome_screen.dart';
 import 'presentation/screens/splash/motion_splash_screen.dart';
@@ -18,6 +19,9 @@ import 'presentation/theme/app_palettes.dart';
 import 'presentation/theme/app_theme.dart';
 import 'presentation/widgets/app_logo.dart';
 import 'presentation/widgets/pro_upgrade_celebration.dart';
+import 'services/health_steps_sync.dart';
+import 'services/notification_service.dart';
+import 'services/reminder_reschedule.dart';
 import 'providers/core_providers.dart';
 import 'providers/settings_providers.dart';
 import 'providers/ui_state_providers.dart';
@@ -32,13 +36,23 @@ Future<void> main() async {
   // bottom nav bar / rail breakpoint, card grids, charts) is only laid out
   // and tested for a portrait aspect ratio; landscape isn't a supported
   // layout so it's disabled outright rather than rendering broken.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
+  // Independent of each other, so run them in parallel instead of one after
+  // another — everything here delays Flutter's first frame (feedback 7,
+  // slide 4).
+  // Firebase's options are read from .env, so that one pair stays in order.
+  final prefsFuture = SharedPreferences.getInstance();
+  await Future.wait([
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]),
+    prefsFuture,
+    () async {
+      await dotenv.load(fileName: '.env');
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    }(),
   ]);
-  final prefs = await SharedPreferences.getInstance();
-  await dotenv.load(fileName: '.env');
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final prefs = await prefsFuture;
 
   runApp(
     ProviderScope(
@@ -47,6 +61,9 @@ Future<void> main() async {
     ),
   );
 }
+
+/// Root navigator — lets a ringing alarm open its screen from anywhere.
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class HabitTrackerApp extends ConsumerWidget {
   const HabitTrackerApp({super.key});
@@ -57,6 +74,7 @@ class HabitTrackerApp extends ConsumerWidget {
     final accent = ref.watch(activePaletteProvider).accent;
     final language = ref.watch(appLanguageProvider);
     return MaterialApp(
+      navigatorKey: _rootNavigatorKey,
       title: 'Daily Habits',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(accent: accent),
@@ -80,7 +98,7 @@ class HabitTrackerApp extends ConsumerWidget {
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 0.85,
         maxScaleFactor: 1.3,
-        child: _TodayResync(child: ProUpgradeCelebration(child: child!)),
+        child: _AlarmListener(child: _TodayResync(child: ProUpgradeCelebration(child: child!))),
       ),
       home: const _StartupGate(),
     );
@@ -131,6 +149,8 @@ class _TodayResyncState extends ConsumerState<_TodayResync> with WidgetsBindingO
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed) return;
+    unawaited(syncHealthSteps(ref));
+    unawaited(rescheduleRemindersIfNeeded(ref));
     final freshToday = today();
     if (isSameDay(freshToday, _lastKnownToday)) return;
     final staleToday = _lastKnownToday;
@@ -160,32 +180,161 @@ class _TodayResyncState extends ConsumerState<_TodayResync> with WidgetsBindingO
   Widget build(BuildContext context) => widget.child;
 }
 
+/// Opens [AlarmRingScreen] whenever a habit alarm is opened — tapped, or
+/// launched full-screen while the phone was locked (feedback 8, slide 10).
+class _AlarmListener extends StatefulWidget {
+  const _AlarmListener({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AlarmListener> createState() => _AlarmListenerState();
+}
+
+class _AlarmListenerState extends State<_AlarmListener> {
+  late final StreamSubscription<AlarmRing> _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscription = NotificationService.instance.alarmRings.listen((ring) {
+      _rootNavigatorKey.currentState?.push(
+        MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => AlarmRingScreen(ring: ring)),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 /// Video intro (`MotionSplashScreen`) sekali di awal, sebelum `AppBootstrap`
 /// mulai — begitu video selesai (atau gagal/dilewati lewat fallback timer di
 /// dalamnya), baru masuk ke alur init/splash yang sudah ada.
-class _StartupGate extends StatefulWidget {
+///
+/// Two changes vs. the original always-play-then-init version (feedback 7,
+/// slide 4 — startup delay was "still a problem" after a previous attempt):
+///  1. The video only ever plays on the device's first-ever launch
+///     (`SettingsRepository.motionSplashSeen`). It's a one-time brand
+///     moment, not something worth re-watching (and blocking startup on)
+///     every single open — every launch after the first skips straight to
+///     `AppBootstrap`.
+///  2. On every later launch `AppBootstrap`'s init work starts here,
+///     immediately, and the splash floor is much shorter.
+class _StartupGate extends ConsumerStatefulWidget {
   const _StartupGate();
 
   @override
-  State<_StartupGate> createState() => _StartupGateState();
+  ConsumerState<_StartupGate> createState() => _StartupGateState();
 }
 
-class _StartupGateState extends State<_StartupGate> {
-  bool _motionDone = false;
+class _StartupGateState extends ConsumerState<_StartupGate> {
+  late final bool _isFirstLaunch;
+  Future<void>? _bootstrapFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    _isFirstLaunch = !settingsRepo.motionSplashSeen;
+    if (_isFirstLaunch) {
+      unawaited(settingsRepo.setMotionSplashSeen(true));
+    } else {
+      _bootstrapFuture = runAppBootstrapInit(ref);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (!_motionDone) {
-      return MotionSplashScreen(onFinished: () => setState(() => _motionDone = true));
+    // First launch: bootstrap waits for the video, since it asks for the
+    // notification permission and that system dialog shouldn't pop up over
+    // the intro.
+    if (_bootstrapFuture == null) {
+      return MotionSplashScreen(
+        onFinished: () => setState(() {
+          _bootstrapFuture = runAppBootstrapInit(ref);
+        }),
+      );
     }
-    return const AppBootstrap();
+    // Returning users already know the app and don't need a fresh
+    // motivational quote every single time they open it — only first
+    // launch (which also just sat through the video above) gets the full
+    // reading-friendly duration.
+    final minDuration = _isFirstLaunch
+        ? const Duration(milliseconds: 4200)
+        : const Duration(milliseconds: 900);
+    return AppBootstrap(initFuture: _bootstrapFuture!, minDuration: minDuration);
   }
+}
+
+/// The actual bootstrap work — notification init, category/template
+/// seeding, dwibahasa backfill, profile stream warm-up. Started by
+/// `_StartupGate` (feedback 7, slide 4). No fixed minimum duration is
+/// awaited in here anymore — `AppBootstrap` applies that separately (see
+/// `AppBootstrap.minDuration`), varied by first-launch vs returning.
+Future<void> runAppBootstrapInit(WidgetRef ref) async {
+  try {
+    final notificationService = ref.read(notificationServiceProvider);
+    await notificationService.init();
+    await notificationService.requestPermissions();
+    unawaited(rescheduleRemindersIfNeeded(ref));
+  } catch (_) {
+    // Platform notifikasi tidak tersedia (mis. saat testing) — jangan
+    // blokir seeding & tampilan app karena ini.
+  }
+
+  final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
+  await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
+
+  // Backfill dwibahasa sekali-jalan (CLAUDE.md §Bahasa) — cocokkan
+  // habit/kategori bawaan lama (dari instalasi sebelum fitur ini ada) ke
+  // template, supaya title-nya terkunci & terisi nameId tanpa perlu
+  // migrasi data yang merusak. Dijaga flag supaya cuma jalan sekali.
+  final settingsRepo = ref.read(settingsRepositoryProvider);
+  if (!settingsRepo.templateBackfillDone) {
+    await ref.read(habitRepositoryProvider).backfillTemplateProvenance(templates);
+    await ref.read(categoryRepositoryProvider).backfillTemplateProvenance(templates);
+    await settingsRepo.setTemplateBackfillDone(true);
+  }
+
+  // Warm the profile stream (which `activePaletteProvider` derives the
+  // personalized accent color from) before the splash screen is dismissed
+  // — otherwise the splash's first frame(s) render with the default gold
+  // palette and only flash to the real personalized color once the
+  // stream's first snapshot arrives after the splash is already gone.
+  try {
+    await ref.read(userProfileStreamProvider.future).timeout(
+          const Duration(milliseconds: 1500),
+        );
+  } catch (_) {
+    // Stream didn't resolve in time or errored (e.g. brand-new user with
+    // no profile row yet) — fall back to the default palette, same as
+    // before this warm-up existed.
+  }
+  unawaited(syncHealthSteps(ref));
 }
 
 /// Menjalankan seeding kategori bawaan + inisialisasi notifikasi sebelum
 /// menentukan halaman awal (Onboarding vs Beranda). Lihat CLAUDE.md §5.
 class AppBootstrap extends ConsumerStatefulWidget {
-  const AppBootstrap({super.key});
+  const AppBootstrap({super.key, required this.initFuture, required this.minDuration});
+
+  /// The actual init work — started by `_StartupGate` (possibly while the
+  /// motion video was still playing), not by this widget, so it can run
+  /// concurrently with that video on first launch instead of only after it.
+  final Future<void> initFuture;
+
+  /// Floor on how long the splash screen stays up regardless of how fast
+  /// [initFuture] resolves — first launch gets long enough to read a
+  /// rotating quote, returning launches get just enough to not flash by
+  /// jarringly (feedback 7, slide 4).
+  final Duration minDuration;
 
   @override
   ConsumerState<AppBootstrap> createState() => _AppBootstrapState();
@@ -211,7 +360,10 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
   @override
   void initState() {
     super.initState();
-    _initFuture = _init();
+    // `widget.initFuture` is the real work, already started by
+    // `_StartupGate`; this just adds the minimum-splash-duration floor on
+    // top of whatever's left of it, same as before.
+    _initFuture = Future.wait([widget.initFuture, Future.delayed(widget.minDuration)]);
   }
 
   @override
@@ -229,67 +381,19 @@ class _AppBootstrapState extends ConsumerState<AppBootstrap> {
     }
   }
 
-  Future<void> _init() async {
-    // Seeding + notification init are usually near-instant, which used to
-    // make the splash screen (and its motivational quote) flash by too
-    // fast to notice. Enforce a minimum long enough to comfortably read a
-    // couple of the rotating quotes below.
-    final minDuration = Future.delayed(const Duration(milliseconds: 4200));
-
-    try {
-      final notificationService = ref.read(notificationServiceProvider);
-      await notificationService.init();
-      await notificationService.requestPermissions();
-    } catch (_) {
-      // Platform notifikasi tidak tersedia (mis. saat testing) — jangan
-      // blokir seeding & tampilan app karena ini.
-    }
-
-    final templates = await ref.read(habitTemplateRepositoryProvider).getAll();
-    await ref.read(categoryRepositoryProvider).seedDefaultCategories(templates);
-
-    // Backfill dwibahasa sekali-jalan (CLAUDE.md §Bahasa) — cocokkan
-    // habit/kategori bawaan lama (dari instalasi sebelum fitur ini ada) ke
-    // template, supaya title-nya terkunci & terisi nameId tanpa perlu
-    // migrasi data yang merusak. Dijaga flag supaya cuma jalan sekali.
-    final settingsRepo = ref.read(settingsRepositoryProvider);
-    if (!settingsRepo.templateBackfillDone) {
-      await ref.read(habitRepositoryProvider).backfillTemplateProvenance(templates);
-      await ref.read(categoryRepositoryProvider).backfillTemplateProvenance(templates);
-      await settingsRepo.setTemplateBackfillDone(true);
-    }
-
-    // Warm the profile stream (which `activePaletteProvider` derives the
-    // personalized accent color from) before the splash screen is dismissed
-    // — otherwise the splash's first frame(s) render with the default gold
-    // palette and only flash to the real personalized color once the
-    // stream's first snapshot arrives after the splash is already gone.
-    try {
-      await ref.read(userProfileStreamProvider.future).timeout(
-            const Duration(milliseconds: 1500),
-          );
-    } catch (_) {
-      // Stream didn't resolve in time or errored (e.g. brand-new user with
-      // no profile row yet) — fall back to the default palette, same as
-      // before this warm-up existed.
-    }
-
-    await minDuration;
-  }
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
       future: _initFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const _SplashScreen();
+          return _SplashScreen(minDuration: widget.minDuration);
         }
         // Deteksi user baru vs lama: keberadaan row UserProfile (CLAUDE.md v3
         // §4.2) — bukan flag SharedPreferences terpisah lagi.
         final profileAsync = ref.watch(userProfileStreamProvider);
         return profileAsync.when(
-          loading: () => const _SplashScreen(),
+          loading: () => _SplashScreen(minDuration: widget.minDuration),
           error: (e, st) => const OnboardingFlow(),
           data: (profile) => profile == null
               ? const OnboardingFlow()
@@ -316,7 +420,13 @@ const _splashQuotes = [
 ];
 
 class _SplashScreen extends StatefulWidget {
-  const _SplashScreen();
+  const _SplashScreen({required this.minDuration});
+
+  /// Matches `AppBootstrap.minDuration` (varies by first-launch vs
+  /// returning, feedback 7, slide 4) so the progress bar reaches a full
+  /// 100% right around when the splash screen is actually dismissed,
+  /// instead of just looping indeterminately or finishing early.
+  final Duration minDuration;
 
   @override
   State<_SplashScreen> createState() => _SplashScreenState();
@@ -337,12 +447,9 @@ class _SplashScreenState extends State<_SplashScreen> with TickerProviderStateMi
       if (!mounted) return;
       setState(() => _quoteIndex = (_quoteIndex + 1) % _splashQuotes.length);
     });
-    // Matches AppBootstrap's minDuration below so the bar reaches a full
-    // 100% right around when the splash screen is dismissed, instead of
-    // just looping indeterminately.
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4200),
+      duration: widget.minDuration,
     )..forward();
     _logoController = AnimationController(
       vsync: this,

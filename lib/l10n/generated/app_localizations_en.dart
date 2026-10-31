@@ -24,6 +24,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonEdit => 'Edit';
 
   @override
+  String get commonRetry => 'Retry';
+
+  @override
   String get settingsLanguage => 'Language';
 
   @override
@@ -165,6 +168,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String homeFailedToSaveProgress(String error) {
     return 'Failed to save progress: $error';
   }
+
+  @override
+  String get homeFutureDayLocked =>
+      'This day hasn\'t come yet — progress can be logged once it arrives.';
 
   @override
   String get homeNoHabitsScheduledYet => 'No habits scheduled yet';
@@ -1019,6 +1026,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can manage your subscription anytime through your App Store or Google Play account settings.';
 
   @override
+  String get faqQ9 =>
+      'I\'m a Pro subscriber — how do I invite friends to a Community group?';
+
+  @override
+  String get faqA9 =>
+      'Open a group from the Community tab, tap Share, and send the message with the invite code to your friend. They just enter that code via \"Join via Code\" in the Community tab (the message also has a download link if they don\'t have the app yet).';
+
+  @override
+  String get faqQ10 =>
+      'I\'m a Pro subscriber — how do I set or change my Budget Tracker spending limits?';
+
+  @override
+  String get faqA10 =>
+      'Open the Finance tab and tap \"Edit Spending Limit\". The form opens in whichever tab you\'re viewing (Daily/Weekly/Monthly), and the limit for the other periods adjusts automatically.';
+
+  @override
   String get usageTipsTitle => 'Usage Tips';
 
   @override
@@ -1102,7 +1125,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Pick the color theme you like best. This color is used for buttons, progress rings, and accents throughout the app.';
 
   @override
-  String get healthSyncStepsLabel => 'Sync steps from Health app';
+  String get healthSyncStepsLabel => 'Sync activity from Health app';
 
   @override
   String get healthSyncCalendarLabel => 'Sync reminders to Calendar';
@@ -1126,10 +1149,62 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get healthConnectNotInstalledMessage =>
-      'Syncing steps needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.';
+      'Syncing activity needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.';
 
   @override
   String get healthConnectInstallButton => 'Install Health Connect';
+
+  @override
+  String get healthSyncNow => 'Sync now';
+
+  @override
+  String healthSyncLastSynced(String time) {
+    return 'Last synced $time';
+  }
+
+  @override
+  String get healthSyncNeverSynced => 'Not synced yet';
+
+  @override
+  String healthSyncResultUpdated(int count) {
+    return 'Health data synced — $count habit(s) updated.';
+  }
+
+  @override
+  String get healthSyncResultUpToDate =>
+      'Health data synced — your habits are already up to date.';
+
+  @override
+  String get healthSyncProblemTitle => 'Health sync couldn\'t fill your habits';
+
+  @override
+  String get healthSyncResultNoData =>
+      'No steps or workouts were found for the last 7 days. Health Connect only has data when an app that records it — e.g. Google Fit, Samsung Health, Mi Fitness or Fitbit — is connected to Health Connect and syncing. Connect one in Health Connect, then tap Sync now.';
+
+  @override
+  String get healthSyncResultNoHabits =>
+      'None of your habits can be filled from health data yet. Health sync fills habits measured in steps, plus walk, run, swim, cycling, yoga/stretch and workout habits.';
+
+  @override
+  String get healthSyncResultNoPermission =>
+      'Daily Habits can\'t read your health data. Tap Grant access and allow Steps and Exercise for Daily Habits.';
+
+  @override
+  String get healthSyncResultFailed =>
+      'Health sync failed. Make sure Health Connect is up to date, then tap Sync now again.';
+
+  @override
+  String get healthSyncGrantAccess => 'Grant access';
+
+  @override
+  String get healthSyncAlarmEnabled =>
+      'Reminders will now ring like an alarm, with Snooze and Dismiss.';
+
+  @override
+  String get alarmSnooze => 'Snooze 10 min';
+
+  @override
+  String get alarmDismiss => 'Dismiss';
 
   @override
   String get iconPickerChooseIcon => 'Choose Icon';
@@ -1184,7 +1259,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickProgressMarkAchieved => 'Mark Achieved';
 
   @override
-  String get quickProgressEntryModeDirect => 'Enter total';
+  String quickProgressRecordedToday(String amount) {
+    return 'Recorded today: $amount';
+  }
+
+  @override
+  String get quickProgressEntryModeDirect => 'Quick entry';
 
   @override
   String get quickProgressEntryModeBreakdown => 'Break down by category';

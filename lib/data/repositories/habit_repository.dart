@@ -184,6 +184,13 @@ class HabitRepository {
   Future<void> setSortOrder(int habitId, int sortOrder) =>
       _db.habitDao.setSortOrder(habitId, sortOrder);
 
+  /// Rescales every stored amount of [habitId] (logs + spending breakdown)
+  /// by [multiplier]/[divisor] — used when a Budget Tracker switches between
+  /// IDR (whole rupiah) and a cent-based currency, so amounts keep their
+  /// face value (see `currencyHasDecimals`).
+  Future<void> rescaleAmounts(int habitId, {required int multiplier, required int divisor}) =>
+      _db.rescaleHabitAmounts(habitId, multiplier: multiplier, divisor: divisor);
+
   Future<void> deleteHabit(int habitId) async {
     await _db.habitLogDao.deleteLogsForHabit(habitId);
     await _db.habitDao.deleteHabit(habitId);

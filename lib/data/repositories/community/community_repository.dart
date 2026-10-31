@@ -173,6 +173,17 @@ class CommunityRepository {
   /// started sourcing the name from the local profile (feedback 6, slide 24)
   /// would keep showing their Google account/email name forever, and a later
   /// rename in Settings would never reach Community either.
+  ///
+  /// feedback 7, slide 42: the slide-24 fix above only ever patched
+  /// `groups/{id}.members.{uid}.displayName` (what the Members tab reads).
+  /// Every Group Habit's `leaderboard/{uid}.displayName` is a SEPARATE
+  /// denormalized copy — written by `CommunitySyncService.syncHabit`/
+  /// `backfillOnLink`, not by this method — so a rename only reached the
+  /// Members tab; the Leaderboard tab kept showing the old (often
+  /// Google/email-sourced) name until the user's next tracked progress
+  /// happened to resync it, which is exactly what QA still saw. Now also
+  /// walks each group's `groupHabits` and repairs any existing
+  /// `leaderboard/{uid}` doc alongside the member entry.
   Future<void> updateMyNameAcrossGroups({
     required String uid,
     required String displayName,
@@ -186,9 +197,26 @@ class CommunityRepository {
       final current = (members?[uid] as Map<String, dynamic>?)?['displayName'];
       // Skip groups already carrying the right name so a session-start
       // repair pass doesn't burn a write on every group every launch.
-      if (current == displayName) continue;
-      batch.update(doc.reference, {'members.$uid.displayName': displayName});
-      changed++;
+      if (current != displayName) {
+        batch.update(doc.reference, {'members.$uid.displayName': displayName});
+        changed++;
+      }
+
+      // feedback 7, slide 42 — repair this uid's leaderboard entry (if any)
+      // in every Group Habit of this group. Existence is checked first
+      // (rather than a blind `update`) because most Group Habits in a group
+      // won't have a leaderboard entry for this particular uid at all (only
+      // the ones they've actually linked a local habit to), and `update()`
+      // on a missing doc throws.
+      final groupHabitsSnap = await doc.reference.collection('groupHabits').get();
+      for (final groupHabitDoc in groupHabitsSnap.docs) {
+        final entryRef = groupHabitDoc.reference.collection('leaderboard').doc(uid);
+        final entrySnap = await entryRef.get();
+        if (!entrySnap.exists) continue;
+        if (entrySnap.data()?['displayName'] == displayName) continue;
+        batch.update(entryRef, {'displayName': displayName});
+        changed++;
+      }
     }
     if (changed == 0) return;
     await batch.commit();
@@ -276,6 +304,7 @@ class CommunityRepository {
     required String goalPeriod,
     required String goalDirection,
   }) async {
+    if (goalValue < 1) goalValue = 1;
     final now = DateTime.now();
     final ref = _groups.doc(groupId).collection('groupHabits').doc();
     await ref.set({

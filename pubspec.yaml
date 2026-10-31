@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.2+14
+version: 1.1.3+15
 
 environment:
   sdk: ^3.12.2
@@ -73,6 +73,12 @@ dependencies:
   image: ^4.3.0
   video_player: ^2.10.0
   fl_chart: ^1.1.1
+  # `timezone`'s tz.local defaults to UTC until something tells it the
+  # device's actual IANA timezone name — flutter_timezone is that lookup
+  # (feedback 7, slide 46/48: reminders scheduled without this drift by the
+  # device's UTC offset instead of firing at the wall-clock time the user
+  # picked).
+  flutter_timezone: ^4.1.0
 
 dependency_overrides:
   # device_calendar 4.x's own pubspec pins timezone ^0.9.0, which conflicts

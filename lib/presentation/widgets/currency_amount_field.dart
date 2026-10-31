@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../domain/format_utils.dart';
 import 'thousands_input_formatter.dart';
 
 /// Amount input for Budget Tracker spending fields — one cohesive bordered
@@ -7,7 +8,10 @@ import 'thousands_input_formatter.dart';
 /// via `prefixIcon` (not `InputDecoration.prefixText`, whose color/style
 /// this app's theme was making effectively invisible), so it's guaranteed
 /// visible regardless of the surrounding theme. Live thousand-separator
-/// formatting, no +/- stepper (per Budget Tracker spec).
+/// formatting, no +/- stepper (per Budget Tracker spec). Cent-based
+/// currencies (anything but IDR) also accept a decimal part, e.g. SGD 5,50;
+/// [onChanged] always reports the amount in the currency's smallest unit
+/// (see `currencyHasDecimals`).
 class CurrencyAmountField extends StatelessWidget {
   const CurrencyAmountField({
     super.key,
@@ -36,11 +40,12 @@ class CurrencyAmountField extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: borderColor, width: 1.5),
     );
+    final decimalDigits = currencyHasDecimals(currencyPrefix) ? 2 : 0;
     final field = TextField(
       controller: controller,
-      keyboardType: TextInputType.number,
+      keyboardType: TextInputType.numberWithOptions(decimal: decimalDigits > 0),
       style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurface),
-      inputFormatters: [ThousandsInputFormatter()],
+      inputFormatters: [ThousandsInputFormatter(decimalDigits: decimalDigits)],
       decoration: InputDecoration(
         isDense: true,
         filled: true,
@@ -64,7 +69,7 @@ class CurrencyAmountField extends StatelessWidget {
           ),
         ),
       ),
-      onChanged: (text) => onChanged(ThousandsInputFormatter.parse(text)),
+      onChanged: (text) => onChanged(ThousandsInputFormatter.parse(text, decimalDigits: decimalDigits)),
     );
     if (width == null) return field;
     // Scale the fixed inline width with the system text-scale setting (the

@@ -40,7 +40,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -158,8 +158,43 @@ class AppDatabase extends _$AppDatabase {
               "WHERE template_key = 'budget_tracker' AND name = 'Spending Money'",
             );
           }
+          if (from < 14) {
+            // v14: amounts in a cent-based currency (USD/SGD/MYR/EUR) are
+            // now stored in cents so they can have decimals, e.g. SGD 5,50
+            // (feedback 8, slide 8). Existing ones were whole units —
+            // multiplied by 100 so they keep their face value. IDR (and a
+            // null currency, which means IDR) is unchanged.
+            const nonIdr = "SELECT id FROM habits WHERE goal_unit = 'rupiah' "
+                "AND currency IS NOT NULL AND currency <> 'IDR'";
+            await customStatement(
+              'UPDATE habit_logs SET progress_value = progress_value * 100 WHERE habit_id IN ($nonIdr)',
+            );
+            await customStatement(
+              'UPDATE habit_spending_breakdowns SET amount = amount * 100 WHERE habit_id IN ($nonIdr)',
+            );
+            await customStatement(
+              "UPDATE habits SET goal_value = goal_value * 100, goal_value_weekend = goal_value_weekend * 100 "
+              "WHERE goal_unit = 'rupiah' AND currency IS NOT NULL AND currency <> 'IDR'",
+            );
+          }
         },
       );
+
+  /// See `HabitRepository.rescaleAmounts`.
+  Future<void> rescaleHabitAmounts(int habitId, {required int multiplier, required int divisor}) {
+    return transaction(() async {
+      await customUpdate(
+        'UPDATE habit_logs SET progress_value = CAST(ROUND(progress_value * ? / ?) AS INTEGER) WHERE habit_id = ?',
+        variables: [Variable.withReal(multiplier.toDouble()), Variable.withInt(divisor), Variable.withInt(habitId)],
+        updates: {habitLogs},
+      );
+      await customUpdate(
+        'UPDATE habit_spending_breakdowns SET amount = CAST(ROUND(amount * ? / ?) AS INTEGER) WHERE habit_id = ?',
+        variables: [Variable.withReal(multiplier.toDouble()), Variable.withInt(divisor), Variable.withInt(habitId)],
+        updates: {habitSpendingBreakdowns},
+      );
+    });
+  }
 
   /// Hapus semua kategori, habit, riwayat progress, profil, dan jawaban
   /// kuesioner — dipakai untuk "Lihat ulang alur onboarding (demo)" di

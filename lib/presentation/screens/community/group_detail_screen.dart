@@ -131,15 +131,29 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
   /// Website tempat orang yang belum punya app bisa download (feedback 6,
   /// slide 26/31) — bukan deep link (app tidak kontrol domain ini, jadi
   /// tidak bisa auto-buka app/auto-join). Klik link ini selalu membuka
-  /// browser ke website tsb; join yang sebenarnya tetap lewat Invite Code
-  /// (lihat `_shareGroupMessage`), yang harus di-input manual user lewat
-  /// alur "Join via Code" di dalam app.
+  /// browser ke website tsb; join yang sebenarnya tetap lewat Invite Code,
+  /// yang harus di-input manual user lewat alur "Join via Code" di dalam
+  /// app — see [_shareGroup]'s doc comment for why there's no separate
+  /// "Share Link" option anymore.
   static const _downloadLink = 'https://nindaferdailyhabits.com';
 
-  /// Join-by-link is a Pro perk (see `showProRequiredDialog` gate below) —
-  /// menyertakan link download DAN invite code, supaya penerima yang belum
-  /// punya app tahu ke mana harus download, lalu bisa join manual pakai
-  /// code begitu app terpasang.
+  /// feedback 7, slide 44: there used to be a Pro-gated "Share Link" option
+  /// here alongside "Share Code". It never actually shared a clickable
+  /// invite link (e.g. `https://habittracker.app/join?code=...`) that could
+  /// open the app and auto-join — that needs Android App Links / iOS
+  /// Universal Links, which needs a domain the app controls plus
+  /// AndroidManifest `intent-filter`/iOS `associated-domains` entries and
+  /// Console-side host verification (see `AndroidManifest.xml`/
+  /// `Info.plist` — neither is configured, and `pubspec.yaml` has no
+  /// `app_links`/`uni_links` package either). It just shared this same text
+  /// message, so the two options were functionally identical except one
+  /// was needlessly Pro-gated and labelled in a way that implied tap-to-join
+  /// worked. Per QA feedback 7 slide 44, real deep-linking is out of scope
+  /// for now (needs the nindaferdailyhabits.com site + platform console
+  /// config that can't be verified without a live domain/device), so the
+  /// link option is removed entirely and only Code sharing remains — code
+  /// entry via "Join via Code" is the one join path that's guaranteed to
+  /// work everywhere.
   String _shareGroupMessage(bool indonesian) => indonesian
       ? 'Yuk gabung grup "${widget.group.name}" di Daily Habits! '
           'Belum punya app-nya? Download di $_downloadLink lalu masukkan kode undangan: ${widget.group.inviteCode}'
@@ -149,56 +163,12 @@ class _GroupDetailContentState extends ConsumerState<_GroupDetailContent> with S
   Future<void> _shareGroup() async {
     final lang = ref.read(appLanguageProvider);
     final indonesian = lang == AppLang.id;
-    final isPro = ref.read(isProProvider);
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(isPro ? Icons.link_rounded : Icons.lock_rounded),
-              title: Text(indonesian ? 'Bagikan Link' : 'Share Link'),
-              subtitle: isPro
-                  ? null
-                  : Text(indonesian ? 'Fitur Pro' : 'Pro feature'),
-              onTap: () => Navigator.of(context).pop('link'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.tag_rounded),
-              title: Text(indonesian ? 'Bagikan Kode' : 'Share Code'),
-              onTap: () => Navigator.of(context).pop('code'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (choice == null || !mounted) return;
-
-    if (choice == 'link') {
-      if (!isPro) {
-        await showProRequiredDialog(
-          context,
-          message: indonesian
-              ? 'Bagikan tautan undangan agar orang lain bisa langsung bergabung dengan sekali ketuk.'
-              : 'Share an invite link so others can join with a single tap.',
-        );
-        return;
-      }
-      await SharePlus.instance.share(
-        ShareParams(text: _shareGroupMessage(indonesian), subject: widget.group.name),
-      );
-      return;
-    }
-
+    // feedback 7, slide 44 — single share action now (code + download link
+    // as text); see the doc comment on [_shareGroupMessage] for why the
+    // separate "Share Link" option was removed instead of trying to make it
+    // a real clickable deep link.
     await SharePlus.instance.share(
-      ShareParams(
-        text: indonesian
-            ? 'Gabung grup "${widget.group.name}" pakai kode: ${widget.group.inviteCode}'
-            : 'Join "${widget.group.name}" using code: ${widget.group.inviteCode}',
-        subject: widget.group.name,
-      ),
+      ShareParams(text: _shareGroupMessage(indonesian), subject: widget.group.name),
     );
   }
 
@@ -1372,7 +1342,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
 
   final goalPeriod =
       groupHabit.goalPeriod != null ? GoalPeriod.fromValue(groupHabit.goalPeriod!) : GoalPeriod.daily;
-  final goalValue = groupHabit.goalValue ?? 1;
+  final goalValue = (groupHabit.goalValue ?? 1) < 1 ? 1 : groupHabit.goalValue!;
   final goalDirection = groupHabit.goalDirection != null
       ? GoalDirection.fromValue(groupHabit.goalDirection!)
       : GoalDirection.atLeast;
@@ -1426,6 +1396,15 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
   if (confirmed != true) return;
 
   try {
+    // Starts today for a first-time adopt; a re-adopt (history backed up
+    // from earlier) starts at its oldest restored log instead — never at the
+    // Group Habit's own `createdAt`, which made it show up on days before
+    // the user ever joined (feedback 7, slide 18).
+    final earliestBackup =
+        await backupRepository.earliestLogDate(uid: uid, groupHabitId: groupHabit.id);
+    final todayDate = date_utils.today();
+    final startDate =
+        earliestBackup != null && earliestBackup.isBefore(todayDate) ? earliestBackup : todayDate;
     final habitId = await habitRepository.createHabit(
       categoryId: guessedCategoryId,
       name: groupHabit.name,
@@ -1438,10 +1417,7 @@ Future<void> adoptGroupHabit(BuildContext context, WidgetRef ref, GroupHabit gro
       taskDays: const [allDaysKey],
       timeRange: TimeRange.anytime,
       reminderEnabled: false,
-      // Backdated to when the Group Habit was first published, not
-      // today — so reconnecting after an uninstall doesn't hide the
-      // habit from every day before the reconnect.
-      startDate: groupHabit.createdAt,
+      startDate: startDate,
     );
     final linkId = await linkRepository.link(
       habitId: habitId,

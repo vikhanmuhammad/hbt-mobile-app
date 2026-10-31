@@ -28,7 +28,10 @@ domain.Habit mapHabit(db.Habit row) => domain.Habit(
       description: row.description,
       icon: row.icon,
       goalPeriod: GoalPeriod.fromValue(row.goalPeriod),
-      goalValue: row.goalValue,
+      // A target of 0 is never meaningful (shows "Target 0x" and counts as
+      // done with no progress). Older rows — e.g. adopted from a Community
+      // group habit saved with 0 — are floored here (feedback 7, slide 19).
+      goalValue: row.goalValue < 1 ? 1 : row.goalValue,
       goalValueWeekend: row.goalValueWeekend,
       goalUnit: row.goalUnit,
       goalDirection: GoalDirection.fromValue(row.goalDirection),

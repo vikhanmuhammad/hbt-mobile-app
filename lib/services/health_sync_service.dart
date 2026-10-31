@@ -1,18 +1,42 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:health/health.dart';
 
+/// One exercise session read from the phone's Health app.
+typedef HealthWorkout = ({
+  HealthWorkoutActivityType type,
+  DateTime start,
+  DateTime end,
+  int? distanceMeters,
+});
+
 /// Wraps the `health` package (HealthKit on iOS, Health Connect on Android)
-/// for step-count read/write — point 10. All calls are best-effort: a
-/// device without Health/Health Connect installed, or a user who denies the
-/// permission prompt, should degrade to "sync unavailable" rather than
-/// crash the app, so every method catches and rethrows as a plain bool/int
-/// result instead of leaking platform-specific exceptions to the UI layer.
+/// for step counts and exercise sessions — point 10. All calls are
+/// best-effort: a device without Health/Health Connect installed, or a user
+/// who denies the permission prompt, should degrade to "sync unavailable"
+/// rather than crash the app, so every method catches and returns a plain
+/// bool/null result instead of leaking platform-specific exceptions to the
+/// UI layer.
 class HealthSyncService {
   HealthSyncService() : _health = Health();
 
   final Health _health;
 
-  static final _stepsType = [HealthDataType.STEPS];
+  /// Steps (read+write) plus workouts. On Android reading a workout also
+  /// reads its distance and calories, which Health Connect guards with their
+  /// own permissions, so those are requested with it.
+  static List<HealthDataType> get _types => [
+        HealthDataType.STEPS,
+        HealthDataType.WORKOUT,
+        if (Platform.isAndroid) HealthDataType.DISTANCE_DELTA,
+        if (Platform.isAndroid) HealthDataType.TOTAL_CALORIES_BURNED,
+      ];
+
+  static List<HealthDataAccess> get _access => [
+        HealthDataAccess.READ_WRITE,
+        for (var i = 1; i < _types.length; i++) HealthDataAccess.READ,
+      ];
 
   /// Android only (always true on iOS): whether the Health Connect app is
   /// installed. `requestAuthorization` throws `UnsupportedError` on Android
@@ -24,39 +48,66 @@ class HealthSyncService {
   /// on iOS.
   Future<void> installHealthConnect() => _health.installHealthConnect();
 
-  /// Requests read+write access for step count. Returns false if the
-  /// platform has no Health provider, the user denies, or any other
-  /// platform error occurs — callers should show a "couldn't connect"
-  /// message rather than assume success.
+  /// Requests access to steps and workouts. Returns false if the platform
+  /// has no Health provider, the user denies, or any other platform error
+  /// occurs — callers should show a "couldn't connect" message rather than
+  /// assume success.
   Future<bool> requestPermissions() async {
     try {
       await _health.configure();
-      final granted = await _health.requestAuthorization(
-        _stepsType,
-        permissions: [HealthDataAccess.READ_WRITE],
-      );
-      return granted;
+      return await _health.requestAuthorization(_types, permissions: _access);
     } catch (e, st) {
       // Was a bare `catch (_) { return false; }` — every failure was
       // completely silent, which is why 3 devices could all "just not work"
       // with zero error trail to debug from (feedback 6, slide 28).
-      // `debugPrint` only, not a crash reporter call: this runs on every
-      // permission denial too (a normal, expected outcome), not just real
-      // errors.
       debugPrint('HealthSyncService.requestPermissions failed: $e\n$st');
       return false;
     }
   }
 
-  /// Total steps recorded today, or null if unavailable/denied.
-  Future<int?> getStepsToday() async {
+  /// Whether every permission sync needs is granted. Android only — iOS
+  /// never reveals read access, so null there means "unknown".
+  Future<bool?> hasPermissions() async {
     try {
-      final now = DateTime.now();
-      final midnight = DateTime(now.year, now.month, now.day);
-      final steps = await _health.getTotalStepsInInterval(midnight, now);
-      return steps;
+      await _health.configure();
+      return await _health.hasPermissions(_types, permissions: _access);
     } catch (e, st) {
-      debugPrint('HealthSyncService.getStepsToday failed: $e\n$st');
+      debugPrint('HealthSyncService.hasPermissions failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Total steps between [start] and [end], or null if unavailable/denied.
+  Future<int?> getSteps(DateTime start, DateTime end) async {
+    try {
+      return await _health.getTotalStepsInInterval(start, end);
+    } catch (e, st) {
+      debugPrint('HealthSyncService.getSteps failed: $e\n$st');
+      return null;
+    }
+  }
+
+  /// Exercise sessions that started between [start] and [end], or null if
+  /// unavailable/denied.
+  Future<List<HealthWorkout>?> getWorkouts(DateTime start, DateTime end) async {
+    try {
+      final points = await _health.getHealthDataFromTypes(
+        types: const [HealthDataType.WORKOUT],
+        startTime: start,
+        endTime: end,
+      );
+      return [
+        for (final p in points)
+          if (p.value is WorkoutHealthValue)
+            (
+              type: (p.value as WorkoutHealthValue).workoutActivityType,
+              start: p.dateFrom,
+              end: p.dateTo,
+              distanceMeters: (p.value as WorkoutHealthValue).totalDistance,
+            ),
+      ];
+    } catch (e, st) {
+      debugPrint('HealthSyncService.getWorkouts failed: $e\n$st');
       return null;
     }
   }

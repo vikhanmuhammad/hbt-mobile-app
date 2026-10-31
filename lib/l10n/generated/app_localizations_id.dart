@@ -24,6 +24,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get commonEdit => 'Ubah';
 
   @override
+  String get commonRetry => 'Coba Lagi';
+
+  @override
   String get settingsLanguage => 'Bahasa';
 
   @override
@@ -166,6 +169,10 @@ class AppLocalizationsId extends AppLocalizations {
   String homeFailedToSaveProgress(String error) {
     return 'Gagal menyimpan progres: $error';
   }
+
+  @override
+  String get homeFutureDayLocked =>
+      'Tanggal ini belum tiba — progres baru bisa diisi saat harinya datang.';
 
   @override
   String get homeNoHabitsScheduledYet => 'Belum ada habit terjadwal';
@@ -1024,6 +1031,22 @@ class AppLocalizationsId extends AppLocalizations {
       'Anda bisa mengelola langganan kapan saja lewat pengaturan akun App Store atau Google Play.';
 
   @override
+  String get faqQ9 =>
+      'Saya pengguna Pro — bagaimana cara mengundang teman ke grup Community?';
+
+  @override
+  String get faqA9 =>
+      'Buka grup dari tab Community, ketuk tombol Bagikan, lalu kirim pesan berisi kode undangan ke temanmu. Temanmu cukup memasukkan kode itu lewat \"Gabung via Kode\" di tab Community (kalau belum punya aplikasinya, pesan itu juga berisi link untuk mengunduh).';
+
+  @override
+  String get faqQ10 =>
+      'Saya pengguna Pro — bagaimana cara mengatur atau mengubah batas pengeluaran Budget Tracker?';
+
+  @override
+  String get faqA10 =>
+      'Buka tab Keuangan lalu ketuk \"Ubah Batas Pengeluaran\". Form akan terbuka sesuai tab yang sedang dilihat (Harian/Mingguan/Bulanan), dan batas di periode lain menyesuaikan otomatis.';
+
+  @override
   String get usageTipsTitle => 'Tips Penggunaan';
 
   @override
@@ -1107,7 +1130,8 @@ class AppLocalizationsId extends AppLocalizations {
       'Pilih tema warna yang paling Anda suka. Warna ini dipakai untuk tombol, cincin progres, dan aksen di seluruh aplikasi.';
 
   @override
-  String get healthSyncStepsLabel => 'Sinkronkan langkah dari aplikasi Health';
+  String get healthSyncStepsLabel =>
+      'Sinkronkan aktivitas dari aplikasi Health';
 
   @override
   String get healthSyncCalendarLabel => 'Sinkronkan pengingat ke Kalender';
@@ -1131,10 +1155,63 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get healthConnectNotInstalledMessage =>
-      'Sinkronisasi langkah membutuhkan aplikasi Health Connect, yang belum terpasang di perangkat ini. Pasang dulu, lalu coba lagi.';
+      'Sinkronisasi aktivitas membutuhkan aplikasi Health Connect, yang belum terpasang di perangkat ini. Pasang dulu, lalu coba lagi.';
 
   @override
   String get healthConnectInstallButton => 'Pasang Health Connect';
+
+  @override
+  String get healthSyncNow => 'Sinkronkan sekarang';
+
+  @override
+  String healthSyncLastSynced(String time) {
+    return 'Terakhir disinkronkan $time';
+  }
+
+  @override
+  String get healthSyncNeverSynced => 'Belum pernah disinkronkan';
+
+  @override
+  String healthSyncResultUpdated(int count) {
+    return 'Data kesehatan tersinkron — $count habit diperbarui.';
+  }
+
+  @override
+  String get healthSyncResultUpToDate =>
+      'Data kesehatan tersinkron — habit kamu sudah terbaru.';
+
+  @override
+  String get healthSyncProblemTitle =>
+      'Sinkronisasi kesehatan belum bisa mengisi habit';
+
+  @override
+  String get healthSyncResultNoData =>
+      'Tidak ada data langkah atau olahraga dalam 7 hari terakhir. Health Connect baru punya data kalau ada aplikasi pencatat — mis. Google Fit, Samsung Health, Mi Fitness, atau Fitbit — yang terhubung dan menyinkronkan datanya ke Health Connect. Hubungkan salah satunya di Health Connect, lalu ketuk Sinkronkan sekarang.';
+
+  @override
+  String get healthSyncResultNoHabits =>
+      'Belum ada habit yang bisa diisi dari data kesehatan. Sinkronisasi mengisi habit dengan satuan langkah, serta habit jalan kaki, lari, renang, bersepeda, yoga/peregangan, dan olahraga.';
+
+  @override
+  String get healthSyncResultNoPermission =>
+      'Daily Habits belum bisa membaca data kesehatan kamu. Ketuk Beri akses lalu izinkan Langkah dan Olahraga untuk Daily Habits.';
+
+  @override
+  String get healthSyncResultFailed =>
+      'Sinkronisasi kesehatan gagal. Pastikan Health Connect sudah versi terbaru, lalu ketuk Sinkronkan sekarang lagi.';
+
+  @override
+  String get healthSyncGrantAccess => 'Beri akses';
+
+  @override
+  String get healthSyncAlarmEnabled =>
+      'Pengingat sekarang berbunyi seperti alarm, lengkap dengan Tunda dan Matikan.';
+
+  @override
+  String get alarmSnooze => 'Tunda 10 menit';
+
+  @override
+  String get alarmDismiss => 'Matikan';
 
   @override
   String get iconPickerChooseIcon => 'Pilih Ikon';
@@ -1187,6 +1264,11 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get quickProgressMarkAchieved => 'Tandai Tercapai';
+
+  @override
+  String quickProgressRecordedToday(String amount) {
+    return 'Tercatat hari ini: $amount';
+  }
 
   @override
   String get quickProgressEntryModeDirect => 'Catat langsung';

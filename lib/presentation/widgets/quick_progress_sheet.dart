@@ -2,15 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../domain/format_utils.dart';
 import '../../domain/language.dart';
 import '../../domain/models/enums.dart';
 import '../../domain/models/habit_with_progress.dart';
 import '../../domain/models/spending_breakdown.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/core_providers.dart';
+import '../../providers/finance_providers.dart';
+import '../../providers/progress_providers.dart';
 import '../../providers/settings_providers.dart';
+import '../../providers/stats_providers.dart';
 import 'category_breakdown_list.dart';
 import 'currency_amount_field.dart';
 import 'segmented_pill_toggle.dart';
@@ -46,9 +49,23 @@ Future<QuickProgressResult?> showQuickProgressSheet(BuildContext context, HabitW
 }
 
 class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
-  late int _value = widget.item.progressValue;
-  late final _controller = TextEditingController(text: '$_value');
+  /// For the Budget Tracker this is the amount being ADDED to today's
+  /// spending, not the new total — typing a new expense used to replace
+  /// the day's total, so adding Rp50.000 on top of Rp155.000 made Total
+  /// Spending drop (feedback 7, slide 34). Every other habit still edits the
+  /// total directly.
+  late int _value = _isBudgetTracker ? 0 : widget.item.progressValue;
+  late final _controller = TextEditingController(text: _isBudgetTracker ? '' : '$_value');
   final List<SpendingBreakdownDraft> _breakdownItems = [];
+
+  /// Running copy of today's logged total, starting from
+  /// `widget.item.progressValue` (a snapshot from when the sheet opened) but
+  /// kept current across this session by `_adjustLoggedTotal` — needed
+  /// because editing/deleting an *existing* breakdown entry now writes
+  /// straight to the DB mid-session (see `_adjustLoggedTotal`), and the
+  /// final Save must build on top of that, not the stale snapshot
+  /// (feedback 7, slide 31/34/35/36).
+  late int _persistedTotal = widget.item.progressValue;
 
   /// Rincian yang sudah tersimpan untuk habit+tanggal ini dari sesi
   /// sebelumnya — dimuat di [initState] supaya tetap kelihatan saat sheet
@@ -111,8 +128,8 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
   /// would risk double-counting instead of filling a real gap.
   void _migrateDirectAmountIfNeeded() {
     if (_migratedItem != null) return;
-    if (_existingBreakdownEntries.isNotEmpty) return;
-    final amount = widget.item.progressValue;
+    final itemized = _existingBreakdownEntries.fold<int>(0, (sum, e) => sum + e.amount);
+    final amount = _persistedTotal - itemized;
     if (amount <= 0) return;
     final lang = ref.read(appLanguageProvider);
     final draft = SpendingBreakdownDraft(
@@ -124,18 +141,39 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
     _breakdownItems.add(draft);
   }
 
-  /// True once there's any breakdown data at all — added this session or
-  /// already persisted for the day — used to lock the entry mode to
-  /// breakdown-only (req: disable "Enter Total" once breakdown data exists,
-  /// to avoid the two ever disagreeing).
-  bool get _hasAnyBreakdownData => _breakdownItems.isNotEmpty || _existingBreakdownEntries.isNotEmpty;
-
-  bool get _isBreakdownEntry => _supportsBreakdown && (_useBreakdownMode || _hasAnyBreakdownData);
+  bool get _isBreakdownEntry => _supportsBreakdown && _useBreakdownMode;
 
   /// In breakdown mode, at least one item must be added — an empty
   /// breakdown has nothing to add to today's total, so Save stays disabled
-  /// instead of silently saving a zero delta.
-  bool get _canSave => !_isBreakdownEntry || _breakdownItems.isNotEmpty;
+  /// instead of silently saving a zero delta. Same for a Budget Tracker
+  /// quick-add with no amount typed.
+  bool get _canSave => _isBreakdownEntry
+      ? _breakdownItems.isNotEmpty
+      : (!_isBudgetTracker || _value > 0);
+
+  /// Budget Tracker quick-add: the typed amount becomes its own spending
+  /// item (plus any older un-itemized amount, see
+  /// [_migrateDirectAmountIfNeeded]), so every expense can later be deleted
+  /// on its own and the deletion reaches every total (feedback 7, slide 31
+  /// & 35). Returned value is relative to `widget.item.progressValue`, which
+  /// the caller diffs against.
+  QuickProgressResult _budgetQuickAddResult() {
+    _migrateDirectAmountIfNeeded();
+    final lang = ref.read(appLanguageProvider);
+    final items = [
+      ..._breakdownItems,
+      SpendingBreakdownDraft(
+        category: SpendingBreakdownCategory.dailyNeeds,
+        label: lang == AppLang.id ? 'Catat langsung' : 'Quick entry',
+        amount: _value,
+      ),
+    ];
+    final added = items.fold<int>(0, (sum, i) => sum + i.amount);
+    return QuickProgressResult(
+      value: widget.item.progressValue - _migratedAmountStillIncluded + added,
+      breakdownItems: items,
+    );
+  }
 
   int get _step {
     final goal = widget.item.habit.goalValueFor(widget.item.date);
@@ -189,12 +227,58 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
           label: draft.label,
           amount: draft.amount,
         );
+    // Keep the day's logged total (habit_logs.progressValue, which drives
+    // Total Spending everywhere) moving together with the breakdown item it
+    // was built from — previously only the breakdown row itself was
+    // updated, so an edited amount silently drifted away from what
+    // Daily/Weekly/Monthly totals showed (feedback 7, slide 31/35/36).
+    await _adjustLoggedTotal(draft.amount - entry.amount);
     await _loadExistingBreakdownEntries();
   }
 
   Future<void> _deleteExistingEntry(SpendingBreakdownEntry entry) async {
     await ref.read(spendingBreakdownRepositoryProvider).deleteEntry(entry.id);
+    // Same reasoning as `_editExistingEntry` above: deleting a breakdown
+    // entry must also remove its amount from the day's logged total, or the
+    // deleted amount keeps being counted in Total Spending indefinitely —
+    // including in Weekly/Monthly windows that cover this date days later,
+    // since it lives on the underlying habit_logs row, not just here
+    // (feedback 7, slide 31: "Rp5.000 di Weekend Budget" tetap terhitung
+    // walau sudah dihapus; slide 35: hari berikutnya masih ikut di total
+    // Weekly/Monthly juga).
+    await _adjustLoggedTotal(-entry.amount);
     await _loadExistingBreakdownEntries();
+  }
+
+  /// Applies [delta] directly onto today's stored `habit_logs.progressValue`
+  /// for this habit+date, then invalidates every provider that reads it —
+  /// mirrors what `applyPeriodAwareEdit` + the call sites' own invalidation
+  /// normally do together on Save, needed here too because edit/delete of an
+  /// *already-persisted* breakdown entry writes straight to the DB instead
+  /// of going through the sheet's own Save button (feedback 7, slide 36:
+  /// "Total Spending" updated but the Budget Tracker figure elsewhere on the
+  /// page didn't, because nothing told those providers to refetch).
+  Future<void> _adjustLoggedTotal(int delta) async {
+    if (delta == 0) return;
+    final habit = widget.item.habit;
+    final date = widget.item.date;
+    final logRepo = ref.read(habitLogRepositoryProvider);
+    final current = await logRepo.getLog(habit.id, date);
+    final newValue = (current?.progressValue ?? 0) + delta;
+    await logRepo.setProgress(habit: habit, date: date, progressValue: newValue);
+    // Keeps this sheet's own running total (used by the Save button's
+    // breakdown-mode calculation below) in sync with the direct DB write
+    // above, since `widget.item.progressValue` is a snapshot from when the
+    // sheet was opened and never updates on its own.
+    _persistedTotal += delta;
+    if (!mounted) return;
+    ref.invalidate(dashboardSummaryProvider);
+    ref.invalidate(monthSummariesProvider);
+    ref.invalidate(daySummaryProvider);
+    ref.invalidate(financeSummaryProvider);
+    ref.invalidate(financeSummaryForPeriodProvider);
+    ref.invalidate(financeMonthToDateSummaryProvider);
+    ref.invalidate(habitsWithProgressForDateProvider(date));
   }
 
   @override
@@ -269,7 +353,13 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
           Text(habit.displayName(lang), style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
           Text(
-            l10n.quickProgressTarget(habit.goalValueLabelForDate(widget.item.date)),
+            l10n.quickProgressTarget(
+              // Same daily-prorated limit the Budget Tracker card shows,
+              // not the raw weekly/monthly amount (feedback 7, slide 29).
+              _isBudgetTracker
+                  ? 'Maks. ${formatCurrency(habit.dailyRateFor(widget.item.date).round(), habit.currencyPrefix)}'
+                  : habit.goalValueLabelForDate(widget.item.date),
+            ),
             style: theme.textTheme.bodySmall,
           ),
           if (_isTimeUnit) ...[
@@ -298,13 +388,7 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
           ],
           if (_supportsBreakdown) ...[
             const SizedBox(height: 16),
-            if (_hasAnyBreakdownData)
-              Text(
-                l10n.spendingBreakdownDirectModeLockedHint,
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
-              )
-            else
-              _EntryModeToggle(
+            _EntryModeToggle(
                 useBreakdown: _useBreakdownMode,
                 onChanged: (v) => setState(() {
                   _useBreakdownMode = v;
@@ -313,6 +397,15 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
               ),
           ],
           const SizedBox(height: 20),
+          if (_isBudgetTracker && !_isBreakdownEntry) ...[
+            Center(
+              child: Text(
+                l10n.quickProgressRecordedToday(formatCurrency(_persistedTotal, habit.currencyPrefix)),
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           if (!_isBreakdownEntry)
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -410,7 +503,9 @@ class _QuickProgressSheetState extends ConsumerState<_QuickProgressSheet> {
                                         _breakdownTotal,
                                     breakdownItems: _breakdownItems,
                                   )
-                                : QuickProgressResult(value: _value, breakdownItems: const []),
+                                : _isBudgetTracker
+                                    ? _budgetQuickAddResult()
+                                    : QuickProgressResult(value: _value, breakdownItems: const []),
                           )
                       : null,
                   child: Text(l10n.commonSave),
@@ -650,7 +745,7 @@ class _AddBreakdownItemSheetState extends ConsumerState<_AddBreakdownItemSheet> 
   late SpendingBreakdownCategory _category = widget.initial?.category ?? SpendingBreakdownCategory.dailyNeeds;
   late int _amount = widget.initial?.amount ?? 0;
   late final _amountController = TextEditingController(
-    text: _amount == 0 ? '' : NumberFormat.decimalPattern('id_ID').format(_amount),
+    text: formatAmountInput(_amount, widget.currencyPrefix),
   );
   late final _labelController = TextEditingController(text: widget.initial?.label ?? '');
 

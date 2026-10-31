@@ -268,7 +268,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   /// tracked in `_createdHabitIds`) just needs to be deleted from the DB.
   Future<void> _removeHabit(int habitId) async {
     try {
-      await ref.read(notificationServiceProvider).cancelForHabit(habitId);
+      await ref.read(reminderSyncCoordinatorProvider).removeForHabit(habitId);
     } catch (_) {
       // Notification cancellation failed (e.g. platform not supported) —
       // don't fail the habit deletion because of this.
@@ -592,6 +592,7 @@ class _FeatureHighlightStepState extends ConsumerState<_FeatureHighlightStep> {
           title: titles[i],
           subtitle: subtitles[i],
           mock: _mocks[i],
+          isPro: _mocks[i] is _CommunityScreenMock || _mocks[i] is _FinanceScreenMock,
         ),
       ),
       bottomButton: Column(
@@ -645,59 +646,88 @@ class _FeatureSlide extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.mock,
+    this.isPro = false,
   });
 
   final String title;
   final String subtitle;
   final Widget mock;
+  final bool isPro;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Was a plain ListView with a fixed-height phone mock below, which on
-    // shorter/denser screens (e.g. some Samsung devices) pushed the mock
-    // past the visible viewport, forcing a scroll to see it in full
-    // (feedback 6, slide 4). Wrapping the mock in Flexible+FittedBox lets it
-    // scale down to whatever room remains instead, while SingleChildScrollView
-    // stays as a fallback only for extreme cases (huge system text scale).
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FadeSlideIn(
-                  child: Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.headlineMedium,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                FadeSlideIn(
-                  delay: const Duration(milliseconds: 80),
-                  child: Text(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyLarge,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Flexible(
-                  child: FadeSlideIn(
-                    delay: const Duration(milliseconds: 160),
-                    duration: const Duration(milliseconds: 450),
-                    child: FittedBox(fit: BoxFit.contain, child: mock),
-                  ),
-                ),
-              ],
+    // The mock scales down (Expanded + FittedBox) into whatever height is
+    // left, so it never needs a scroll (feedback 6, slide 4). It must NOT sit
+    // inside a SingleChildScrollView: that hands the Column unbounded height,
+    // the flex child can't lay out, and release builds render the slide
+    // blank (feedback 7, slide 7).
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      child: Column(
+        children: [
+          if (isPro) ...[
+            const FadeSlideIn(child: _ProPill()),
+            const SizedBox(height: 10),
+          ],
+          FadeSlideIn(
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineMedium,
             ),
           ),
-        );
-      },
+          const SizedBox(height: 10),
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 80),
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: FadeSlideIn(
+              delay: const Duration(milliseconds: 160),
+              duration: const Duration(milliseconds: 450),
+              child: FittedBox(fit: BoxFit.contain, child: mock),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "PRO" label above the Community/Finance feature slides (feedback 7, slide 7).
+class _ProPill extends StatelessWidget {
+  const _ProPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.workspace_premium_rounded, size: 14, color: theme.colorScheme.onPrimary),
+          const SizedBox(width: 4),
+          Text(
+            'PRO',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -3369,7 +3399,7 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
-      final notif = ref.read(notificationServiceProvider);
+      final reminderSync = ref.read(reminderSyncCoordinatorProvider);
 
       final currentlySelected = <HabitTemplate>{
         for (final set in widget.selectedTemplates.values) ...set,
@@ -3381,12 +3411,26 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
       for (final template in toRemove) {
         final id = widget.createdHabitIds[template]!;
         try {
-          await notif.cancelForHabit(id);
+          await reminderSync.removeForHabit(id);
         } catch (_) {
           // Notification cancellation failed — don't fail the habit deletion.
         }
         await repo.deleteHabit(id);
         widget.onHabitRemoved(template);
+      }
+      // Unlike `_removeHabit` above, this reconcile loop was missing the
+      // summary invalidation entirely — harmless while still inside
+      // onboarding (Dashboard hasn't been watched yet), but left as a gap
+      // that would keep a just-unchecked template's history stale the
+      // moment any screen reused this step after onboarding (feedback 7,
+      // slide 25 — matches the pattern in `_removeHabit`).
+      if (toRemove.isNotEmpty) {
+        ref.invalidate(dashboardSummaryProvider);
+        ref.invalidate(monthSummariesProvider);
+        ref.invalidate(daySummaryProvider);
+        ref.invalidate(financeSummaryProvider);
+        ref.invalidate(financeSummaryForPeriodProvider);
+        ref.invalidate(financeMonthToDateSummaryProvider);
       }
 
       for (final entry in widget.selectedTemplates.entries) {
@@ -3413,7 +3457,10 @@ class _RecommendationStepState extends ConsumerState<_RecommendationStep> {
           final created = await repo.getById(id);
           if (created != null) {
             try {
-              await notif.rescheduleForHabit(
+              // Also mirrors into Calendar/Alarm if the user has those
+              // Settings toggles on, not just the local notification
+              // (feedback 7, slide 48).
+              await reminderSync.syncForHabit(
                 created,
                 lang: ref.read(appLanguageProvider),
               );
@@ -3568,7 +3615,30 @@ class _SummaryStep extends ConsumerWidget {
           const SizedBox(height: 16),
           habitsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, st) => const SizedBox.shrink(),
+            // Was `SizedBox.shrink()` — a transient DB hiccup here silently
+            // left the whole "habits you just added" list blank with no
+            // indication anything went wrong or how to recover, which is
+            // exactly what QA saw as "the content preview disappeared,
+            // several blank/empty pages" (feedback 7, slide 7). A visible
+            // error + retry at least gives the user a way forward instead
+            // of a dead page.
+            error: (e, st) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Column(
+                children: [
+                  Text(
+                    '$e',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton(
+                    onPressed: () => ref.invalidate(allActiveHabitsProvider),
+                    child: Text(AppLocalizations.of(context)!.commonRetry),
+                  ),
+                ],
+              ),
+            ),
             data: (habits) => Column(
               children: [
                 for (final habit in habits)

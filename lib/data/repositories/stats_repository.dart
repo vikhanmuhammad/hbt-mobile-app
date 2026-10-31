@@ -28,26 +28,55 @@ class StatsRepository {
     }).toList();
   }
 
-  /// Total progressValue habit [habitId] dalam periode goal-nya sendiri
-  /// (lihat [periodBoundsFor]) yang memuat tanggal dengan kunci [periodKey],
-  /// dijumlahkan dari semua log dalam periode itu — bukan cuma log satu hari
-  /// — supaya progress habit weekly/monthly tetap "nyambung" ketika hari
-  /// berganti, bukannya balik ke 0 (sama seperti `progress_providers.dart`).
-  Map<String, int> _periodProgressByHabit(List<Habit> habits, List<HabitLog> logs) {
-    final habitById = {for (final h in habits) h.id: h};
-    final totals = <String, int>{};
-    for (final log in logs) {
-      final habit = habitById[log.habitId];
-      if (habit == null) continue;
-      final periodStart = periodBoundsFor(habit.goalPeriod, log.date).$1;
-      final key = _periodKey(log.habitId, periodStart);
-      totals[key] = (totals[key] ?? 0) + log.progressValue;
-    }
-    return totals;
-  }
+  /// Earliest day whose logs can feed any goal period that overlaps
+  /// [firstDay] — the Monday of its week (a month period starting on a 1st
+  /// never starts earlier than that).
+  DateTime _logWindowStart(DateTime firstDay) =>
+      periodBoundsFor(GoalPeriod.weekly, firstDay).$1;
 
-  String _periodKey(int habitId, DateTime periodStart) =>
-      '${habitId}_${periodStart.year}-${periodStart.month}-${periodStart.day}';
+  /// Per (habit, day) for every day in [from]..[to]: the habit's progress
+  /// summed from its goal period's start up to and including that day, plus
+  /// whether any log exists in that stretch. Home's checklist uses exactly
+  /// this rule (`habitsWithProgressForDate`), so the date-strip/calendar
+  /// ring for a day always matches the checklist shown for it (feedback 7,
+  /// slide 15-17). Only a day with its own log carries progress: a weekly
+  /// habit done Monday doesn't make Tuesday look done (feedback 8, slide 5 &
+  /// 6). [from] must be the start of a week (see [_logWindowStart]).
+  Map<(int, DateTime), (int sum, bool hasLog)> _progressUpToDay(
+    List<Habit> habits,
+    List<HabitLog> logs,
+    DateTime from,
+    DateTime to,
+  ) {
+    final valueByHabitDay = <(int, DateTime), int>{};
+    for (final log in logs) {
+      final key = (log.habitId, dateOnly(log.date));
+      valueByHabitDay[key] = (valueByHabitDay[key] ?? 0) + log.progressValue;
+    }
+    final result = <(int, DateTime), (int, bool)>{};
+    for (final habit in habits) {
+      var sum = 0;
+      var hasLog = false;
+      for (var day = from; !day.isAfter(to); day = day.add(const Duration(days: 1))) {
+        if (isSameDay(periodBoundsFor(habit.goalPeriod, day).$1, day)) {
+          sum = 0;
+          hasLog = false;
+        }
+        final value = valueByHabitDay[(habit.id, day)];
+        if (value != null) {
+          sum += value;
+          hasLog = true;
+        }
+        // A day with no log of its own stays empty even when earlier days
+        // of the same period had progress (feedback 8, slide 5 & 6) — same
+        // rule as `habitsWithProgressForDate`, where an unchecked 0 only
+        // counts as a log for `atMost` habits.
+        final ownLog = value != null && (value > 0 || habit.goalDirection == GoalDirection.atMost);
+        result[(habit.id, day)] = ownLog ? (sum, hasLog) : (0, false);
+      }
+    }
+    return result;
+  }
 
   /// [habitIds] kosong berarti tanpa filter (semua habit ikut dihitung) —
   /// non-kosong membatasi agregasi cuma ke habit yang id-nya ada di set itu
@@ -75,16 +104,29 @@ class StatsRepository {
     // menampilkan 6 bar) supaya biaya komputasi sebanding dengan aktivitas
     // baru-baru ini, bukan seluruh umur habit sejak dibuat.
     final windowStart = DateTime(now.year, now.month - 5, 1);
-    final allLogs = (await _db.habitLogDao.getLogsInRange(windowStart, now))
+    final logStart = _logWindowStart(windowStart);
+    final allLogs = (await _db.habitLogDao.getLogsInRange(logStart, now))
         .map(mapHabitLog)
         .toList();
-    final periodProgress = _periodProgressByHabit(habits, allLogs);
+    final progress = _progressUpToDay(habits, allLogs, logStart, now);
 
     // "Hari tercatat" tetap berarti hari yang benar-benar ada log-nya (bukan
     // hari yang cuma "terjadwal") — dipakai buat statistik "X Days Tracked",
     // jadi dihitung terpisah dari agregasi per-hari-terjadwal di bawah.
+    //
+    // Difilter ke `habits` (sama seperti `_periodProgressByHabit` di atas)
+    // supaya log milik habit yang sudah dihapus — atau yang sedang
+    // disaring oleh filter icon Dashboard — tidak ikut menaikkan angka ini.
+    // Sebelumnya dihitung dari `allLogs` mentah tanpa filter sama sekali,
+    // jadi kalau baris log-nya sempat tertinggal (mis. race dengan proses
+    // hapus habit) atau kepilih di luar filter aktif, harinya tetap
+    // "nyantol" selamanya di statistik ini walau habitnya sudah tidak ada
+    // (feedback 7, slide 25).
+    final habitIdsInScope = {for (final h in habits) h.id};
     final trackedDays = <DateTime>{
-      for (final log in allLogs) dateOnly(log.date),
+      for (final log in allLogs)
+        if (habitIdsInScope.contains(log.habitId) && !log.date.isBefore(windowStart))
+          dateOnly(log.date),
     };
 
     var totalLogs = 0;
@@ -96,10 +138,8 @@ class StatsRepository {
       for (var day = windowStart; !day.isAfter(now); day = day.add(const Duration(days: 1))) {
         if (!isHabitActiveOn(habit, day)) continue;
 
-        final periodStart = periodBoundsFor(habit.goalPeriod, day).$1;
-        final periodKey = _periodKey(habit.id, periodStart);
-        final sum = periodProgress[periodKey] ?? 0;
-        final credit = habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
+        final (sum, hasLog) = progress[(habit.id, day)]!;
+        final credit = habit.progressCredit(sum, date: day, hasLog: hasLog);
 
         totalLogs++;
         doneLogs += credit;
@@ -170,8 +210,11 @@ class StatsRepository {
   }
 
   /// Ringkasan tiap hari dalam bulan yang memuat [monthAnchor], dipakai untuk
-  /// gradasi warna kalender Dashboard. Sama seperti [computeDashboard],
-  /// [habitIds] kosong berarti tanpa filter.
+  /// gradasi warna kalender Dashboard dan ring date strip Beranda. Sama
+  /// seperti [computeDashboard], [habitIds] kosong berarti tanpa filter.
+  ///
+  /// Hari yang belum terjadi (setelah hari ini) sengaja kosong — belum
+  /// dijalani, jadi tidak boleh tampak terisi (feedback 7, slide 17).
   Future<List<DaySummary>> computeMonthSummaries(
     DateTime monthAnchor, {
     Set<int> habitIds = const {},
@@ -182,16 +225,12 @@ class StatsRepository {
         : allHabits.where((h) => habitIds.contains(h.id)).toList();
     final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
     final lastDay = DateTime(monthAnchor.year, monthAnchor.month + 1, 0);
-    // Diperlebar 6 hari di tiap sisi supaya minggu yang menjorok ke bulan
-    // sebelum/sesudahnya tetap terhitung penuh untuk habit weekly (lihat
-    // [_periodProgressByHabit]).
-    final logs = (await _db.habitLogDao.getLogsInRange(
-      firstDay.subtract(const Duration(days: 6)),
-      lastDay.add(const Duration(days: 6)),
-    ))
+    final logStart = _logWindowStart(firstDay);
+    final logs = (await _db.habitLogDao.getLogsInRange(logStart, lastDay))
         .map(mapHabitLog)
         .toList();
-    final periodProgress = _periodProgressByHabit(habits, logs);
+    final progress = _progressUpToDay(habits, logs, logStart, lastDay);
+    final todayDate = today();
 
     final summaries = <DaySummary>[];
     for (var day = firstDay;
@@ -199,40 +238,37 @@ class StatsRepository {
         day = day.add(const Duration(days: 1))) {
       var total = 0;
       var done = 0.0;
-      for (final habit in habits) {
-        if (!isHabitActiveOn(habit, day)) continue;
-        total++;
-        final periodStart = periodBoundsFor(habit.goalPeriod, day).$1;
-        final periodKey = _periodKey(habit.id, periodStart);
-        final sum = periodProgress[periodKey] ?? 0;
-        done += habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
+      if (!day.isAfter(todayDate)) {
+        for (final habit in habits) {
+          if (!isHabitActiveOn(habit, day)) continue;
+          total++;
+          final (sum, hasLog) = progress[(habit.id, day)]!;
+          done += habit.progressCredit(sum, date: day, hasLog: hasLog);
+        }
       }
       summaries.add(DaySummary(date: day, totalCount: total, doneCount: done));
     }
     return summaries;
   }
 
+  /// Sama seperti [computeMonthSummaries] untuk 1 hari — dipakai Ringkasan
+  /// Detail Persisten di Riwayat (§7) supaya panel detail konsisten dengan
+  /// ring kalender & checklist Beranda untuk tanggal yang sama.
   Future<DaySummary> computeDaySummary(DateTime date) async {
     final habits = await _dashboardEligibleHabits();
-    final (weekStart, weekEnd) = periodBoundsFor(GoalPeriod.weekly, date);
-    final (monthStart, monthEnd) = periodBoundsFor(GoalPeriod.monthly, date);
-    final rangeStart = weekStart.isBefore(monthStart) ? weekStart : monthStart;
-    final rangeEnd = weekEnd.isAfter(monthEnd) ? weekEnd : monthEnd;
-    final logs = (await _db.habitLogDao.getLogsInRange(rangeStart, rangeEnd))
-        .map(mapHabitLog)
-        .toList();
-    final periodProgress = _periodProgressByHabit(habits, logs);
+    final day = dateOnly(date);
+    final logStart = _logWindowStart(DateTime(day.year, day.month, 1));
+    final logs = (await _db.habitLogDao.getLogsInRange(logStart, day)).map(mapHabitLog).toList();
+    final progress = _progressUpToDay(habits, logs, logStart, day);
 
     var total = 0;
     var done = 0.0;
     for (final habit in habits) {
-      if (!isHabitActiveOn(habit, date)) continue;
+      if (!isHabitActiveOn(habit, day)) continue;
       total++;
-      final periodStart = periodBoundsFor(habit.goalPeriod, date).$1;
-      final periodKey = _periodKey(habit.id, periodStart);
-      final sum = periodProgress[periodKey] ?? 0;
-      done += habit.progressCredit(sum, hasLog: periodProgress.containsKey(periodKey));
+      final (sum, hasLog) = progress[(habit.id, day)]!;
+      done += habit.progressCredit(sum, date: day, hasLog: hasLog);
     }
-    return DaySummary(date: date, totalCount: total, doneCount: done);
+    return DaySummary(date: day, totalCount: total, doneCount: done);
   }
 }

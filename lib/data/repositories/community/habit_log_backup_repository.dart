@@ -77,4 +77,17 @@ class HabitLogBackupRepository {
       );
     }).toList();
   }
+
+  /// Date of the oldest backed-up log for [groupHabitId], or null when this
+  /// account never tracked it — used as a re-adopted habit's `startDate` so
+  /// it only reaches back as far as the history actually being restored,
+  /// never to days before the user first joined (feedback 7, slide 18).
+  Future<DateTime?> earliestLogDate({
+    required String uid,
+    required String groupHabitId,
+  }) async {
+    final snapshot = await _entries(uid, groupHabitId).orderBy('date').limit(1).get();
+    if (snapshot.docs.isEmpty) return null;
+    return dateOnly((snapshot.docs.first.data()['date'] as Timestamp).toDate());
+  }
 }

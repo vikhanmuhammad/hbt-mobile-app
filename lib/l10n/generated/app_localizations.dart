@@ -128,6 +128,12 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get commonEdit;
 
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
   /// Label for the app language switcher on the Settings screen.
   ///
   /// In en, this message translates to:
@@ -379,6 +385,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to save progress: {error}'**
   String homeFailedToSaveProgress(String error);
+
+  /// No description provided for @homeFutureDayLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This day hasn\'t come yet — progress can be logged once it arrives.'**
+  String get homeFutureDayLocked;
 
   /// No description provided for @homeNoHabitsScheduledYet.
   ///
@@ -1820,6 +1832,30 @@ abstract class AppLocalizations {
   /// **'You can manage your subscription anytime through your App Store or Google Play account settings.'**
   String get faqA8;
 
+  /// No description provided for @faqQ9.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m a Pro subscriber — how do I invite friends to a Community group?'**
+  String get faqQ9;
+
+  /// No description provided for @faqA9.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a group from the Community tab, tap Share, and send the message with the invite code to your friend. They just enter that code via \"Join via Code\" in the Community tab (the message also has a download link if they don\'t have the app yet).'**
+  String get faqA9;
+
+  /// No description provided for @faqQ10.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m a Pro subscriber — how do I set or change my Budget Tracker spending limits?'**
+  String get faqQ10;
+
+  /// No description provided for @faqA10.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the Finance tab and tap \"Edit Spending Limit\". The form opens in whichever tab you\'re viewing (Daily/Weekly/Monthly), and the limit for the other periods adjusts automatically.'**
+  String get faqA10;
+
   /// No description provided for @usageTipsTitle.
   ///
   /// In en, this message translates to:
@@ -1973,7 +2009,7 @@ abstract class AppLocalizations {
   /// No description provided for @healthSyncStepsLabel.
   ///
   /// In en, this message translates to:
-  /// **'Sync steps from Health app'**
+  /// **'Sync activity from Health app'**
   String get healthSyncStepsLabel;
 
   /// No description provided for @healthSyncCalendarLabel.
@@ -2015,7 +2051,7 @@ abstract class AppLocalizations {
   /// No description provided for @healthConnectNotInstalledMessage.
   ///
   /// In en, this message translates to:
-  /// **'Syncing steps needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.'**
+  /// **'Syncing activity needs the Health Connect app, which isn\'t installed on this device. Install it, then try again.'**
   String get healthConnectNotInstalledMessage;
 
   /// No description provided for @healthConnectInstallButton.
@@ -2023,6 +2059,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install Health Connect'**
   String get healthConnectInstallButton;
+
+  /// No description provided for @healthSyncNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync now'**
+  String get healthSyncNow;
+
+  /// No description provided for @healthSyncLastSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Last synced {time}'**
+  String healthSyncLastSynced(String time);
+
+  /// No description provided for @healthSyncNeverSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Not synced yet'**
+  String get healthSyncNeverSynced;
+
+  /// No description provided for @healthSyncResultUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Health data synced — {count} habit(s) updated.'**
+  String healthSyncResultUpdated(int count);
+
+  /// No description provided for @healthSyncResultUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Health data synced — your habits are already up to date.'**
+  String get healthSyncResultUpToDate;
+
+  /// No description provided for @healthSyncProblemTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Health sync couldn\'t fill your habits'**
+  String get healthSyncProblemTitle;
+
+  /// No description provided for @healthSyncResultNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No steps or workouts were found for the last 7 days. Health Connect only has data when an app that records it — e.g. Google Fit, Samsung Health, Mi Fitness or Fitbit — is connected to Health Connect and syncing. Connect one in Health Connect, then tap Sync now.'**
+  String get healthSyncResultNoData;
+
+  /// No description provided for @healthSyncResultNoHabits.
+  ///
+  /// In en, this message translates to:
+  /// **'None of your habits can be filled from health data yet. Health sync fills habits measured in steps, plus walk, run, swim, cycling, yoga/stretch and workout habits.'**
+  String get healthSyncResultNoHabits;
+
+  /// No description provided for @healthSyncResultNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Habits can\'t read your health data. Tap Grant access and allow Steps and Exercise for Daily Habits.'**
+  String get healthSyncResultNoPermission;
+
+  /// No description provided for @healthSyncResultFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Health sync failed. Make sure Health Connect is up to date, then tap Sync now again.'**
+  String get healthSyncResultFailed;
+
+  /// No description provided for @healthSyncGrantAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access'**
+  String get healthSyncGrantAccess;
+
+  /// No description provided for @healthSyncAlarmEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders will now ring like an alarm, with Snooze and Dismiss.'**
+  String get healthSyncAlarmEnabled;
+
+  /// No description provided for @alarmSnooze.
+  ///
+  /// In en, this message translates to:
+  /// **'Snooze 10 min'**
+  String get alarmSnooze;
+
+  /// No description provided for @alarmDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get alarmDismiss;
 
   /// No description provided for @iconPickerChooseIcon.
   ///
@@ -2114,10 +2234,16 @@ abstract class AppLocalizations {
   /// **'Mark Achieved'**
   String get quickProgressMarkAchieved;
 
+  /// No description provided for @quickProgressRecordedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded today: {amount}'**
+  String quickProgressRecordedToday(String amount);
+
   /// No description provided for @quickProgressEntryModeDirect.
   ///
   /// In en, this message translates to:
-  /// **'Enter total'**
+  /// **'Quick entry'**
   String get quickProgressEntryModeDirect;
 
   /// No description provided for @quickProgressEntryModeBreakdown.

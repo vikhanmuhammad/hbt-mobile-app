@@ -611,6 +611,12 @@ class _DayDetailSheet extends ConsumerWidget {
     WidgetRef ref,
     HabitWithProgress item,
   ) async {
+    if (date.isAfter(today())) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.homeFutureDayLocked)));
+      return;
+    }
     try {
       final repo = ref.read(habitLogRepositoryProvider);
       await repo.toggleDone(
@@ -908,7 +914,13 @@ class _MonthlyTrend extends ConsumerStatefulWidget {
 
 class _MonthlyTrendState extends ConsumerState<_MonthlyTrend> {
   static const _chartHeight = 140.0;
-  static const _axisWidth = 40.0;
+  // 40 was too tight for "100%" in labelSmall once the OS text scale factor
+  // is even slightly above 1x — the glyphs then overflowed the tick's own
+  // width and got clipped by the axis Stack's default hardEdge clip, which
+  // read as the scale being "unaligned"/truncated (feedback 7, slide 22 &
+  // 23; the earlier feedback 6, slide 14 fix only stopped wrapping, it
+  // didn't reserve enough width).
+  static const _axisWidth = 46.0;
 
   /// Index (into the currently displayed `points`) of the bar last tapped,
   /// showing its exact percentage — before this, a user had no way to read
@@ -941,10 +953,23 @@ class _MonthlyTrendState extends ConsumerState<_MonthlyTrend> {
                   // that drifted apart once label/line heights differed —
                   // and `softWrap: false` so "100%" can no longer wrap its
                   // "%" onto a second line (feedback 6, slide 14).
+                  //
+                  // `_AxisTick` deliberately centers itself ON the gridline
+                  // (top tick centered on y=0, bottom tick centered on
+                  // y=chartHeight), so the top/bottom labels' boxes extend a
+                  // few px above/below this SizedBox by design. `Stack`'s
+                  // default `clipBehavior` is `Clip.hardEdge`, which was
+                  // cropping exactly that overflow — the top of "100%" and
+                  // the bottom of "0%" — making the scale look misaligned
+                  // with its gridlines, and clipping "100%" horizontally too
+                  // whenever it didn't fit `_axisWidth` (feedback 7, slide
+                  // 22 & 23). The labels were already correctly centered;
+                  // only the clip was wrong.
                   SizedBox(
                     width: _axisWidth,
                     height: _chartHeight,
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
                         _AxisTick(text: '100%', topFraction: 0, chartHeight: _chartHeight),
                         _AxisTick(text: '50%', topFraction: 0.5, chartHeight: _chartHeight),

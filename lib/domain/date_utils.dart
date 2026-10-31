@@ -7,6 +7,20 @@ DateTime today() => dateOnly(DateTime.now());
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
+final DateTime _utcEpoch = DateTime.utc(1970);
+
+/// Days since 1970-01-01 for [date]'s calendar day. Computed in UTC on
+/// purpose: a local-time epoch is off by a day wherever the zone's UTC
+/// offset changed since 1970 (Asia/Pontianak, Singapore, any DST zone).
+int dayIndex(DateTime date) =>
+    DateTime.utc(date.year, date.month, date.day).difference(_utcEpoch).inDays;
+
+/// Inverse of [dayIndex], as local midnight.
+DateTime dateFromDayIndex(int index) {
+  final utc = _utcEpoch.add(Duration(days: index));
+  return DateTime(utc.year, utc.month, utc.day);
+}
+
 const List<String> weekdayFullNames = [
   'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
 ];

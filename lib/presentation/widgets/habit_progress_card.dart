@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/format_utils.dart';
 import '../../domain/models/enums.dart';
+import '../../domain/models/habit.dart';
 import '../../domain/models/habit_with_progress.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../providers/settings_providers.dart';
@@ -34,12 +35,27 @@ class HabitProgressCard extends ConsumerWidget {
   /// disuntikkan dari HomeScreen supaya widget ini tidak perlu tahu index.
   final Widget? dragHandle;
 
+  /// Goal shown against [item.date]'s own progress — for the Budget Tracker
+  /// (rupiah, `atMost`) this card always views a SINGLE day at a time
+  /// (`habitsWithProgressForDateProvider`), so the goal must be the
+  /// Daily-prorated rate (`Habit.dailyRateFor`), not the raw `goalValue` in
+  /// whatever period the habit itself is actually configured with —
+  /// otherwise a Weekly/Monthly-configured budget shows its full
+  /// weekly/monthly cap as if it were the limit for just this one day (e.g.
+  /// Rp2.000.000 instead of ~Rp66.667/day), both here on Home and on the
+  /// Finance page's "Today's Progress" card (feedback 7, slide 29). Every
+  /// other habit keeps using [Habit.goalValueFor] as before — this only
+  /// applies to the one rupiah/atMost habit in the app.
+  int _goalForCard(Habit h) => (h.isRupiah && h.goalDirection == GoalDirection.atMost)
+      ? h.dailyRateFor(item.date).round()
+      : h.goalValueFor(item.date);
+
   /// "{progress} of {goal}" instead of a bare "x/y" — makes which number is
   /// the current progress and which is the target unambiguous at a glance
   /// (#25), especially for rupiah amounts where a raw fraction reads oddly.
   String _progressLabel(AppLocalizations l10n) {
     final h = item.habit;
-    final goalValue = h.goalValueFor(item.date);
+    final goalValue = _goalForCard(h);
     final progress = h.isRupiah ? formatCurrency(item.progressValue, h.currencyPrefix) : '${item.progressValue}';
     final goal = h.isRupiah
         ? formatCurrency(goalValue, h.currencyPrefix)
@@ -48,9 +64,27 @@ class HabitProgressCard extends ConsumerWidget {
   }
 
   double get _ratio {
-    final goalValue = item.habit.goalValueFor(item.date);
+    final goalValue = _goalForCard(item.habit);
     if (goalValue <= 0) return 0;
     return (item.progressValue / goalValue).clamp(0, 1).toDouble();
+  }
+
+  /// One rule for every date (feedback 8, slide 5): grey when nothing was
+  /// spent that day, the accent color while spending stays within the
+  /// day's budget, red once it goes over — instead of "colored only when
+  /// within budget", which left over-budget days and empty days looking the
+  /// same and made a few days light up for no visible reason.
+  Widget _budgetStatusIcon(ThemeData theme) {
+    final spent = item.progressValue;
+    if (spent <= 0) {
+      return Icon(Icons.savings_outlined, color: theme.dividerColor, size: 26);
+    }
+    final overBudget = spent > _goalForCard(item.habit);
+    return Icon(
+      overBudget ? Icons.warning_amber_rounded : Icons.savings_rounded,
+      color: overBudget ? theme.colorScheme.error : accentColor,
+      size: 26,
+    );
   }
 
   @override
@@ -59,14 +93,21 @@ class HabitProgressCard extends ConsumerWidget {
     final lang = ref.watch(appLanguageProvider);
     final done = item.isDone;
     final ratio = _ratio;
-    // Budget Tracker (`atMost` direction, mis. batas pengeluaran) punya
-    // sistem yang beda dari checklist habit biasa: "tercapai" cuma berarti
-    // "masih di bawah limit", bukan "sudah dikerjakan penuh". Menyamakan
-    // tampilannya (fill solid + centang) dengan habit biasa jadi
+    // Budget Tracker (rupiah + `atMost` direction, mis. batas pengeluaran)
+    // punya sistem yang beda dari checklist habit biasa: "tercapai" cuma
+    // berarti "masih di bawah limit", bukan "sudah dikerjakan penuh".
+    // Menyamakan tampilannya (fill solid + centang) dengan habit biasa jadi
     // membingungkan (feedback 6, slide 10), jadi Budget Tracker selalu pakai
     // fill proporsional (bukan solid saat "done") dan ikon dompet, bukan
-    // centang.
-    final isBudgetTracker = item.habit.goalDirection == GoalDirection.atMost;
+    // centang. Gated on `isRupiah` too, not just `atMost` alone — `atMost`
+    // is also a valid direction for ordinary non-finance habits the user
+    // picks in the form (mis. "Kurangi Gula", capped at N gram/hari); with
+    // only the direction check, one of those got mistaken for the Budget
+    // Tracker singleton and showed the wallet icon instead of the same
+    // checkmark every other habit uses (feedback 7, slide 20). Matches the
+    // same `isRupiah && atMost` guard `quick_progress_sheet.dart` already
+    // uses to spot a real spending-limit habit.
+    final isBudgetTracker = item.habit.isRupiah && item.habit.goalDirection == GoalDirection.atMost;
     final showWhiteText = done && !isBudgetTracker;
 
     final baseColor = theme.cardColor;
@@ -144,11 +185,7 @@ class HabitProgressCard extends ConsumerWidget {
                       style: IconButton.styleFrom(backgroundColor: baseColor),
                     ),
                   ] else if (isBudgetTracker)
-                    Icon(
-                      done ? Icons.savings_rounded : Icons.savings_outlined,
-                      color: done ? accentColor : theme.dividerColor,
-                      size: 26,
-                    )
+                    _budgetStatusIcon(theme)
                   else
                     Icon(
                       done ? Icons.check_circle_rounded : Icons.circle_outlined,

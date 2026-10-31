@@ -99,12 +99,21 @@ Future<FinanceSummary> financeSummaryForPeriod(
 ) {
   final (start, end) = financePeriodRange(period, anchor);
   final excludeHabitIds = ref.watch(pendingDeleteHabitIdsProvider);
+  // The trend chart has its own window, independent of the totals/pace
+  // window, in the active tab's own unit: the last 7 days for Daily
+  // (feedback 7, slide 39), the last 6 weeks for Weekly and the last 6
+  // months for Monthly — so Weekly no longer repeats Daily's per-day bars
+  // (feedback 8, slide 7).
+  final (trendStart, trendBucket) = switch (period) {
+    FinancePeriod.daily => (end.subtract(const Duration(days: 6)), FinanceTrendBucket.day),
+    FinancePeriod.weekly => (start.subtract(const Duration(days: 7 * 5)), FinanceTrendBucket.week),
+    FinancePeriod.monthly => (DateTime(start.year, start.month - 5, 1), FinanceTrendBucket.month),
+  };
   return ref.watch(financeRepositoryProvider).computeSummary(
         start,
         end,
         excludeHabitIds: excludeHabitIds,
-        // Monthly tab buckets the trend chart into ~4-5 weekly bars instead
-        // of ~30 daily ones — Daily/Weekly stay per-day (small ranges).
-        trendBucket: period == FinancePeriod.monthly ? FinanceTrendBucket.week : FinanceTrendBucket.day,
+        trendBucket: trendBucket,
+        trendStart: trendStart,
       );
 }

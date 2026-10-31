@@ -9,6 +9,7 @@
   "commonDelete": "Delete",
   "commonUndo": "Undo",
   "commonEdit": "Edit",
+  "commonRetry": "Retry",
 
   "settingsLanguage": "Language",
   "@settingsLanguage": {
@@ -74,6 +75,7 @@
   "@homeFailedToSaveProgress": {
     "placeholders": { "error": { "type": "String" } }
   },
+  "homeFutureDayLocked": "This day hasn't come yet — progress can be logged once it arrives.",
   "homeNoHabitsScheduledYet": "No habits scheduled yet",
   "homeEmptyStateHint": "Tap the Add Habit button at the bottom left to add your first habit for today.",
 
@@ -420,6 +422,10 @@
   "faqA7": "Your data stays saved, but you'll lose access to view or edit it until you resubscribe.",
   "faqQ8": "How do I manage or cancel my Pro subscription?",
   "faqA8": "You can manage your subscription anytime through your App Store or Google Play account settings.",
+  "faqQ9": "I'm a Pro subscriber — how do I invite friends to a Community group?",
+  "faqA9": "Open a group from the Community tab, tap Share, and send the message with the invite code to your friend. They just enter that code via \"Join via Code\" in the Community tab (the message also has a download link if they don't have the app yet).",
+  "faqQ10": "I'm a Pro subscriber — how do I set or change my Budget Tracker spending limits?",
+  "faqA10": "Open the Finance tab and tap \"Edit Spending Limit\". The form opens in whichever tab you're viewing (Daily/Weekly/Monthly), and the limit for the other periods adjusts automatically.",
 
   "usageTipsTitle": "Usage Tips",
   "usageTip1Title": "Use Reminders",
@@ -450,7 +456,7 @@
   "personalizeTitle": "Personalize",
   "personalizeDescription": "Pick the color theme you like best. This color is used for buttons, progress rings, and accents throughout the app.",
 
-  "healthSyncStepsLabel": "Sync steps from Health app",
+  "healthSyncStepsLabel": "Sync activity from Health app",
   "healthSyncCalendarLabel": "Sync reminders to Calendar",
   "healthSyncAlarmLabel": "Sync reminders to phone Alarm",
   "healthSyncDeniedMessage": "{feature} was denied or unavailable on this device.",
@@ -458,8 +464,24 @@
   "healthSyncFeatureHealth": "Health access",
   "healthSyncFeatureCalendar": "Calendar access",
   "healthConnectNotInstalledTitle": "Health Connect required",
-  "healthConnectNotInstalledMessage": "Syncing steps needs the Health Connect app, which isn't installed on this device. Install it, then try again.",
+  "healthConnectNotInstalledMessage": "Syncing activity needs the Health Connect app, which isn't installed on this device. Install it, then try again.",
   "healthConnectInstallButton": "Install Health Connect",
+  "healthSyncNow": "Sync now",
+  "healthSyncLastSynced": "Last synced {time}",
+  "@healthSyncLastSynced": {"placeholders": {"time": {"type": "String"}}},
+  "healthSyncNeverSynced": "Not synced yet",
+  "healthSyncResultUpdated": "Health data synced — {count} habit(s) updated.",
+  "@healthSyncResultUpdated": {"placeholders": {"count": {"type": "int"}}},
+  "healthSyncResultUpToDate": "Health data synced — your habits are already up to date.",
+  "healthSyncProblemTitle": "Health sync couldn't fill your habits",
+  "healthSyncResultNoData": "No steps or workouts were found for the last 7 days. Health Connect only has data when an app that records it — e.g. Google Fit, Samsung Health, Mi Fitness or Fitbit — is connected to Health Connect and syncing. Connect one in Health Connect, then tap Sync now.",
+  "healthSyncResultNoHabits": "None of your habits can be filled from health data yet. Health sync fills habits measured in steps, plus walk, run, swim, cycling, yoga/stretch and workout habits.",
+  "healthSyncResultNoPermission": "Daily Habits can't read your health data. Tap Grant access and allow Steps and Exercise for Daily Habits.",
+  "healthSyncResultFailed": "Health sync failed. Make sure Health Connect is up to date, then tap Sync now again.",
+  "healthSyncGrantAccess": "Grant access",
+  "healthSyncAlarmEnabled": "Reminders will now ring like an alarm, with Snooze and Dismiss.",
+  "alarmSnooze": "Snooze 10 min",
+  "alarmDismiss": "Dismiss",
 
   "iconPickerChooseIcon": "Choose Icon",
   "iconPickerSearchHint": "Search icons...",
@@ -478,7 +500,9 @@
   "quickProgressTarget": "Target: {label}",
   "@quickProgressTarget": { "placeholders": { "label": { "type": "String" } } },
   "quickProgressMarkAchieved": "Mark Achieved",
-  "quickProgressEntryModeDirect": "Enter total",
+  "quickProgressRecordedToday": "Recorded today: {amount}",
+  "@quickProgressRecordedToday": { "placeholders": { "amount": { "type": "String" } } },
+  "quickProgressEntryModeDirect": "Quick entry",
   "quickProgressEntryModeBreakdown": "Break down by category",
   "spendingBreakdownAlreadyLogged": "Already logged today ({total})",
   "@spendingBreakdownAlreadyLogged": {

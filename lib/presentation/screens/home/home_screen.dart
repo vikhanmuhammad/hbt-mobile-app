@@ -173,7 +173,7 @@ class HomeScreen extends ConsumerWidget {
 /// the finger and felt stiff. A real `PageView` gives native per-frame
 /// finger-tracking, velocity-based fling, and edge resistance for free —
 /// the same mechanism a native calendar-style day swiper would use. Each
-/// page index maps to a real calendar day via [_epoch]; disabled (page
+/// page index maps to a real calendar day via [_pageForDate]/[_dateForPage]; disabled (page
 /// becomes un-swipeable, but still shown) in Edit Mode since that's
 /// reorder-by-drag territory (ReorderableListView already owns
 /// horizontal-ish gestures there).
@@ -195,11 +195,9 @@ class _DateSwipeView extends StatefulWidget {
 }
 
 class _DateSwipeViewState extends State<_DateSwipeView> {
-  // Arbitrary far-past anchor so every page index maps to a real calendar
-  // day. Range covers 1970 through ~2244 — far more than this app will
-  // ever need; PageView.builder only ever builds pages near the viewport,
-  // so the large itemCount itself costs nothing.
-  static final DateTime _epoch = DateTime(1970, 1, 1);
+  // Page index = days since 1970-01-01. Range covers through ~2244 — far
+  // more than this app will ever need; PageView.builder only ever builds
+  // pages near the viewport, so the large itemCount itself costs nothing.
   static const int _pageCount = 100000;
 
   late final PageController _controller = PageController(initialPage: _pageForDate(widget.selectedDate));
@@ -219,12 +217,14 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
   // there's nothing new to report back.
   bool _isAnimatingProgrammatically = false;
 
-  int _pageForDate(DateTime date) {
-    final day = DateTime(date.year, date.month, date.day);
-    return day.difference(_epoch).inDays;
-  }
+  // Must be exact inverses: when they weren't (local-time epoch), date D
+  // mapped to the page of D-1 in zones whose offset changed since 1970, so
+  // the header and the list disagreed by a day — progress landed on the
+  // wrong day, a habit added today "wasn't there", and syncing the date back
+  // from the page walked it backwards on its own (feedback 7, video_7).
+  int _pageForDate(DateTime date) => dayIndex(date);
 
-  DateTime _dateForPage(int page) => _epoch.add(Duration(days: page));
+  DateTime _dateForPage(int page) => dateFromDayIndex(page);
 
   @override
   void didUpdateWidget(_DateSwipeView oldWidget) {
@@ -253,8 +253,30 @@ class _DateSwipeViewState extends State<_DateSwipeView> {
     super.dispose();
   }
 
+  /// Once the pager comes to rest, the page on screen is the truth: if a
+  /// programmatic jump was cut short by a touch (its intermediate
+  /// `onPageChanged` calls were suppressed above), the header/date strip
+  /// could keep pointing at a different day than the list being shown — and
+  /// progress entered there was saved to the day on screen, not the one
+  /// highlighted (feedback 7, slide 12 & 13).
+  bool _onScrollEnd(ScrollEndNotification notification) {
+    if (notification.depth != 0 || !_controller.hasClients) return false;
+    _isAnimatingProgrammatically = false;
+    final page = (_controller.page ?? _pageForDate(widget.selectedDate).toDouble()).round();
+    final pageDate = _dateForPage(page);
+    if (!isSameDay(pageDate, widget.selectedDate)) widget.onDateChanged(pageDate);
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return NotificationListener<ScrollEndNotification>(
+      onNotification: _onScrollEnd,
+      child: _buildPager(),
+    );
+  }
+
+  Widget _buildPager() {
     return PageView.builder(
       controller: _controller,
       itemCount: _pageCount,
@@ -650,7 +672,7 @@ class _HabitList extends ConsumerWidget {
   // visually drowned out the slide and just read as "everything fading in"
   // instead of "the page sliding" (#30).
   Widget _buildCard(BuildContext context, WidgetRef ref, HabitWithProgress item, int index) {
-    return TapScale(
+    final card = TapScale(
       child: HabitProgressCard(
         key: ValueKey(item.habit.id),
         item: item,
@@ -659,9 +681,19 @@ class _HabitList extends ConsumerWidget {
         onTap: () => _onTapCard(context, ref, item),
       ),
     );
+    // Dimmed so a day that hasn't come yet reads as not-yet-checkable.
+    return selectedDate.isAfter(today()) ? Opacity(opacity: 0.55, child: card) : card;
   }
 
   Future<void> _onTapCard(BuildContext context, WidgetRef ref, HabitWithProgress item) async {
+    // Progress can't be logged ahead of time — a future day stays empty
+    // until it actually arrives (feedback 8, slide 4).
+    if (selectedDate.isAfter(today())) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.homeFutureDayLocked)));
+      return;
+    }
     final habit = item.habit;
     final isSimple = habit.goalValue <= 1 &&
         habit.goalUnit == 'x' &&
@@ -759,7 +791,7 @@ class _HabitList extends ConsumerWidget {
     if (closedReason == SnackBarClosedReason.action) return;
 
     try {
-      await ref.read(notificationServiceProvider).cancelForHabit(habitId);
+      await ref.read(reminderSyncCoordinatorProvider).removeForHabit(habitId);
     } catch (_) {
       // Notification cancellation failed (e.g. platform not supported) —
       // don't fail the habit deletion because of this.

@@ -29,6 +29,14 @@ class FinanceRepository {
     DateTime endInclusive, {
     Set<int> excludeHabitIds = const {},
     FinanceTrendBucket trendBucket = FinanceTrendBucket.day,
+    // Lets the trend chart's window differ from the totals/pace window —
+    // needed for the Daily tab, whose totals window is intentionally just
+    // the single anchor day (so pace/totals stay day-scoped) but whose
+    // trend chart needs several days of history to read as a "trend" at
+    // all. Null (default) keeps both windows identical, same as before
+    // (feedback 7, slide 39).
+    DateTime? trendStart,
+    DateTime? trendEnd,
   }) async {
     final habits = (await _db.habitDao.getAll())
         .map(mapHabit)
@@ -41,6 +49,15 @@ class FinanceRepository {
         .map(mapHabitLog)
         .where((l) => habitIds.contains(l.habitId))
         .toList();
+
+    final effectiveTrendStart = trendStart ?? start;
+    final effectiveTrendEnd = trendEnd ?? endInclusive;
+    final trendLogs = (effectiveTrendStart == start && effectiveTrendEnd == endInclusive)
+        ? logs
+        : (await _db.habitLogDao.getLogsInRange(effectiveTrendStart, effectiveTrendEnd))
+            .map(mapHabitLog)
+            .where((l) => habitIds.contains(l.habitId))
+            .toList();
 
     final logsByHabit = <int, List<HabitLog>>{};
     for (final log in logs) {
@@ -139,17 +156,17 @@ class FinanceRepository {
         .map((h) => h.id)
         .toSet();
     final trendByDate = <DateTime, int>{};
-    for (final log in logs) {
+    for (final log in trendLogs) {
       if (!expenseHabitIds.contains(log.habitId)) continue;
       final day = DateTime(log.date.year, log.date.month, log.date.day);
       trendByDate[day] = (trendByDate[day] ?? 0) + log.progressValue;
     }
-    final dailyTrend = trendBucket == FinanceTrendBucket.week
-        ? _bucketTrendByWeek(trendByDate)
-        : (trendByDate.entries
+    final dailyTrend = trendBucket == FinanceTrendBucket.day
+        ? (trendByDate.entries
                 .map((e) => FinanceDayPoint(date: e.key, totalExpense: e.value))
                 .toList()
-              ..sort((a, b) => a.date.compareTo(b.date)));
+              ..sort((a, b) => a.date.compareTo(b.date)))
+        : _bucketTrend(trendByDate, trendBucket, effectiveTrendStart, effectiveTrendEnd);
 
     final categoryBreakdown = _aggregateBreakdown(breakdownEntries);
 
@@ -168,30 +185,29 @@ class FinanceRepository {
     );
   }
 
-  /// Groups [trendByDate] (day → total expense) into calendar-week buckets
-  /// (Monday-start), each point's `date` = the bucket's Monday (clamped to
-  /// not precede the first day actually present) and `bucketEndInclusive` =
-  /// the last day with data in that week — used for the Monthly-tab trend
-  /// chart so it shows ~4-5 bars instead of ~30 daily ones.
-  List<FinanceDayPoint> _bucketTrendByWeek(Map<DateTime, int> trendByDate) {
-    if (trendByDate.isEmpty) return const [];
-    final sortedDays = trendByDate.keys.toList()..sort();
-    final byWeekStart = <DateTime, List<DateTime>>{};
-    for (final day in sortedDays) {
-      // ISO week starts Monday: weekday 1=Mon..7=Sun.
-      final weekStart = day.subtract(Duration(days: day.weekday - 1));
-      byWeekStart.putIfAbsent(weekStart, () => []).add(day);
+  /// Groups [trendByDate] (day → total expense) into calendar-week
+  /// (Monday-Sunday) or calendar-month buckets covering [from]..[to], one
+  /// point per bucket — empty ones included as 0, so the Weekly/Monthly
+  /// charts always read as a run of weeks/months rather than a few scattered
+  /// bars (feedback 8, slide 7).
+  List<FinanceDayPoint> _bucketTrend(
+    Map<DateTime, int> trendByDate,
+    FinanceTrendBucket bucket,
+    DateTime from,
+    DateTime to,
+  ) {
+    final period = bucket == FinanceTrendBucket.week ? GoalPeriod.weekly : GoalPeriod.monthly;
+    final points = <FinanceDayPoint>[];
+    var bucketStart = periodBoundsFor(period, from).$1;
+    while (!bucketStart.isAfter(to)) {
+      final bucketEnd = periodBoundsFor(period, bucketStart).$2;
+      var total = 0;
+      trendByDate.forEach((day, value) {
+        if (!day.isBefore(bucketStart) && !day.isAfter(bucketEnd)) total += value;
+      });
+      points.add(FinanceDayPoint(date: bucketStart, bucketEndInclusive: bucketEnd, totalExpense: total));
+      bucketStart = bucketEnd.add(const Duration(days: 1));
     }
-    final points = byWeekStart.entries.map((e) {
-      final daysInWeek = e.value;
-      final total = daysInWeek.fold<int>(0, (sum, d) => sum + (trendByDate[d] ?? 0));
-      return FinanceDayPoint(
-        date: daysInWeek.first,
-        bucketEndInclusive: daysInWeek.last,
-        totalExpense: total,
-      );
-    }).toList()
-      ..sort((a, b) => a.date.compareTo(b.date));
     return points;
   }
 

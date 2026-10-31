@@ -3,10 +3,10 @@ import 'habit.dart';
 
 /// Granularitas titik pada `FinanceSummary.dailyTrend` — dipilih oleh
 /// caller (`FinanceRepository.computeSummary`) berdasarkan tab Finance yang
-/// aktif: Daily/Weekly pakai [day] (satu bar per hari), Monthly pakai
-/// [week] (satu bar per minggu kalender) supaya tidak menampilkan ~30 bar
-/// harian yang padat dan sulit dibaca.
-enum FinanceTrendBucket { day, week }
+/// aktif: Daily pakai [day] (satu bar per hari), Weekly pakai [week] (satu
+/// bar per minggu kalender), Monthly pakai [month] (satu bar per bulan) —
+/// tiap tab menampilkan tren di satuannya sendiri (feedback 8, slide 7).
+enum FinanceTrendBucket { day, week, month }
 
 /// Status traffic light 3 warna dari [BudgetPace] — turunan dari selisih
 /// [BudgetPace.actualRatio] terhadap [BudgetPace.expectedRatio], lihat
@@ -87,11 +87,10 @@ class FinanceHabitStat {
 }
 
 /// Total pengeluaran (habit `atMost`) pada satu titik tren — [date] adalah
-/// awal bucket-nya. Untuk tab Daily/Weekly, satu bucket = satu hari
-/// ([bucketEndInclusive] == [date]). Untuk tab Monthly, satu bucket = satu
-/// minggu kalender ([bucketEndInclusive] = hari terakhir minggu itu yang
-/// masih dalam window) — dipakai UI untuk label sumbu-X ("1-7 Jan" vs "1
-/// Jan").
+/// awal bucket-nya. Untuk tab Daily, satu bucket = satu hari
+/// ([bucketEndInclusive] == [date]); Weekly = satu minggu kalender
+/// (Senin-Minggu); Monthly = satu bulan kalender — dipakai UI untuk label
+/// sumbu-X.
 class FinanceDayPoint {
   const FinanceDayPoint({
     required this.date,
@@ -188,9 +187,11 @@ class FinanceSummary {
     final today = DateTime(now.year, now.month, now.day);
     if (today.isBefore(start) || today.isAfter(endInclusive)) return null;
 
-    final totalDays = endInclusive.difference(start).inDays + 1;
-    final elapsedDays = today.difference(start).inDays + 1;
-    final expectedRatio = (elapsedDays / totalDays).clamp(0.0, 1.0);
+    // Share of the budget that should be used up by the end of today. Taken
+    // from the budget itself rather than calendar days, so a budget started
+    // mid-period or with a different weekend amount isn't judged against
+    // days it doesn't cover (feedback 7, slide 30 & 33).
+    final expectedRatio = (totalBudgetElapsed / totalBudget).clamp(0.0, 1.0);
     final actualRatio = (totalExpense / totalBudget).clamp(0.0, 10.0);
 
     // Traffic light 3 warna: hijau kalau masih dalam buffer 5 poin persen di

@@ -516,3 +516,62 @@ final class ProfileRepositoryProvider
 }
 
 String _$profileRepositoryHash() => r'66035faf3d0efdd46e580f1611c2aa9a2ad08939';
+
+/// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+/// Sync toggles (feedback 7, slide 46 & 48) — see
+/// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+
+@ProviderFor(reminderSyncCoordinator)
+final reminderSyncCoordinatorProvider = ReminderSyncCoordinatorProvider._();
+
+/// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+/// Sync toggles (feedback 7, slide 46 & 48) — see
+/// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+
+final class ReminderSyncCoordinatorProvider
+    extends
+        $FunctionalProvider<
+          ReminderSyncCoordinator,
+          ReminderSyncCoordinator,
+          ReminderSyncCoordinator
+        >
+    with $Provider<ReminderSyncCoordinator> {
+  /// Wires per-habit reminder scheduling to the Settings > Health & Calendar
+  /// Sync toggles (feedback 7, slide 46 & 48) — see
+  /// `ReminderSyncCoordinator`'s own doc comment for why this exists.
+  ReminderSyncCoordinatorProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reminderSyncCoordinatorProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reminderSyncCoordinatorHash();
+
+  @$internal
+  @override
+  $ProviderElement<ReminderSyncCoordinator> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  ReminderSyncCoordinator create(Ref ref) {
+    return reminderSyncCoordinator(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ReminderSyncCoordinator value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ReminderSyncCoordinator>(value),
+    );
+  }
+}
+
+String _$reminderSyncCoordinatorHash() =>
+    r'c14c5791870d9624040f67224ff20768beaec3a0';

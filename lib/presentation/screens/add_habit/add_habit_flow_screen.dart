@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../domain/date_utils.dart';
+import '../../../domain/format_utils.dart';
+import '../../../domain/habit_schedule.dart';
 import '../../../domain/language.dart';
 import '../../../domain/models/category.dart';
 import '../../../domain/models/enums.dart';
@@ -54,10 +55,15 @@ Future<bool> openEditHabitFlow(
   BuildContext context,
   Habit habit, {
   bool lockGoalFields = false,
+  GoalPeriod? initialGoalPeriodOverride,
 }) async {
   final saved = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
-      builder: (_) => AddHabitFlowScreen(editingHabit: habit, lockGoalFields: lockGoalFields),
+      builder: (_) => AddHabitFlowScreen(
+        editingHabit: habit,
+        lockGoalFields: lockGoalFields,
+        initialGoalPeriodOverride: initialGoalPeriodOverride,
+      ),
     ),
   );
   return saved ?? false;
@@ -96,6 +102,7 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
     this.startAtNewCategory = false,
     this.startAtSpendingMoneyForm = false,
     this.lockGoalFields = false,
+    this.initialGoalPeriodOverride,
   });
 
   final int? initialCategoryId;
@@ -121,6 +128,17 @@ class AddHabitFlowScreen extends ConsumerStatefulWidget {
   /// local "when" preferences never synced to the group, so they're always
   /// editable. Unlink from Community first to change any of the locked ones.
   final bool lockGoalFields;
+
+  /// Pre-select this [GoalPeriod] (converting `editingHabit`'s stored
+  /// goalValue proportionally, via the same daily-rate math the Finance
+  /// summary screen uses) instead of the habit's own stored goalPeriod —
+  /// used when opening "Edit Spending Limit" from the Finance summary page
+  /// so the form matches whichever Daily/Weekly/Monthly tab was active
+  /// there, instead of always jumping to the habit's raw stored period
+  /// (which read as "wrong tab opened", e.g. Monthly tab -> Daily form —
+  /// feedback 7, slide 37). Null (default) keeps the old behavior: show the
+  /// habit's actual stored period, unchanged. Ignored when not editing.
+  final GoalPeriod? initialGoalPeriodOverride;
 
   @override
   ConsumerState<AddHabitFlowScreen> createState() => _AddHabitFlowScreenState();
@@ -186,6 +204,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   @override
   void initState() {
     super.initState();
+    _startDate = _defaultStartDate();
     if (widget.editingHabit != null) {
       _categoryId = widget.editingHabit!.categoryId;
       _loadFormFromHabit(widget.editingHabit!);
@@ -406,9 +425,21 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   /// [_setGoalValue] as a plain digit string) needs one manual pass to match
   /// what the formatter would produce once the user starts typing.
   void _formatBudgetTrackerAmountControllers() {
-    final format = NumberFormat.decimalPattern('id_ID');
-    _goalValueController.text = _goalValue == 0 ? '' : format.format(_goalValue);
-    _goalValueWeekendController.text = _goalValueWeekend == 0 ? '' : format.format(_goalValueWeekend);
+    _goalValueController.text = formatAmountInput(_goalValue, _currency);
+    _goalValueWeekendController.text = formatAmountInput(_goalValueWeekend, _currency);
+  }
+
+  /// Switching between IDR (whole rupiah) and a cent-based currency changes
+  /// the stored unit (see `currencyHasDecimals`), so the amounts already
+  /// typed keep their face value: "50.000" stays 50.000 in the new currency.
+  void _changeBudgetTrackerCurrency(String currency) {
+    final from = currencyMinorFactor(_currency);
+    final to = currencyMinorFactor(currency);
+    _currency = currency;
+    if (from == to) return;
+    _goalValue = (_goalValue * to / from).round();
+    _goalValueWeekend = (_goalValueWeekend * to / from).round();
+    _formatBudgetTrackerAmountControllers();
   }
 
   /// Sama seperti [_setGoalValue] tapi untuk override weekend (Sabtu-Minggu).
@@ -447,10 +478,37 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _templateKeyDraft = habit.templateKey;
     _habitIcon = habit.icon ?? defaultHabitIconKey;
     _applyUnit(habit.goalUnit);
-    _goalPeriod = habit.goalPeriod;
-    _setGoalValue(habit.goalValue);
-    _customWeekendGoal = habit.goalValueWeekend != null;
-    _setGoalValueWeekend(habit.goalValueWeekend ?? habit.goalValue);
+    final periodOverride = widget.initialGoalPeriodOverride;
+    if (periodOverride != null && periodOverride != habit.goalPeriod) {
+      // Convert the stored goalValue to whatever period the Finance tab was
+      // showing (feedback 7, slide 37) — same daily-rate math
+      // `FinanceRepository._dailyTargetSum`/`Habit.dailyRateFor` already use
+      // to derive Daily/Weekly/Monthly from each other, just run the other
+      // way (rate -> target period instead of stored period -> rate) so the
+      // number shown to edit matches what that tab displayed.
+      // Summed day by day over the current week/month so a separate weekend
+      // amount is counted on the days it actually applies.
+      final (periodStart, periodEnd) = periodBoundsFor(periodOverride, today());
+      var converted = 0.0;
+      for (var day = periodStart; !day.isAfter(periodEnd); day = day.add(const Duration(days: 1))) {
+        converted += habit.dailyRateFor(day);
+      }
+      if (periodOverride == GoalPeriod.daily) converted = habit.dailyRateFor(today());
+      _goalPeriod = periodOverride;
+      _setGoalValue(converted.round());
+      // "Different goal for weekends" only ever applies to a Daily period
+      // (#27) — dropping it when converting away from Daily keeps that
+      // invariant instead of carrying over a now-meaningless override.
+      _customWeekendGoal = periodOverride == GoalPeriod.daily && habit.goalValueWeekend != null;
+      _setGoalValueWeekend(
+        _customWeekendGoal ? (habit.goalValueWeekend ?? converted.round()) : converted.round(),
+      );
+    } else {
+      _goalPeriod = habit.goalPeriod;
+      _setGoalValue(habit.goalValue);
+      _customWeekendGoal = habit.goalValueWeekend != null;
+      _setGoalValueWeekend(habit.goalValueWeekend ?? habit.goalValue);
+    }
     _goalDirection = habit.goalDirection;
     _taskDays = habit.taskDays.toSet();
     _timeRange = habit.timeRange;
@@ -495,9 +553,19 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     _reminderEnabled = false;
     _reminderTime = const TimeOfDay(hour: 8, minute: 0);
     _reminderIntervalMinutes = null;
-    _startDate = startDate ?? today();
+    _startDate = startDate ?? _defaultStartDate();
     _endDate = null;
     _currency = 'IDR';
+  }
+
+  /// A new habit starts on the day Home is showing when that day is already
+  /// past, so it shows up on the day the user added it from instead of only
+  /// from today onwards (feedback 8, slide 3). A future day still starts
+  /// today — the habit appears there anyway.
+  DateTime _defaultStartDate() {
+    final viewed = dateOnly(ref.read(selectedHomeDateProvider));
+    final now = today();
+    return viewed.isBefore(now) ? viewed : now;
   }
 
   TimeOfDay? _parseTime(String? raw) {
@@ -1105,7 +1173,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     setState(() => _saving = true);
     try {
       final repo = ref.read(habitRepositoryProvider);
-      final startDate = today();
+      final startDate = _defaultStartDate();
       // One batch insert instead of a create+read-back+notification-reschedule
       // loop per habit (previously ~1-2s per habit in a multi-select batch,
       // #29). No notification scheduling here either — every template habit
@@ -1150,9 +1218,11 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
 
   Future<void> _tryScheduleNotification(Habit habit) async {
     try {
+      // Also mirrors into Calendar/Alarm if the user has those Settings
+      // toggles on, not just the local notification (feedback 7, slide 48).
       await ref
-          .read(notificationServiceProvider)
-          .rescheduleForHabit(habit, lang: ref.read(appLanguageProvider));
+          .read(reminderSyncCoordinatorProvider)
+          .syncForHabit(habit, lang: ref.read(appLanguageProvider));
     } catch (_) {
       // Notification scheduling failed (e.g. platform not supported) —
       // don't fail the habit save because of this.
@@ -1212,7 +1282,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           ],
           onChanged: (v) {
             if (v == null) return;
-            setState(() => _currency = v);
+            setState(() => _changeBudgetTrackerCurrency(v));
           },
         ),
         // "Different Goal for Weekends" cuma masuk akal untuk Goal Period
@@ -1907,6 +1977,20 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
       final reminderTimeStr = _reminderEnabled ? _formatTime(_reminderTime) : null;
       final reminderIntervalValue = _reminderEnabled ? _reminderIntervalMinutes : null;
       final taskDaysList = _taskDays.contains(allDaysKey) ? [allDaysKey] : _taskDays.toList();
+      // Floor at save time, not just in the stepper — the raw digits-only
+      // TextField's onChanged (unlike the stepper's `_setGoalValue`) sets
+      // `_goalValue` straight from `int.tryParse`, so briefly clearing the
+      // field (or typing "0") leaves it at 0 with nothing stopping a save
+      // right then. A 0 target is never valid (goalValue=0 trivially
+      // "achieves" every progress via `Habit.isAchieved`'s `>=`, showing a
+      // permanently-0/0 card — feedback 7, slide 19). Doesn't touch
+      // `_goalValue`/the field itself so the user can still see/correct what
+      // they typed if they reopen the form.
+      final goalValue = _goalValue < 1 ? 1 : _goalValue;
+      // An emptied weekend field means "no separate weekend amount" — it
+      // used to be saved as a 0 weekend budget/target instead of being
+      // removed (feedback 7, slide 31).
+      final goalValueWeekend = _customWeekendGoal && _goalValueWeekend > 0 ? _goalValueWeekend : null;
 
       if (_isEditing) {
         final updated = Habit(
@@ -1919,8 +2003,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           description: widget.editingHabit!.description,
           icon: _habitIcon,
           goalPeriod: _goalPeriod,
-          goalValue: _goalValue,
-          goalValueWeekend: _customWeekendGoal ? _goalValueWeekend : null,
+          goalValue: goalValue,
+          goalValueWeekend: goalValueWeekend,
           goalUnit: goalUnit,
           goalDirection: _goalDirection,
           taskDays: taskDaysList,
@@ -1936,6 +2020,13 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           currency: _categoryIdIsFinance(_categoryId) ? _currency : null,
         );
         await repo.updateHabit(updated);
+        // Logged amounts keep their face value across an IDR <-> cent-based
+        // currency switch, same as the budget fields above.
+        final fromFactor = currencyMinorFactor(widget.editingHabit!.currency);
+        final toFactor = currencyMinorFactor(updated.currency);
+        if (updated.isRupiah && fromFactor != toFactor) {
+          await repo.rescaleAmounts(updated.id, multiplier: toFactor, divisor: fromFactor);
+        }
         await _tryScheduleNotification(updated);
       } else {
         final id = await repo.createHabit(
@@ -1946,8 +2037,8 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
           templateKey: _templateKeyDraft,
           icon: _habitIcon,
           goalPeriod: _goalPeriod,
-          goalValue: _goalValue,
-          goalValueWeekend: _customWeekendGoal ? _goalValueWeekend : null,
+          goalValue: goalValue,
+          goalValueWeekend: goalValueWeekend,
           goalUnit: goalUnit,
           goalDirection: _goalDirection,
           taskDays: taskDaysList,
@@ -2097,6 +2188,19 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
     ref.invalidate(financeSummaryProvider);
     ref.invalidate(financeSummaryForPeriodProvider);
     ref.invalidate(financeMonthToDateSummaryProvider);
+    // Home's flat list is supposed to pick up the new/edited habit purely
+    // through `allActiveHabitsProvider`'s Drift stream reacting on its own
+    // (see the doc comment above) — but a habit just added for *today*
+    // still needed an extra swipe away-and-back to actually show up
+    // (feedback 7, slide 9 & 11). `_DayPage` only rewatches a fresh stream
+    // subscription once its own element is torn down and rebuilt (e.g. by
+    // `PageView` dropping/recreating an offscreen page), so a still-mounted
+    // page can be left showing whatever the *previous* subscription had
+    // right up until that subscription happens to emit again on its own.
+    // Explicitly invalidating here forces every current listener (the
+    // visible page included) to re-subscribe and re-query right now,
+    // instead of waiting on that old subscription.
+    ref.invalidate(allActiveHabitsProvider);
 
     if (!mounted) return;
     final navigator = Navigator.of(context);
@@ -2115,7 +2219,7 @@ class _AddHabitFlowScreenState extends ConsumerState<AddHabitFlowScreen> {
   /// delete lands).
   Future<void> _removeCreatedCustomHabit(Habit habit) async {
     try {
-      await ref.read(notificationServiceProvider).cancelForHabit(habit.id);
+      await ref.read(reminderSyncCoordinatorProvider).removeForHabit(habit.id);
     } catch (_) {
       // Notification cancellation failed (e.g. platform not supported) —
       // don't fail the habit deletion because of this.

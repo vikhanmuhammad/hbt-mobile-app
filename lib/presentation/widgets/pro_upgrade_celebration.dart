@@ -24,11 +24,19 @@ class ProUpgradeCelebration extends ConsumerStatefulWidget {
 class _ProUpgradeCelebrationState extends ConsumerState<ProUpgradeCelebration>
     with TickerProviderStateMixin {
   bool _visible = false;
-  late final AnimationController _confettiController = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 3200),
-  );
+  // Created eagerly: a lazy `late final` was first touched in dispose(),
+  // where creating a ticker-backed controller throws.
+  late final AnimationController _confettiController;
   late final List<_ConfettiPiece> _pieces = List.generate(30, (i) => _ConfettiPiece.random(i));
+
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    );
+  }
 
   @override
   void dispose() {
